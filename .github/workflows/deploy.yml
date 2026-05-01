@@ -24,10 +24,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Inject proxy URL
-        run: |
-          sed -i "s|__PROXY_URL__|${{ vars.PROXY_URL }}|g" index.html
-          echo "--- verify replacement ---"
-          grep -n "PROXY" index.html
+        run: sed -i "s|__PROXY_URL__|${{ vars.PROXY_URL }}|g" index.html
 
       - uses: actions/configure-pages@v5
 
