@@ -194,3 +194,10 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE handle_new_user();
+
+-- Enable Realtime for all tables that use postgres_changes subscriptions
+ALTER PUBLICATION supabase_realtime ADD TABLE
+  sessions,
+  session_participants,
+  queue_items,
+  skip_votes;
