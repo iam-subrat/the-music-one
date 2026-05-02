@@ -23,8 +23,18 @@ export function useAuth() {
   }, []);
 
   async function fetchProfile(userId) {
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
-    if (!data || error) {
+    let { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+    if (!data) {
+      // Profile missing — create from auth metadata (handles deleted profiles + trigger failures)
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const { data: created } = await supabase.from('profiles').upsert({
+        id: userId,
+        display_name: authUser?.user_metadata?.full_name ?? authUser?.email?.split('@')[0] ?? null,
+        avatar_url: authUser?.user_metadata?.avatar_url ?? null,
+      }).select().maybeSingle();
+      data = created;
+    }
+    if (!data) {
       await supabase.auth.signOut();
       setUser(null);
       setProfile(null);
