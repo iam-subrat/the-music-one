@@ -4,6 +4,7 @@ import { FLAGS } from '../lib/flags';
 import { useSkipVotes } from '../hooks/useSkipVotes';
 import { castSkipVote, removeSkipVote, playNext } from '../lib/queue';
 import { useToast } from './Toast';
+import PlatformLinks from './PlatformLinks';
 
 export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatform, participantCount, userId, onQueueChange }) {
   const toast = useToast();
@@ -28,8 +29,8 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
 
   const pref = preferredLink(nowPlaying.platform_links, preferredPlatform);
   const ytId = FLAGS.YOUTUBE_EMBED ? extractYouTubeId(nowPlaying.platform_links?.youtube || nowPlaying.platform_links?.youtubemusic) : null;
-  const otherLinks = Object.entries(nowPlaying.platform_links)
-    .filter(([k, v]) => v && k !== pref?.platform);
+  const query = `${nowPlaying.title} ${nowPlaying.artist}`;
+  const prefMeta = pref ? PLATFORM_META[pref.platform] : null;
 
   async function handleSkipVote() {
     try {
@@ -60,20 +61,28 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
       </div>
 
       {pref && (
-        <a className={s.preferredBtn} href={pref.url} target="_blank" rel="noopener noreferrer">
-          Open on {PLATFORM_META[pref.platform]?.name || pref.platform} ↗
+        <a
+          className={s.preferredBtn}
+          href={pref.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ '--platform-color': prefMeta?.color }}
+        >
+          {prefMeta?.iconSvgUrl && (
+            <img src={prefMeta.iconSvgUrl} alt="" width={16} height={16} style={{ filter: 'brightness(0) invert(1)' }} />
+          )}
+          Open on {prefMeta?.name || pref.platform} ↗
         </a>
       )}
 
-      {otherLinks.length > 0 && (
-        <div className={s.otherLinks}>
-          {otherLinks.map(([k, v]) => (
-            <a key={k} className={s.otherLink} href={v} target="_blank" rel="noopener noreferrer">
-              {PLATFORM_META[k]?.name || k}
-            </a>
-          ))}
-        </div>
-      )}
+      <div className={s.platformSection}>
+        <div className={s.platformSectionLabel}>Listen on all platforms</div>
+        <PlatformLinks
+          platformLinks={nowPlaying.platform_links}
+          query={query}
+          activePlatform={pref?.platform}
+        />
+      </div>
 
       {ytId && (
         <iframe

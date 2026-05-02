@@ -64,21 +64,81 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 18px;
+  padding: 11px 18px;
   border-radius: var(--radius);
-  background: var(--accent);
+  background: var(--platform-color, var(--accent));
   color: #fff;
   text-decoration: none;
   font-weight: 600;
   font-size: 0.9rem;
-  transition: background 0.2s;
+  transition: filter 0.2s, transform 0.15s;
   width: fit-content;
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--platform-color, var(--accent)) 40%, transparent);
 }
-.preferredBtn:hover { background: var(--accent-hover); }
+.preferredBtn:hover { filter: brightness(1.15); transform: translateY(-1px); }
 
-.otherLinks { display: flex; flex-wrap: wrap; gap: 8px; }
-.otherLink { font-size: 0.78rem; color: var(--muted); text-decoration: none; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; }
-.otherLink:hover { border-color: var(--accent); color: var(--accent); }
+/* Platform section */
+.platformSection { display: flex; flex-direction: column; gap: 8px; }
+.platformSectionLabel { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); }
+
+.platformGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.platformPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--platform-color, var(--border)) 40%, transparent);
+  background: color-mix(in srgb, var(--platform-color, var(--surface)) 12%, var(--surface));
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: background 0.18s, border-color 0.18s, transform 0.15s;
+  white-space: nowrap;
+}
+.platformPill:hover {
+  background: color-mix(in srgb, var(--platform-color, var(--accent)) 25%, var(--surface));
+  border-color: var(--platform-color, var(--accent));
+  transform: translateY(-1px);
+}
+
+/* Currently-playing platform — glowing ring */
+.platformPillActive {
+  border-color: var(--platform-color, var(--accent));
+  background: color-mix(in srgb, var(--platform-color, var(--accent)) 20%, var(--surface));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--platform-color, var(--accent)) 35%, transparent);
+}
+
+/* Search-fallback pill — slightly dimmer */
+.platformPillSearch {
+  opacity: 0.78;
+}
+.platformPillSearch:hover { opacity: 1; }
+
+.platformIcon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+}
+
+.platformName { line-height: 1; }
+
+.platformSearchTag {
+  font-size: 0.62rem;
+  background: color-mix(in srgb, var(--platform-color, var(--muted)) 20%, transparent);
+  color: var(--muted);
+  border-radius: 4px;
+  padding: 1px 4px;
+  letter-spacing: 0.3px;
+}
 
 .djControls { display: flex; gap: 10px; }
 .skipBtn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 0.82rem; cursor: pointer; transition: border-color 0.2s, color 0.2s; }

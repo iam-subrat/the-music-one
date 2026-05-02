@@ -14,10 +14,23 @@ export async function fetchSongMeta(streamUrl) {
   const entity = data.entitiesByUniqueId[key];
   if (!entity) throw new Error('Could not identify song from this URL.');
 
+  // Odesli platform key → our PLATFORM_META key
+  // Odesli uses different identifiers: 'amazon' for streaming, 'itunes' for Apple Music, etc.
+  const KEY_REMAP = {
+    itunes:       'applemusic',
+    applemusic:   'applemusic',   // already correct, belt-and-suspenders
+    youtubemusic: 'youtubemusic', // already correct
+    amazon:       'amazonmusic',
+    amazonmusic:  'amazonmusic',  // already correct
+    jiosaavn:     'jiosaavn',
+    gaana:        'gaana',
+  };
+
   const platformLinks = {};
   for (const [platform, info] of Object.entries(data.linksByPlatform ?? {})) {
-    // Normalize to lowercase so keys match PLATFORM_META (Odesli returns camelCase: appleMusic, youtubeMusic)
-    if (info.url) platformLinks[platform.toLowerCase()] = info.url;
+    const normalized = platform.toLowerCase();
+    const key = KEY_REMAP[normalized] ?? normalized;
+    if (info.url) platformLinks[key] = info.url;
   }
 
   return {

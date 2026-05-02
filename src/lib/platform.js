@@ -15,16 +15,16 @@ export const PLATFORM_MAP = {
 };
 
 export const PLATFORM_META = {
-  spotify:      { name: 'Spotify',       color: '#1DB954', slug: 'spotify' },
-  applemusic:   { name: 'Apple Music',   color: '#FC3C44', slug: 'applemusic' },
-  youtubemusic: { name: 'YouTube Music', color: '#FF0000', slug: 'youtubemusic' },
-  youtube:      { name: 'YouTube',       color: '#FF0000', slug: 'youtube' },
-  tidal:        { name: 'Tidal',         color: '#00FFFF', slug: 'tidal' },
-  deezer:       { name: 'Deezer',        color: '#FEAA2D', slug: 'deezer' },
-  soundcloud:   { name: 'SoundCloud',    color: '#FF5500', slug: 'soundcloud' },
-  jiosaavn:     { name: 'JioSaavn',      color: '#2BC5B4', slug: null, iconUrl: 'https://www.google.com/s2/favicons?domain=jiosaavn.com&sz=64' },
-  gaana:        { name: 'Gaana',         color: '#E72C30', slug: null, iconUrl: 'https://www.google.com/s2/favicons?domain=gaana.com&sz=64' },
-  amazonmusic:  { name: 'Amazon Music',  color: '#00A8E1', slug: null, iconUrl: 'https://www.google.com/s2/favicons?domain=music.amazon.com&sz=64' },
+  spotify:      { name: 'Spotify',       color: '#1DB954', iconSvgUrl: 'https://cdn.simpleicons.org/spotify/1DB954',      searchUrl: q => `https://open.spotify.com/search/${encodeURIComponent(q)}` },
+  applemusic:   { name: 'Apple Music',   color: '#FA2D48', iconSvgUrl: 'https://cdn.simpleicons.org/applemusic/FA2D48',   searchUrl: q => `https://music.apple.com/search?term=${encodeURIComponent(q)}` },
+  youtubemusic: { name: 'YouTube Music', color: '#FF0000', iconSvgUrl: 'https://cdn.simpleicons.org/youtubemusic/FF0000', searchUrl: q => `https://music.youtube.com/search?q=${encodeURIComponent(q)}` },
+  youtube:      { name: 'YouTube',       color: '#FF0000', iconSvgUrl: 'https://cdn.simpleicons.org/youtube/FF0000',      searchUrl: q => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}` },
+  tidal:        { name: 'Tidal',         color: '#00FFFF', iconSvgUrl: 'https://cdn.simpleicons.org/tidal/00FFFF',        searchUrl: q => `https://tidal.com/search?q=${encodeURIComponent(q)}` },
+  deezer:       { name: 'Deezer',        color: '#FEAA2D', iconSvgUrl: 'https://cdn.simpleicons.org/deezer/FEAA2D',       searchUrl: q => `https://www.deezer.com/search/${encodeURIComponent(q)}` },
+  soundcloud:   { name: 'SoundCloud',    color: '#FF5500', iconSvgUrl: 'https://cdn.simpleicons.org/soundcloud/FF5500',   searchUrl: q => `https://soundcloud.com/search?q=${encodeURIComponent(q)}` },
+  jiosaavn:     { name: 'JioSaavn',      color: '#2BC5B4', iconSvgUrl: null, iconUrl: 'https://www.google.com/s2/favicons?domain=jiosaavn.com&sz=64',      searchUrl: q => `https://www.jiosaavn.com/search/${encodeURIComponent(q)}` },
+  gaana:        { name: 'Gaana',         color: '#E72C30', iconSvgUrl: null, iconUrl: 'https://www.google.com/s2/favicons?domain=gaana.com&sz=64',         searchUrl: q => `https://gaana.com/search/${encodeURIComponent(q)}` },
+  amazonmusic:  { name: 'Amazon Music',  color: '#00A8E1', iconSvgUrl: 'https://cdn.simpleicons.org/amazonmusic/00A8E1',  searchUrl: q => `https://music.amazon.in/search/${encodeURIComponent(q)}` },
 };
 
 /** Returns platform key from URL string, or null. */

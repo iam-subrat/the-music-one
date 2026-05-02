@@ -185,6 +185,9 @@ $$;
 
 -- Atomic queue advance: marks current playing as played/skipped, locks next queued item
 -- p_check_auth=false skips DJ/host check (used internally by cast_skip_vote)
+-- Drop both known overloads first to avoid PostgREST PGRST203 ambiguity error
+DROP FUNCTION IF EXISTS public.play_next(uuid, text);
+DROP FUNCTION IF EXISTS public.play_next(uuid, text, boolean);
 CREATE OR REPLACE FUNCTION public.play_next(p_session_id uuid, p_skip_status text DEFAULT 'played', p_check_auth boolean DEFAULT true)
 RETURNS uuid
 LANGUAGE plpgsql
