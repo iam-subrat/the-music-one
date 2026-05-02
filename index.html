@@ -11,9 +11,11 @@
     <script>
       // Decode GitHub Pages 404 redirect (pairs with public/404.html)
       (function() {
-        var p = new URLSearchParams(window.location.search).get('p');
+        var q = new URLSearchParams(window.location.search);
+        var p = q.get('p');
         if (p) {
-          window.history.replaceState(null, null, decodeURIComponent(p));
+          var h = q.get('h');
+          window.history.replaceState(null, null, decodeURIComponent(p) + (h ? '#' + decodeURIComponent(h) : ''));
         }
       })();
     </script>
