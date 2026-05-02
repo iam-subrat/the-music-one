@@ -59,3 +59,24 @@ export function extractYouTubeId(url) {
     return u.searchParams.get('v');
   } catch { return null; }
 }
+
+/** Returns true if URL is a YouTube or YouTube Music search results page. */
+export function isYouTubeSearchUrl(url) {
+  if (!url) return false;
+  try {
+    const { hostname, pathname, searchParams } = new URL(url);
+    if (hostname.includes('music.youtube.com') && pathname === '/search') return true;
+    if ((hostname.includes('youtube.com') || hostname.includes('youtu.be')) &&
+        (pathname === '/results' || pathname === '/search') &&
+        searchParams.has('q') || searchParams.has('search_query')) return true;
+    return false;
+  } catch { return false; }
+}
+
+/** Extracts the search query string from a YouTube / YouTube Music search URL. */
+export function extractSearchQuery(url) {
+  try {
+    const { searchParams } = new URL(url);
+    return searchParams.get('q') ?? searchParams.get('search_query') ?? null;
+  } catch { return null; }
+}
