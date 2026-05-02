@@ -5,7 +5,6 @@ export default defineConfig({
   plugins: [react()],
   base: '/',
   define: {
-    // Feature flag defaults — overridden by CI environment variables
     __FLAG_JAM_SESSION__:         JSON.stringify(process.env.FLAG_JAM_SESSION         ?? 'true'),
     __FLAG_VOTE_TO_SKIP__:        JSON.stringify(process.env.FLAG_VOTE_TO_SKIP        ?? 'true'),
     __FLAG_DJ_TOKEN__:            JSON.stringify(process.env.FLAG_DJ_TOKEN            ?? 'true'),
@@ -21,8 +20,5 @@ export default defineConfig({
     __FLAG_SCHEDULED_JAMS__:      JSON.stringify(process.env.FLAG_SCHEDULED_JAMS      ?? 'false'),
     __FLAG_QUEUE_RULES__:         JSON.stringify(process.env.FLAG_QUEUE_RULES         ?? 'false'),
     __FLAG_EMBED_WIDGET__:        JSON.stringify(process.env.FLAG_EMBED_WIDGET        ?? 'false'),
-    __SUPABASE_URL__:             JSON.stringify(process.env.SUPABASE_URL             ?? ''),
-    __SUPABASE_ANON_KEY__:        JSON.stringify(process.env.SUPABASE_ANON_KEY        ?? ''),
-    __PROXY_URL__:                JSON.stringify(process.env.PROXY_URL                ?? ''),
   },
 });

@@ -1,4 +1,4 @@
-const PROXY_URL = __PROXY_URL__;
+const PROXY_URL = import.meta.env.VITE_PROXY_URL;
 
 /**
  * Fetches song metadata from Odesli via proxy.

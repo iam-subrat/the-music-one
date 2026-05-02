@@ -27,9 +27,9 @@ jobs:
 
       - name: Build
         env:
-          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
-          PROXY_URL: ${{ vars.PROXY_URL }}
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_PROXY_URL: ${{ vars.VITE_PROXY_URL }}
           FLAG_JAM_SESSION: 'true'
           FLAG_VOTE_TO_SKIP: 'true'
           FLAG_DJ_TOKEN: 'true'
