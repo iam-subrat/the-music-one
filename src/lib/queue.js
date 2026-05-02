@@ -54,3 +54,11 @@ export async function castSkipVote(queueItemId, userId, threshold) {
   if (error) throw new Error(error.message);
   return data; // boolean: true if song was skipped
 }
+
+export async function removeSkipVote(queueItemId, userId) {
+  const { error } = await supabase.from('skip_votes')
+    .delete()
+    .eq('queue_item_id', queueItemId)
+    .eq('user_id', userId);
+  if (error) throw new Error(error.message);
+}

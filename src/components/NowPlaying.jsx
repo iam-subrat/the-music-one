@@ -1,18 +1,14 @@
-import { useState, useEffect } from 'react';
 import s from '../styles/jam.module.css';
 import { preferredLink, extractYouTubeId, PLATFORM_META } from '../lib/platform';
 import { FLAGS } from '../lib/flags';
 import { useSkipVotes } from '../hooks/useSkipVotes';
-import { castSkipVote, forceSkip, playNext } from '../lib/queue';
+import { castSkipVote, removeSkipVote, playNext } from '../lib/queue';
 import { useToast } from './Toast';
 
 export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatform, participantCount, userId, onQueueChange }) {
   const toast = useToast();
-  const skipVotes = useSkipVotes(nowPlaying?.id);
+  const { count: skipVotes, hasVoted } = useSkipVotes(nowPlaying?.id, userId);
   const skipThreshold = Math.floor(participantCount / 2) + 1;
-  const [hasVoted, setHasVoted] = useState(false);
-  // Reset when now-playing track changes
-  useEffect(() => { setHasVoted(false); }, [nowPlaying?.id]);
 
   if (!nowPlaying) {
     return (
@@ -36,10 +32,16 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
     .filter(([k, v]) => v && k !== pref?.platform);
 
   async function handleSkipVote() {
-    if (hasVoted) return;
-    setHasVoted(true);
-    const skipped = await castSkipVote(nowPlaying.id, userId, skipThreshold);
-    if (skipped) onQueueChange?.();
+    try {
+      if (hasVoted) {
+        await removeSkipVote(nowPlaying.id, userId);
+      } else {
+        const skipped = await castSkipVote(nowPlaying.id, userId, skipThreshold);
+        if (skipped) onQueueChange?.();
+      }
+    } catch (e) {
+      toast(e.message);
+    }
   }
 
   return (
@@ -83,26 +85,19 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
       )}
 
       <div className={s.djControls}>
-        {isDJ ? (
-          <>
-            <button className="btn" onClick={() => playNext(sessionId).then(n => { onQueueChange?.(); if (!n) toast('Queue is empty!'); })}>
-              Next ▶
-            </button>
-            {FLAGS.VOTE_TO_SKIP && (
-              <button className="btn btn-danger" onClick={() => forceSkip(sessionId).then(() => onQueueChange?.())}>
-                Force Skip
-              </button>
-            )}
-          </>
-        ) : FLAGS.VOTE_TO_SKIP ? (
+        {isDJ && (
+          <button className="btn" onClick={() => playNext(sessionId).then(n => { onQueueChange?.(); if (!n) toast('Queue is empty!'); })}>
+            Next ▶
+          </button>
+        )}
+        {FLAGS.VOTE_TO_SKIP && (
           <button
             className={`${s.skipBtn} ${hasVoted ? s.skipBtnVoted : ''}`}
             onClick={handleSkipVote}
-            disabled={hasVoted}
           >
             👎 Skip ({skipVotes}/{skipThreshold}){hasVoted ? ' ✓' : ''}
           </button>
-        ) : null}
+        )}
       </div>
     </div>
   );

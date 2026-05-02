@@ -105,7 +105,9 @@ CREATE TABLE IF NOT EXISTS skip_votes (
 ALTER TABLE skip_votes ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Votes readable"                          ON skip_votes;
 DROP POLICY IF EXISTS "Votes insertable by session participant" ON skip_votes;
+DROP POLICY IF EXISTS "Votes deletable by self"                 ON skip_votes;
 CREATE POLICY "Votes readable" ON skip_votes FOR SELECT USING (true);
+CREATE POLICY "Votes deletable by self" ON skip_votes FOR DELETE USING (auth.uid() = user_id);
 CREATE POLICY "Votes insertable by session participant" ON skip_votes FOR INSERT WITH CHECK (
   auth.uid() = user_id
   AND EXISTS (
@@ -182,7 +184,8 @@ END;
 $$;
 
 -- Atomic queue advance: marks current playing as played/skipped, locks next queued item
-CREATE OR REPLACE FUNCTION public.play_next(p_session_id uuid, p_skip_status text DEFAULT 'played')
+-- p_check_auth=false skips DJ/host check (used internally by cast_skip_vote)
+CREATE OR REPLACE FUNCTION public.play_next(p_session_id uuid, p_skip_status text DEFAULT 'played', p_check_auth boolean DEFAULT true)
 RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER SET search_path = public
@@ -190,8 +193,7 @@ AS $$
 DECLARE
   v_next_id uuid;
 BEGIN
-  -- Only DJ or host can advance queue
-  IF NOT EXISTS (
+  IF p_check_auth AND NOT EXISTS (
     SELECT 1 FROM sessions
     WHERE id = p_session_id
       AND (host_user_id = auth.uid() OR dj_user_id = auth.uid())
@@ -256,7 +258,7 @@ BEGIN
     FROM queue_items WHERE id = p_queue_item_id AND status = 'playing';
 
     IF v_session_id IS NOT NULL THEN
-      PERFORM public.play_next(v_session_id, 'skipped');
+      PERFORM public.play_next(v_session_id, 'skipped', false);
       RETURN true;
     END IF;
   END IF;
