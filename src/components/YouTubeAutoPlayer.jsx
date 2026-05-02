@@ -45,13 +45,19 @@ export default function YouTubeAutoPlayer({ videoId, onEnded }) {
       });
     }
 
+    let queued = false;
     if (apiReady) {
       initPlayer();
     } else {
       readyCallbacks.push(initPlayer);
+      queued = true;
     }
 
     return () => {
+      if (queued) {
+        const idx = readyCallbacks.indexOf(initPlayer);
+        if (idx !== -1) readyCallbacks.splice(idx, 1);
+      }
       playerRef.current?.destroy();
       playerRef.current = null;
     };
