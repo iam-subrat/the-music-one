@@ -1,0 +1,54 @@
+name: Deploy to Staging (Cloudflare Pages)
+
+on:
+  push:
+    branches: [staging]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_PROXY_URL: ${{ secrets.VITE_PROXY_URL }}
+          FLAG_JAM_SESSION: 'true'
+          FLAG_VOTE_TO_SKIP: 'true'
+          FLAG_DJ_TOKEN: 'true'
+          FLAG_YOUTUBE_EMBED: 'true'
+          FLAG_PLATFORM_AUTODETECT: 'true'
+          FLAG_REACTIONS: 'false'
+          FLAG_CHAT: 'false'
+          FLAG_SESSION_HISTORY: 'false'
+          FLAG_USER_PROFILES: 'false'
+          FLAG_SHARED_PLAYLISTS: 'false'
+          FLAG_DISCOVERY_FEED: 'false'
+          FLAG_TASTE_MATCHING: 'false'
+          FLAG_SCHEDULED_JAMS: 'false'
+          FLAG_QUEUE_RULES: 'false'
+          FLAG_EMBED_WIDGET: 'false'
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: ${{ vars.CLOUDFLARE_PROJECT_NAME }}
+          directory: dist
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
