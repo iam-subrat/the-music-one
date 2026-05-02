@@ -17,11 +17,13 @@ export async function addToQueue(sessionId, userId, meta) {
 }
 
 export async function getQueue(sessionId) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('queue_items')
-    .select('*, profiles(display_name, avatar_url)')
+    // Explicit FK hint avoids silent join failure when schema cache is stale
+    .select('*, profiles!queue_items_added_by_user_id_fkey(display_name, avatar_url)')
     .eq('session_id', sessionId)
     .order('position', { ascending: true });
+  if (error) console.error('getQueue error:', error.message);
   return data ?? [];
 }
 

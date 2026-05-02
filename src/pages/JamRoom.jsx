@@ -18,7 +18,7 @@ export default function JamRoom() {
   const navigate = useNavigate();
   const { user, profile, loading: authLoading, setPreferredPlatform } = useAuth();
   const { session, loading: sessionLoading } = useSession(code);
-  const queueItems = useQueue(session?.id);
+  const { items: queueItems, refresh: refreshQueue } = useQueue(session?.id);
   const participants = useParticipants(session?.id);
 
   useEffect(() => {
@@ -113,6 +113,7 @@ export default function JamRoom() {
             preferredPlatform={profile?.preferred_platform}
             participantCount={participants.length}
             userId={user?.id}
+            onQueueChange={refreshQueue}
           />
           <QueueList
             items={queueItems}
@@ -120,6 +121,7 @@ export default function JamRoom() {
             userId={user?.id}
             profile={profile}
             onPlatformDetected={setPreferredPlatform}
+            onAdded={refreshQueue}
           />
         </div>
 

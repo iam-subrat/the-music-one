@@ -5,7 +5,7 @@ import { useSkipVotes } from '../hooks/useSkipVotes';
 import { castSkipVote, forceSkip, playNext } from '../lib/queue';
 import { useToast } from './Toast';
 
-export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatform, participantCount, userId }) {
+export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatform, participantCount, userId, onQueueChange }) {
   const toast = useToast();
   const skipVotes = useSkipVotes(nowPlaying?.id);
   const skipThreshold = Math.floor(participantCount / 2) + 1;
@@ -18,7 +18,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
           {isDJ ? 'Click "Play Next" to start the queue.' : 'Waiting for the DJ to start…'}
         </p>
         {isDJ && (
-          <button className="btn" onClick={() => playNext(sessionId).then(n => !n && toast('Queue is empty!'))}>
+          <button className="btn" onClick={() => playNext(sessionId).then(n => { onQueueChange?.(); if (!n) toast('Queue is empty!'); })}>
             Play Next ▶
           </button>
         )}
@@ -33,7 +33,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
 
   async function handleSkipVote() {
     const count = await castSkipVote(nowPlaying.id, userId);
-    if (count >= skipThreshold) await forceSkip(sessionId);
+    if (count >= skipThreshold) { await forceSkip(sessionId); onQueueChange?.(); }
   }
 
   return (
@@ -79,11 +79,11 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
       <div className={s.djControls}>
         {isDJ ? (
           <>
-            <button className="btn" onClick={() => playNext(sessionId).then(n => !n && toast('Queue is empty!'))}>
+            <button className="btn" onClick={() => playNext(sessionId).then(n => { onQueueChange?.(); if (!n) toast('Queue is empty!'); })}>
               Next ▶
             </button>
             {FLAGS.VOTE_TO_SKIP && (
-              <button className="btn btn-danger" onClick={() => forceSkip(sessionId)}>
+              <button className="btn btn-danger" onClick={() => forceSkip(sessionId).then(() => onQueueChange?.())}>
                 Force Skip
               </button>
             )}

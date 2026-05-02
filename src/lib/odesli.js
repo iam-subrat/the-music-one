@@ -16,7 +16,8 @@ export async function fetchSongMeta(streamUrl) {
 
   const platformLinks = {};
   for (const [platform, info] of Object.entries(data.linksByPlatform ?? {})) {
-    if (info.url) platformLinks[platform] = info.url;
+    // Normalize to lowercase so keys match PLATFORM_META (Odesli returns camelCase: appleMusic, youtubeMusic)
+    if (info.url) platformLinks[platform.toLowerCase()] = info.url;
   }
 
   return {

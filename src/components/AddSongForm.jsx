@@ -6,7 +6,7 @@ import { detectPlatform } from '../lib/platform';
 import { FLAGS } from '../lib/flags';
 import { useToast } from './Toast';
 
-export default function AddSongForm({ sessionId, userId, profile, onPlatformDetected }) {
+export default function AddSongForm({ sessionId, userId, profile, onPlatformDetected, onAdded }) {
   const [url, setUrl] = useState('');
   const [busy, setBusy] = useState(false);
   const toast = useToast();
@@ -24,6 +24,7 @@ export default function AddSongForm({ sessionId, userId, profile, onPlatformDete
       await addToQueue(sessionId, userId, meta);
       toast(`"${meta.title}" added to queue`);
       setUrl('');
+      onAdded?.();
     } catch {
       toast('Could not add song. Check the URL.');
     } finally {

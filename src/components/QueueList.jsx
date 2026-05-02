@@ -2,8 +2,8 @@ import s from '../styles/jam.module.css';
 import QueueCard from './QueueCard';
 import AddSongForm from './AddSongForm';
 
-export default function QueueList({ items, sessionId, userId, profile, onPlatformDetected }) {
-  const nonPlaying = items.filter(i => i.status !== 'playing');
+export default function QueueList({ items, sessionId, userId, profile, onPlatformDetected, onAdded }) {
+  const nonPlaying = items.filter(i => i.status === 'queued');
   return (
     <div className={s.queueSection}>
       <AddSongForm
@@ -11,6 +11,7 @@ export default function QueueList({ items, sessionId, userId, profile, onPlatfor
         userId={userId}
         profile={profile}
         onPlatformDetected={onPlatformDetected}
+        onAdded={onAdded}
       />
       <div className={s.queueList}>
         {nonPlaying.length === 0

@@ -1,9 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { getQueue } from '../lib/queue';
 
 export function useQueue(sessionId) {
   const [items, setItems] = useState([]);
+
+  const refresh = useCallback(() => {
+    if (sessionId) getQueue(sessionId).then(setItems);
+  }, [sessionId]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -17,5 +21,5 @@ export function useQueue(sessionId) {
     return () => channel.unsubscribe();
   }, [sessionId]);
 
-  return items;
+  return { items, refresh };
 }
