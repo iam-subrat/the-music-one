@@ -14,6 +14,7 @@ export async function resolveToYouTubeId(query) {
     const { url, title } = await res.json();
     if (!url) return { id: null, title: null };
     const id = extractVideoIdFromUrl(url);
+    if (!id) return { id: null, title: null };
     return { id, title: title ?? null };
   } catch {
     return { id: null, title: null };
@@ -24,7 +25,10 @@ function extractVideoIdFromUrl(url) {
   try {
     const u = new URL(url);
     if (u.hostname.includes('youtu.be')) return u.pathname.slice(1);
-    return u.searchParams.get('v');
+    const v = u.searchParams.get('v');
+    if (v) return v;
+    const match = u.pathname.match(/\/(v|embed)\/([^/?]+)/);
+    return match?.[2] ?? null;
   } catch {
     return null;
   }
