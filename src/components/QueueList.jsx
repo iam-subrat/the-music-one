@@ -16,7 +16,7 @@ export default function QueueList({ items, sessionId, userId, profile, onPlatfor
       <div className={s.queueList}>
         {nonPlaying.length === 0
           ? <p style={{ color: 'var(--muted)', fontSize: '0.85rem', padding: '8px 0' }}>Queue is empty. Add a song above!</p>
-          : nonPlaying.map(item => <QueueCard key={item.id} item={item} />)
+          : nonPlaying.map((item, i) => <QueueCard key={item.id} item={item} index={i + 1} />)
         }
       </div>
     </div>

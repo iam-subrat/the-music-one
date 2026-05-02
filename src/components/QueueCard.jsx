@@ -1,6 +1,6 @@
 import s from '../styles/jam.module.css';
 
-export default function QueueCard({ item }) {
+export default function QueueCard({ item, index }) {
   const cls = item.status === 'played' ? s.queueCardPlayed : item.status === 'skipped' ? s.queueCardSkipped : '';
   return (
     <div className={`${s.queueCard} ${cls}`}>
@@ -12,7 +12,7 @@ export default function QueueCard({ item }) {
         <div className={s.queueArtist}>{item.artist}</div>
         <div className={s.queueBy}>by {item.profiles?.display_name || 'someone'}</div>
       </div>
-      <div className={s.queuePos}>#{item.position}</div>
+      {index != null && <div className={s.queuePos}>#{index}</div>}
     </div>
   );
 }
