@@ -1,0 +1,24 @@
+export const FLAGS = {
+  JAM_SESSION:         JSON.parse(__FLAG_JAM_SESSION__),
+  VOTE_TO_SKIP:        JSON.parse(__FLAG_VOTE_TO_SKIP__),
+  DJ_TOKEN:            JSON.parse(__FLAG_DJ_TOKEN__),
+  YOUTUBE_EMBED:       JSON.parse(__FLAG_YOUTUBE_EMBED__),
+  PLATFORM_AUTODETECT: JSON.parse(__FLAG_PLATFORM_AUTODETECT__),
+  REACTIONS:           JSON.parse(__FLAG_REACTIONS__),
+  CHAT:                JSON.parse(__FLAG_CHAT__),
+  SESSION_HISTORY:     JSON.parse(__FLAG_SESSION_HISTORY__),
+  USER_PROFILES:       JSON.parse(__FLAG_USER_PROFILES__),
+  SHARED_PLAYLISTS:    JSON.parse(__FLAG_SHARED_PLAYLISTS__),
+  DISCOVERY_FEED:      JSON.parse(__FLAG_DISCOVERY_FEED__),
+  TASTE_MATCHING:      JSON.parse(__FLAG_TASTE_MATCHING__),
+  SCHEDULED_JAMS:      JSON.parse(__FLAG_SCHEDULED_JAMS__),
+  QUEUE_RULES:         JSON.parse(__FLAG_QUEUE_RULES__),
+  EMBED_WIDGET:        JSON.parse(__FLAG_EMBED_WIDGET__),
+};
+
+export async function loadRemoteFlags(supabase) {
+  try {
+    const { data } = await supabase.from('feature_flags').select('key, enabled');
+    if (data) data.forEach(r => { if (r.key in FLAGS) FLAGS[r.key] = r.enabled; });
+  } catch { /* remote unavailable — static defaults remain */ }
+}

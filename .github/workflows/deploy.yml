@@ -3,16 +3,11 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
-  workflow_dispatch:
 
 permissions:
   contents: read
   pages: write
   id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -23,14 +18,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Inject proxy URL
-        run: sed -i "s|__PROXY_URL__|${{ vars.PROXY_URL }}|g" index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Build
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          PROXY_URL: ${{ vars.PROXY_URL }}
+          FLAG_JAM_SESSION: 'true'
+          FLAG_VOTE_TO_SKIP: 'true'
+          FLAG_DJ_TOKEN: 'true'
+          FLAG_YOUTUBE_EMBED: 'true'
+          FLAG_PLATFORM_AUTODETECT: 'true'
+          FLAG_REACTIONS: 'false'
+          FLAG_CHAT: 'false'
+          FLAG_SESSION_HISTORY: 'false'
+          FLAG_USER_PROFILES: 'false'
+          FLAG_SHARED_PLAYLISTS: 'false'
+          FLAG_DISCOVERY_FEED: 'false'
+          FLAG_TASTE_MATCHING: 'false'
+          FLAG_SCHEDULED_JAMS: 'false'
+          FLAG_QUEUE_RULES: 'false'
+          FLAG_EMBED_WIDGET: 'false'
+        run: npm run build
 
       - uses: actions/configure-pages@v5
-
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
-
-      - uses: actions/deploy-pages@v4
-        id: deployment
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4
