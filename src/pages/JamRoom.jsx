@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AuthBar from '../components/AuthBar';
 import NowPlaying from '../components/NowPlaying';
@@ -23,17 +23,26 @@ export default function JamRoom() {
 
   useEffect(() => {
     if (!authLoading && !user) navigate(`/login?next=/jam/${code}`);
-  }, [authLoading, user]);
+  }, [authLoading, user, navigate, code]);
 
   useEffect(() => {
     if (session?.id && user?.id) joinSession(session.id, user.id);
   }, [session?.id, user?.id]);
 
+  // Store latest ids in refs so cleanup always has current values
+  const sessionIdRef = useRef(null);
+  const userIdRef = useRef(null);
+  useEffect(() => { sessionIdRef.current = session?.id ?? null; }, [session?.id]);
+  useEffect(() => { userIdRef.current = user?.id ?? null; }, [user?.id]);
+
+  // Cleanup on unmount only — reads from refs, not stale closure values
   useEffect(() => {
     return () => {
-      if (session?.id && user?.id) leaveSession(session.id, user.id);
+      if (sessionIdRef.current && userIdRef.current) {
+        leaveSession(sessionIdRef.current, userIdRef.current);
+      }
     };
-  }, [session?.id, user?.id]);
+  }, []); // intentionally empty — runs once on mount/unmount
 
   if (authLoading || sessionLoading) {
     return (

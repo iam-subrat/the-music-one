@@ -10,7 +10,7 @@ export async function fetchSongMeta(streamUrl) {
   if (!res.ok) throw new Error(`Odesli API error ${res.status}`);
 
   const data = await res.json();
-  const key = Object.keys(data.entitiesByUniqueId)[0];
+  const key = data.entityUniqueId ?? Object.keys(data.entitiesByUniqueId)[0];
   const entity = data.entitiesByUniqueId[key];
   if (!entity) throw new Error('Could not identify song from this URL.');
 

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import s from '../styles/jam.module.css';
 import { preferredLink, extractYouTubeId, PLATFORM_META } from '../lib/platform';
 import { FLAGS } from '../lib/flags';
@@ -9,6 +10,9 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
   const toast = useToast();
   const skipVotes = useSkipVotes(nowPlaying?.id);
   const skipThreshold = Math.floor(participantCount / 2) + 1;
+  const [hasVoted, setHasVoted] = useState(false);
+  // Reset when now-playing track changes
+  useEffect(() => { setHasVoted(false); }, [nowPlaying?.id]);
 
   if (!nowPlaying) {
     return (
@@ -32,8 +36,10 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
     .filter(([k, v]) => v && k !== pref?.platform);
 
   async function handleSkipVote() {
-    const count = await castSkipVote(nowPlaying.id, userId);
-    if (count >= skipThreshold) { await forceSkip(sessionId); onQueueChange?.(); }
+    if (hasVoted) return;
+    setHasVoted(true);
+    const skipped = await castSkipVote(nowPlaying.id, userId, skipThreshold);
+    if (skipped) onQueueChange?.();
   }
 
   return (
@@ -52,7 +58,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
       </div>
 
       {pref && (
-        <a className={s.preferredBtn} href={pref.url} target="_blank" rel="noopener">
+        <a className={s.preferredBtn} href={pref.url} target="_blank" rel="noopener noreferrer">
           Open on {PLATFORM_META[pref.platform]?.name || pref.platform} ↗
         </a>
       )}
@@ -60,7 +66,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
       {otherLinks.length > 0 && (
         <div className={s.otherLinks}>
           {otherLinks.map(([k, v]) => (
-            <a key={k} className={s.otherLink} href={v} target="_blank" rel="noopener">
+            <a key={k} className={s.otherLink} href={v} target="_blank" rel="noopener noreferrer">
               {PLATFORM_META[k]?.name || k}
             </a>
           ))}
@@ -89,8 +95,12 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
             )}
           </>
         ) : FLAGS.VOTE_TO_SKIP ? (
-          <button className={s.skipBtn} onClick={handleSkipVote}>
-            👎 Skip ({skipVotes}/{skipThreshold})
+          <button
+            className={`${s.skipBtn} ${hasVoted ? s.skipBtnVoted : ''}`}
+            onClick={handleSkipVote}
+            disabled={hasVoted}
+          >
+            👎 Skip ({skipVotes}/{skipThreshold}){hasVoted ? ' ✓' : ''}
           </button>
         ) : null}
       </div>

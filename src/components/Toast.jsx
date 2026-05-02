@@ -1,17 +1,17 @@
-import { useState, useCallback, createContext, useContext } from 'react';
+import { useState, useCallback, useRef, createContext, useContext } from 'react';
 
 const ToastCtx = createContext(null);
 
 export function ToastProvider({ children }) {
   const [msg, setMsg] = useState('');
   const [visible, setVisible] = useState(false);
-  let timer = null;
+  const timer = useRef(null);
 
   const show = useCallback((message) => {
     setMsg(message);
     setVisible(true);
-    clearTimeout(timer);
-    timer = setTimeout(() => setVisible(false), 2200);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setVisible(false), 2200);
   }, []);
 
   return (

@@ -40,7 +40,10 @@ export async function endSession(sessionId) {
 }
 
 export async function passDjToken(sessionId, newDjUserId) {
-  const { error } = await supabase.from('sessions').update({ dj_user_id: newDjUserId }).eq('id', sessionId);
+  const { error } = await supabase.rpc('pass_dj_token', {
+    p_session_id: sessionId,
+    p_new_dj_user_id: newDjUserId,
+  });
   if (error) throw new Error(error.message);
 }
 

@@ -28,23 +28,29 @@ export async function getQueue(sessionId) {
 }
 
 export async function playNext(sessionId) {
-  await supabase.from('queue_items').update({ status: 'played' }).eq('session_id', sessionId).eq('status', 'playing');
-  const { data: next } = await supabase
-    .from('queue_items').select('*').eq('session_id', sessionId).eq('status', 'queued')
-    .order('position', { ascending: true }).limit(1);
-  if (!next?.length) return null;
-  const { data, error } = await supabase.from('queue_items').update({ status: 'playing' }).eq('id', next[0].id).select().single();
+  const { data, error } = await supabase.rpc('play_next', {
+    p_session_id: sessionId,
+    p_skip_status: 'played',
+  });
   if (error) throw new Error(error.message);
   return data;
 }
 
 export async function forceSkip(sessionId) {
-  await supabase.from('queue_items').update({ status: 'skipped' }).eq('session_id', sessionId).eq('status', 'playing');
-  return playNext(sessionId);
+  const { data, error } = await supabase.rpc('play_next', {
+    p_session_id: sessionId,
+    p_skip_status: 'skipped',
+  });
+  if (error) throw new Error(error.message);
+  return data;
 }
 
-export async function castSkipVote(queueItemId, userId) {
-  await supabase.from('skip_votes').upsert({ queue_item_id: queueItemId, user_id: userId });
-  const { count } = await supabase.from('skip_votes').select('*', { count: 'exact', head: true }).eq('queue_item_id', queueItemId);
-  return count ?? 0;
+export async function castSkipVote(queueItemId, userId, threshold) {
+  const { data, error } = await supabase.rpc('cast_skip_vote', {
+    p_queue_item_id: queueItemId,
+    p_user_id: userId,
+    p_threshold: threshold,
+  });
+  if (error) throw new Error(error.message);
+  return data; // boolean: true if song was skipped
 }

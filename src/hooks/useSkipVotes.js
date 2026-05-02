@@ -11,7 +11,7 @@ export function useSkipVotes(queueItemId) {
       .then(({ count: c }) => setCount(c ?? 0));
 
     const channel = supabase.channel(`skipvotes:${queueItemId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'skip_votes', filter: `queue_item_id=eq.${queueItemId}` },
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'skip_votes', filter: `queue_item_id=eq.${queueItemId}` },
         () => supabase.from('skip_votes').select('*', { count: 'exact', head: true }).eq('queue_item_id', queueItemId)
           .then(({ count: c }) => setCount(c ?? 0)))
       .subscribe();

@@ -32,7 +32,10 @@ DROP POLICY IF EXISTS "Sessions creatable by authed" ON sessions;
 DROP POLICY IF EXISTS "Sessions updatable by host"   ON sessions;
 CREATE POLICY "Sessions readable"           ON sessions FOR SELECT USING (true);
 CREATE POLICY "Sessions creatable by authed" ON sessions FOR INSERT WITH CHECK (auth.uid() = host_user_id);
-CREATE POLICY "Sessions updatable by host"  ON sessions FOR UPDATE USING (auth.uid() = host_user_id OR auth.uid() = dj_user_id);
+DROP POLICY IF EXISTS "Sessions updatable by host"  ON sessions;
+CREATE POLICY "Sessions updatable by host" ON sessions FOR UPDATE USING (auth.uid() = host_user_id);
+
+CREATE INDEX IF NOT EXISTS sessions_invite_code_idx ON sessions(invite_code);
 
 -- Session expiry column (idempotent)
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS expires_at timestamptz DEFAULT now() + interval '24 hours';
@@ -171,6 +174,114 @@ SELECT cron.schedule(
       AND expires_at < now();
   $$
 );
+
+-- Atomic queue advance: marks current playing as played/skipped, locks next queued item
+CREATE OR REPLACE FUNCTION public.play_next(p_session_id uuid, p_skip_status text DEFAULT 'played')
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_next_id uuid;
+BEGIN
+  -- Only DJ or host can advance queue
+  IF NOT EXISTS (
+    SELECT 1 FROM sessions
+    WHERE id = p_session_id
+      AND (host_user_id = auth.uid() OR dj_user_id = auth.uid())
+      AND status = 'active'
+  ) THEN
+    RAISE EXCEPTION 'Only the DJ or host can advance the queue';
+  END IF;
+
+  UPDATE queue_items SET status = p_skip_status
+  WHERE session_id = p_session_id AND status = 'playing';
+
+  -- FOR UPDATE SKIP LOCKED prevents two concurrent calls from both picking same item
+  SELECT id INTO v_next_id
+  FROM queue_items
+  WHERE session_id = p_session_id AND status = 'queued'
+  ORDER BY position ASC
+  LIMIT 1
+  FOR UPDATE SKIP LOCKED;
+
+  IF v_next_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  UPDATE queue_items SET status = 'playing' WHERE id = v_next_id;
+  RETURN v_next_id;
+END;
+$$;
+
+-- Atomic: insert vote + check threshold + maybe skip, all in one transaction
+CREATE OR REPLACE FUNCTION public.cast_skip_vote(p_queue_item_id uuid, p_user_id uuid, p_threshold integer)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_vote_count integer;
+  v_session_id uuid;
+BEGIN
+  -- Verify caller matches p_user_id
+  IF p_user_id != auth.uid() THEN
+    RAISE EXCEPTION 'User ID mismatch';
+  END IF;
+
+  -- Verify voter is a participant in this session
+  IF NOT EXISTS (
+    SELECT 1 FROM queue_items qi
+    JOIN session_participants sp ON sp.session_id = qi.session_id
+    WHERE qi.id = p_queue_item_id AND sp.user_id = p_user_id
+  ) THEN
+    RAISE EXCEPTION 'User is not a participant in this session';
+  END IF;
+
+  INSERT INTO skip_votes (queue_item_id, user_id)
+  VALUES (p_queue_item_id, p_user_id)
+  ON CONFLICT DO NOTHING;
+
+  SELECT COUNT(*) INTO v_vote_count
+  FROM skip_votes WHERE queue_item_id = p_queue_item_id;
+
+  IF v_vote_count >= p_threshold THEN
+    SELECT session_id INTO v_session_id
+    FROM queue_items WHERE id = p_queue_item_id AND status = 'playing';
+
+    IF v_session_id IS NOT NULL THEN
+      PERFORM public.play_next(v_session_id, 'skipped');
+      RETURN true;
+    END IF;
+  END IF;
+
+  RETURN false;
+END;
+$$;
+
+-- Secure DJ token pass: only host can pass, target must be a participant
+CREATE OR REPLACE FUNCTION public.pass_dj_token(p_session_id uuid, p_new_dj_user_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM sessions WHERE id = p_session_id AND host_user_id = auth.uid()
+  ) THEN
+    RAISE EXCEPTION 'Only the host can pass the DJ token';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM session_participants
+    WHERE session_id = p_session_id AND user_id = p_new_dj_user_id
+  ) THEN
+    RAISE EXCEPTION 'Target user is not a participant in this session';
+  END IF;
+
+  UPDATE sessions SET dj_user_id = p_new_dj_user_id WHERE id = p_session_id;
+END;
+$$;
 
 -- Auto-create profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
