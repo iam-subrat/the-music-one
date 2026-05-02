@@ -2378,3 +2378,48 @@ Enable via Supabase `feature_flags` table + add components per phase. No archite
 - Scheduled jams — `scheduled_at` column, countdown component
 - Queue rules — `max_songs_per_user`, `no_duplicate_artists` enforced in `addToQueue`
 - Embed widget — `/widget/:code` route, iframe-safe read-only view
+
+---
+
+## Priority Backlog
+
+### AUTO_PLAY_QUEUE — Auto-advance queue on song end ⭐ HIGH PRIORITY
+
+**Goal:** When current song ends, automatically play next item in queue without user action.
+
+**Flag:** `AUTO_PLAY_QUEUE` (add to `src/lib/flags.js`)
+
+**Flow:**
+```
+queue item has YouTube direct link (videoId extractable)?
+  → embed YouTube IFrame player in NowPlaying
+  → listen onStateChange: YT.PlayerState.ENDED → advance queue → play next
+
+queue item has YouTube search link (music.youtube.com/search?q= or youtube.com/results?)?
+  → extract query from URL
+  → YouTube Data API v3: GET /search?part=snippet&q={query}&maxResults=1&type=video&key={API_KEY}
+  → get first result videoId → embed → same ENDED listener
+
+queue item has no YouTube link?
+  → Odesli resolve attempt → if YouTube link returned → embed
+  → else: show prominent "▶ Play Next" manual button + optional song-duration countdown
+
+Spotify (opt-in, Phase 2+):
+  → Web Playback SDK → player_state_changed: paused=true + position=0 → advance queue
+  → Requires Spotify Premium + OAuth
+```
+
+**Implementation notes:**
+- `extractYouTubeId` already exists in `src/lib/platform.js:54`
+- YouTube Data API key: domain-restricted, safe for frontend. Add as `VITE_YOUTUBE_API_KEY` env var + GitHub Actions secret
+- Quota: 100 units/search, 10k free/day (~100 searches/day) — sufficient for MVP jam sessions
+- Show "Now Playing: [video title]" in `NowPlaying.jsx` so users can verify correct match
+- Skip button always visible — wrong match recoverable
+- IFrame player can be visually minimal (hidden or collapsed) — audio-only use case
+
+**Files to touch:**
+- `src/lib/platform.js` — add `isYouTubeSearchUrl(url)`, `extractSearchQuery(url)`
+- `src/lib/youtube.js` (new) — `resolveSearchToVideoId(query, apiKey)`
+- `src/components/NowPlaying.jsx` — embed IFrame player, wire `onStateChange`
+- `src/lib/flags.js` — add `AUTO_PLAY_QUEUE` flag
+- `.env.local.example` — add `VITE_YOUTUBE_API_KEY=`
