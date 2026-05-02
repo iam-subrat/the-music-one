@@ -1,6 +1,8 @@
 node_modules/
 dist/
 .env.local
+.env.prod
+.env
 .DS_Store
 *.log
 # Never ignore package-lock.json — required by npm ci in CI
