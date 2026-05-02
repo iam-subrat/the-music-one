@@ -1,7 +1,7 @@
-const SEARXNG_BASE = 'https://searx.be';
+const CORS = { 'Access-Control-Allow-Origin': '*' };
 
 export default {
-  async fetch(req) {
+  async fetch(req, env) {
     if (req.method === 'OPTIONS') {
       return new Response(null, {
         headers: {
@@ -14,9 +14,9 @@ export default {
 
     const { searchParams } = new URL(req.url);
     const q = searchParams.get('q');
-    if (!q) return Response.json({ error: 'missing q' }, { status: 400 });
+    if (!q) return Response.json({ error: 'missing q' }, { status: 400, headers: CORS });
 
-    const url = `${SEARXNG_BASE}/search?q=${encodeURIComponent(q)}&engines=youtube&format=json`;
+    const url = `${env.SEARXNG_BASE}/search?q=${encodeURIComponent(q)}&engines=youtube&format=json`;
 
     let data;
     try {
@@ -29,7 +29,7 @@ export default {
     } catch (e) {
       return Response.json({ error: e.message }, {
         status: 502,
-        headers: { 'Access-Control-Allow-Origin': '*' },
+        headers: CORS,
       });
     }
 
@@ -37,7 +37,7 @@ export default {
 
     return Response.json(
       { url: first?.url ?? null, title: first?.title ?? null },
-      { headers: { 'Access-Control-Allow-Origin': '*' } },
+      { headers: CORS },
     );
   },
 };
