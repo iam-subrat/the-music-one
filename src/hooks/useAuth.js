@@ -23,8 +23,14 @@ export function useAuth() {
   }, []);
 
   async function fetchProfile(userId) {
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
-    setProfile(data ?? null);
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    if (!data || error) {
+      await supabase.auth.signOut();
+      setUser(null);
+      setProfile(null);
+    } else {
+      setProfile(data);
+    }
     setLoading(false);
   }
 
