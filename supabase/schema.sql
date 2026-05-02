@@ -164,16 +164,22 @@ CREATE TRIGGER on_participant_leave
 
 -- Cron job: mark expired sessions as ended (requires pg_cron extension)
 -- Enable in Supabase: Dashboard → Database → Extensions → pg_cron
-SELECT cron.schedule(
-  'expire-stale-sessions',
-  '0 * * * *',
-  $$
-    UPDATE sessions
-    SET status = 'ended', ended_at = now()
-    WHERE status != 'ended'
-      AND expires_at < now();
-  $$
-);
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+    PERFORM cron.schedule(
+      'expire-stale-sessions',
+      '0 * * * *',
+      $job$
+        UPDATE sessions
+        SET status = 'ended', ended_at = now()
+        WHERE status != 'ended'
+          AND expires_at < now();
+      $job$
+    );
+  END IF;
+END;
+$$;
 
 -- Atomic queue advance: marks current playing as played/skipped, locks next queued item
 CREATE OR REPLACE FUNCTION public.play_next(p_session_id uuid, p_skip_status text DEFAULT 'played')
@@ -307,8 +313,17 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE PROCEDURE handle_new_user();
 
 -- Enable Realtime for all tables that use postgres_changes subscriptions
-ALTER PUBLICATION supabase_realtime ADD TABLE
-  sessions,
-  session_participants,
-  queue_items,
-  skip_votes;
+DO $$
+DECLARE
+  t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['sessions','session_participants','queue_items','skip_votes'] LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_publication_tables
+      WHERE pubname = 'supabase_realtime' AND tablename = t
+    ) THEN
+      EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE %I', t);
+    END IF;
+  END LOOP;
+END;
+$$;
