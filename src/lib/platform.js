@@ -68,7 +68,7 @@ export function isYouTubeSearchUrl(url) {
     if (hostname.includes('music.youtube.com') && pathname === '/search') return true;
     if ((hostname.includes('youtube.com') || hostname.includes('youtu.be')) &&
         (pathname === '/results' || pathname === '/search') &&
-        searchParams.has('q') || searchParams.has('search_query')) return true;
+        (searchParams.has('q') || searchParams.has('search_query'))) return true;
     return false;
   } catch { return false; }
 }
