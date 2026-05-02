@@ -47,6 +47,9 @@ jobs:
           FLAG_EMBED_WIDGET: 'false'
         run: npm run build
 
+      - name: Write CNAME
+        run: echo "${{ vars.CNAME_DOMAIN }}" > dist/CNAME
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
