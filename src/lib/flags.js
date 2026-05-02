@@ -3,6 +3,7 @@ export const FLAGS = {
   VOTE_TO_SKIP:        JSON.parse(__FLAG_VOTE_TO_SKIP__),
   DJ_TOKEN:            JSON.parse(__FLAG_DJ_TOKEN__),
   YOUTUBE_EMBED:       JSON.parse(__FLAG_YOUTUBE_EMBED__),
+  AUTO_PLAY_QUEUE:     JSON.parse(__FLAG_AUTO_PLAY_QUEUE__),
   PLATFORM_AUTODETECT: JSON.parse(__FLAG_PLATFORM_AUTODETECT__),
   REACTIONS:           JSON.parse(__FLAG_REACTIONS__),
   CHAT:                JSON.parse(__FLAG_CHAT__),
