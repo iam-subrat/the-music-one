@@ -2,5 +2,3 @@ name = "searxng-proxy"
 main = "index.js"
 compatibility_date = "2025-01-01"
 
-[vars]
-SEARXNG_BASE = "https://searx.be"

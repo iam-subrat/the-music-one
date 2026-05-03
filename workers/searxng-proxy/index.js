@@ -1,7 +1,36 @@
 const CORS = { 'Access-Control-Allow-Origin': '*' };
 
+// Public Invidious instances — tried in order, first success wins.
+const INSTANCES = [
+  'https://inv.nadeko.net',
+  'https://invidious.nikkosphere.com',
+  'https://yt.artemislena.eu',
+];
+
+async function searchYouTube(query) {
+  for (const base of INSTANCES) {
+    try {
+      const url = `${base}/api/v1/search?q=${encodeURIComponent(query)}&type=video&fields=videoId,title`;
+      const res = await fetch(url, {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const first = data?.[0];
+      if (first?.videoId) {
+        return {
+          url: `https://www.youtube.com/watch?v=${first.videoId}`,
+          title: first.title ?? null,
+        };
+      }
+    } catch { continue; }
+  }
+  return { url: null, title: null };
+}
+
 export default {
-  async fetch(req, env) {
+  async fetch(req) {
     if (req.method === 'OPTIONS') {
       return new Response(null, {
         headers: {
@@ -16,28 +45,12 @@ export default {
     const q = searchParams.get('q');
     if (!q) return Response.json({ error: 'missing q' }, { status: 400, headers: CORS });
 
-    const url = `${env.SEARXNG_BASE}/search?q=${encodeURIComponent(q)}&engines=youtube&format=json`;
+    const result = await searchYouTube(q);
 
-    let data;
-    try {
-      const res = await fetch(url, {
-        headers: { Accept: 'application/json', 'User-Agent': 'themusic.one/1.0' },
-        signal: AbortSignal.timeout(5000),
-      });
-      if (!res.ok) throw new Error(`SearXNG ${res.status}`);
-      data = await res.json();
-    } catch (e) {
-      return Response.json({ error: e.message }, {
-        status: 502,
-        headers: CORS,
-      });
+    if (!result.url) {
+      return Response.json({ error: 'no results' }, { status: 502, headers: CORS });
     }
 
-    const first = data.results?.find(r => r.url?.includes('youtube.com/watch'));
-
-    return Response.json(
-      { url: first?.url ?? null, title: first?.title ?? null },
-      { headers: CORS },
-    );
+    return Response.json(result, { headers: CORS });
   },
 };
