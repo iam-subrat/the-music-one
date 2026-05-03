@@ -4,7 +4,7 @@ import { preferredLink, extractYouTubeId, isYouTubeSearchUrl, extractSearchQuery
 import { FLAGS } from '../lib/flags';
 import { resolveToYouTubeId } from '../lib/youtube';
 import { useSkipVotes } from '../hooks/useSkipVotes';
-import { castSkipVote, removeSkipVote, playNext } from '../lib/queue';
+import { castSkipVote, removeSkipVote, playNext, patchYouTubeLink } from '../lib/queue';
 import { useToast } from './Toast';
 import PlatformLinks from './PlatformLinks';
 import YouTubeAutoPlayer from './YouTubeAutoPlayer';
@@ -43,10 +43,18 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
       }
     }
 
-    // 3. Fallback: title + artist search
+    // 3. Fallback: title + artist search — persist result so all clients benefit
     resolveToYouTubeId(`${nowPlaying.title} ${nowPlaying.artist}`).then(({ id, title }) => {
       if (resolveKey.current !== key) return;
-      if (id) { setYtId(id); setYtResolvedTitle(title); }
+      if (id) {
+        setYtId(id);
+        setYtResolvedTitle(title);
+        patchYouTubeLink(
+          nowPlaying.id,
+          nowPlaying.platform_links,
+          `https://www.youtube.com/watch?v=${id}`,
+        );
+      }
     });
   }, [nowPlaying?.id]);
 
