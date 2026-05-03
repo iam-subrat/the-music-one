@@ -40,7 +40,7 @@ export async function endSession(sessionId) {
 }
 
 export async function setRepeat(sessionId, value) {
-  const { error } = await supabase.from('sessions').update({ repeat: value }).eq('id', sessionId);
+  const { error } = await supabase.rpc('set_session_repeat', { p_session_id: sessionId, p_repeat: value });
   if (error) throw new Error(error.message);
 }
 
