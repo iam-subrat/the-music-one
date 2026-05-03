@@ -133,6 +133,7 @@ INSERT INTO feature_flags (key, enabled, description) VALUES
   ('VOTE_TO_SKIP',         true,  'Skip voting by participants'),
   ('DJ_TOKEN',             true,  'DJ token pass between participants'),
   ('YOUTUBE_EMBED',        true,  'Embedded YouTube player fallback'),
+  ('AUTO_PLAY_QUEUE',      true,  'Auto-advance queue via YouTube IFrame ENDED event'),
   ('PLATFORM_AUTODETECT',  true,  'Auto-detect preferred platform from first URL'),
   ('REACTIONS',            false, 'Phase 2: queue reactions'),
   ('CHAT',                 false, 'Phase 2: session chat'),
