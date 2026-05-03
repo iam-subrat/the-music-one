@@ -23,14 +23,18 @@ function loadApi() {
 
 /**
  * Embeds a YouTube player that autoplays videoId.
- * Calls onEnded when playback finishes.
+ * Calls onEnded when playback finishes (unless repeat is true, in which case it restarts).
  * Key the component on videoId to force remount on song change.
  */
-export default function YouTubeAutoPlayer({ videoId, onEnded }) {
+export default function YouTubeAutoPlayer({ videoId, onEnded, repeat }) {
   // wrapperRef is owned by React — never touched by YT.
   // YT gets a fresh child div it can replace with its iframe.
   const wrapperRef = useRef(null);
   const playerRef = useRef(null);
+  const repeatRef = useRef(repeat);
+
+  // Keep repeatRef current without remounting the player
+  useEffect(() => { repeatRef.current = repeat; }, [repeat]);
 
   useEffect(() => {
     loadApi();
@@ -44,7 +48,14 @@ export default function YouTubeAutoPlayer({ videoId, onEnded }) {
         playerVars: { autoplay: 1, rel: 0, modestbranding: 1 },
         events: {
           onStateChange: (e) => {
-            if (e.data === window.YT.PlayerState.ENDED) onEnded?.();
+            if (e.data === window.YT.PlayerState.ENDED) {
+              if (repeatRef.current) {
+                playerRef.current.seekTo(0);
+                playerRef.current.playVideo();
+              } else {
+                onEnded?.();
+              }
+            }
           },
         },
       });
