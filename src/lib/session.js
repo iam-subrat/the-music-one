@@ -39,8 +39,8 @@ export async function endSession(sessionId) {
   if (error) throw new Error(error.message);
 }
 
-export async function setRepeat(sessionId, value) {
-  const { error } = await supabase.rpc('set_session_repeat', { p_session_id: sessionId, p_repeat: value });
+export async function setRepeatMode(sessionId, mode) {
+  const { error } = await supabase.rpc('set_repeat_mode', { p_session_id: sessionId, p_mode: mode });
   if (error) throw new Error(error.message);
 }
 
