@@ -141,6 +141,8 @@
 }
 
 .djControls { display: flex; gap: 10px; }
+.repeatBtn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 0.82rem; cursor: pointer; transition: border-color 0.2s, color 0.2s; }
+.repeatBtnActive { border-color: var(--accent); color: var(--accent); }
 .skipBtn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 0.82rem; cursor: pointer; transition: border-color 0.2s, color 0.2s; }
 .skipBtn:hover, .skipBtnVoted { border-color: #ff6b6b; color: #ff6b6b; }
 
