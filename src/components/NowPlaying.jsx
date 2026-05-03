@@ -49,11 +49,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
       if (id) {
         setYtId(id);
         setYtResolvedTitle(title);
-        patchYouTubeLink(
-          nowPlaying.id,
-          nowPlaying.platform_links,
-          `https://www.youtube.com/watch?v=${id}`,
-        );
+        patchYouTubeLink(nowPlaying.id, `https://www.youtube.com/watch?v=${id}`);
       }
     });
   }, [nowPlaying?.id]);

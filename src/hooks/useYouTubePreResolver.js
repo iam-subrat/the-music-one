@@ -31,11 +31,7 @@ export function useYouTubePreResolver(items) {
         const { id } = await resolveToYouTubeId(`${item.title} ${item.artist}`);
         if (cancelled) break;
         if (id) {
-          await patchYouTubeLink(
-            item.id,
-            item.platform_links,
-            `https://www.youtube.com/watch?v=${id}`,
-          );
+          await patchYouTubeLink(item.id, `https://www.youtube.com/watch?v=${id}`);
         }
         // Throttle: avoid hammering SearXNG proxy
         await new Promise(r => setTimeout(r, 500));
