@@ -5,12 +5,12 @@ import { FLAGS } from '../lib/flags';
 import { resolveToYouTubeId } from '../lib/youtube';
 import { useSkipVotes } from '../hooks/useSkipVotes';
 import { castSkipVote, removeSkipVote, playNext, patchYouTubeLink } from '../lib/queue';
-import { setRepeat } from '../lib/session';
+import { setRepeatMode } from '../lib/session';
 import { useToast } from './Toast';
 import PlatformLinks from './PlatformLinks';
 import YouTubeAutoPlayer from './YouTubeAutoPlayer';
 
-export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatform, participantCount, userId, onQueueChange, repeat }) {
+export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatform, participantCount, userId, onQueueChange, repeatMode }) {
   const toast = useToast();
   const { count: skipVotes, hasVoted } = useSkipVotes(nowPlaying?.id, userId);
   const skipThreshold = Math.floor(participantCount / 2) + 1;
@@ -60,10 +60,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
     try {
       const next = await playNext(sessionId);
       onQueueChange?.();
-      if (!next) {
-        toast('Queue is empty!');
-        if (repeat) setRepeat(sessionId, false).catch(() => {});
-      }
+      if (!next) toast('Queue is empty!');
     } catch (e) {
       toast(e.message);
     }
@@ -135,7 +132,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
               ▶ Playing via YouTube: {ytResolvedTitle}
             </div>
           )}
-          <YouTubeAutoPlayer key={ytId} videoId={ytId} onEnded={handleEnded} repeat={repeat} />
+          <YouTubeAutoPlayer key={ytId} videoId={ytId} onEnded={handleEnded} repeat={repeatMode === 'song'} />
         </>
       )}
 
@@ -156,10 +153,10 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
         )}
         {isDJ && (
           <button
-            className={`${s.repeatBtn} ${repeat ? s.repeatBtnActive : ''}`}
-            onClick={() => setRepeat(sessionId, !repeat).catch(e => toast(e.message))}
+            className={`${s.repeatBtn} ${repeatMode !== 'none' ? s.repeatBtnActive : ''}`}
+            onClick={() => setRepeatMode(sessionId, { none: 'song', song: 'queue', queue: 'none' }[repeatMode]).catch(e => toast(e.message))}
           >
-            🔁 Repeat{repeat ? ' ✓' : ''}
+            {repeatMode === 'queue' ? '🔂 Queue ✓' : repeatMode === 'song' ? '🔁 Repeat ✓' : '🔁 Repeat'}
           </button>
         )}
         {FLAGS.VOTE_TO_SKIP && (
