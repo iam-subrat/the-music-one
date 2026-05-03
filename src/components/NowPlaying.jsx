@@ -1,15 +1,65 @@
+import { useState, useEffect, useRef } from 'react';
 import s from '../styles/jam.module.css';
-import { preferredLink, extractYouTubeId, PLATFORM_META } from '../lib/platform';
+import { preferredLink, extractYouTubeId, isYouTubeSearchUrl, extractSearchQuery, PLATFORM_META } from '../lib/platform';
 import { FLAGS } from '../lib/flags';
+import { resolveToYouTubeId } from '../lib/youtube';
 import { useSkipVotes } from '../hooks/useSkipVotes';
 import { castSkipVote, removeSkipVote, playNext } from '../lib/queue';
 import { useToast } from './Toast';
 import PlatformLinks from './PlatformLinks';
+import YouTubeAutoPlayer from './YouTubeAutoPlayer';
 
 export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatform, participantCount, userId, onQueueChange }) {
   const toast = useToast();
   const { count: skipVotes, hasVoted } = useSkipVotes(nowPlaying?.id, userId);
   const skipThreshold = Math.floor(participantCount / 2) + 1;
+
+  const [ytId, setYtId] = useState(null);
+  const [ytResolvedTitle, setYtResolvedTitle] = useState(null);
+  const resolveKey = useRef(null);
+
+  useEffect(() => {
+    if (!FLAGS.AUTO_PLAY_QUEUE || !nowPlaying) { setYtId(null); setYtResolvedTitle(null); return; }
+
+    const key = nowPlaying.id;
+    resolveKey.current = key;
+    setYtId(null);
+    setYtResolvedTitle(null);
+
+    // 1. Direct YouTube link
+    const ytUrl = nowPlaying.platform_links?.youtube || nowPlaying.platform_links?.youtubemusic;
+    const directId = extractYouTubeId(ytUrl);
+    if (directId) { setYtId(directId); return; }
+
+    // 2. YouTube search URL → resolve via SearXNG
+    if (ytUrl && isYouTubeSearchUrl(ytUrl)) {
+      const q = extractSearchQuery(ytUrl);
+      if (q) {
+        resolveToYouTubeId(q).then(({ id, title }) => {
+          if (resolveKey.current !== key) return;
+          if (id) { setYtId(id); setYtResolvedTitle(title); }
+        });
+        return;
+      }
+    }
+
+    // 3. Fallback: title + artist search
+    resolveToYouTubeId(`${nowPlaying.title} ${nowPlaying.artist}`).then(({ id, title }) => {
+      if (resolveKey.current !== key) return;
+      if (id) { setYtId(id); setYtResolvedTitle(title); }
+    });
+  }, [nowPlaying?.id]);
+
+  async function handleEnded() {
+    if (!isDJ) return;
+    try {
+      const next = await playNext(sessionId);
+      onQueueChange?.();
+      if (!next) toast('Queue is empty!');
+    } catch (e) {
+      toast(e.message);
+    }
+  }
 
   if (!nowPlaying) {
     return (
@@ -28,22 +78,8 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
   }
 
   const pref = preferredLink(nowPlaying.platform_links, preferredPlatform);
-  const ytId = FLAGS.YOUTUBE_EMBED ? extractYouTubeId(nowPlaying.platform_links?.youtube || nowPlaying.platform_links?.youtubemusic) : null;
   const query = `${nowPlaying.title} ${nowPlaying.artist}`;
   const prefMeta = pref ? PLATFORM_META[pref.platform] : null;
-
-  async function handleSkipVote() {
-    try {
-      if (hasVoted) {
-        await removeSkipVote(nowPlaying.id, userId);
-      } else {
-        const skipped = await castSkipVote(nowPlaying.id, userId, skipThreshold);
-        if (skipped) onQueueChange?.();
-      }
-    } catch (e) {
-      toast(e.message);
-    }
-  }
 
   return (
     <div className={s.nowPlaying}>
@@ -84,7 +120,18 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
         />
       </div>
 
-      {ytId && (
+      {FLAGS.AUTO_PLAY_QUEUE && ytId && (
+        <>
+          {ytResolvedTitle && (
+            <div style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>
+              ▶ Playing via YouTube: {ytResolvedTitle}
+            </div>
+          )}
+          <YouTubeAutoPlayer key={ytId} videoId={ytId} onEnded={handleEnded} />
+        </>
+      )}
+
+      {FLAGS.YOUTUBE_EMBED && !FLAGS.AUTO_PLAY_QUEUE && ytId && (
         <iframe
           className={s.ytEmbed}
           src={`https://www.youtube-nocookie.com/embed/${ytId}`}
@@ -110,4 +157,17 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
       </div>
     </div>
   );
+
+  async function handleSkipVote() {
+    try {
+      if (hasVoted) {
+        await removeSkipVote(nowPlaying.id, userId);
+      } else {
+        const skipped = await castSkipVote(nowPlaying.id, userId, skipThreshold);
+        if (skipped) onQueueChange?.();
+      }
+    } catch (e) {
+      toast(e.message);
+    }
+  }
 }
