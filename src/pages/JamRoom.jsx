@@ -9,7 +9,6 @@ import InviteBadge from '../components/InviteBadge';
 import { useAuth } from '../hooks/useAuth';
 import { useSession } from '../hooks/useSession';
 import { useQueue } from '../hooks/useQueue';
-import { useYouTubePreResolver } from '../hooks/useYouTubePreResolver';
 import { useParticipants } from '../hooks/useParticipants';
 import { joinSession, leaveSession, endSession } from '../lib/session';
 import s from '../styles/jam.module.css';
@@ -21,8 +20,6 @@ export default function JamRoom() {
   const { session, loading: sessionLoading } = useSession(code);
   const { items: queueItems, refresh: refreshQueue } = useQueue(session?.id);
   const participants = useParticipants(session?.id);
-  useYouTubePreResolver(queueItems);
-
   useEffect(() => {
     if (!authLoading && !user) navigate(`/login?next=/jam/${code}`);
   }, [authLoading, user, navigate, code]);
