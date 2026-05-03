@@ -1,44 +1,34 @@
 const CORS = { 'Access-Control-Allow-Origin': '*' };
 
-// Piped API instances (alternative YouTube frontend, more stable than Invidious)
-const INSTANCES = [
-  'https://pipedapi.kavin.rocks',
-  'https://api.piped.yt',
-  'https://piped-api.garudalinux.org',
-  'https://pipedapi.tokhmi.xyz',
-];
+async function searchYouTube(query, apiKey) {
+  const url = new URL('https://www.googleapis.com/youtube/v3/search');
+  url.searchParams.set('part', 'snippet');
+  url.searchParams.set('q', query);
+  url.searchParams.set('type', 'video');
+  url.searchParams.set('maxResults', '1');
+  url.searchParams.set('key', apiKey);
 
-async function searchYouTube(query) {
-  const errors = [];
-  for (const base of INSTANCES) {
-    try {
-      const url = `${base}/search?q=${encodeURIComponent(query)}&filter=videos`;
-      const res = await fetch(url, {
-        headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(5000),
-      });
-      if (!res.ok) { errors.push(`${base}: ${res.status}`); continue; }
-      const data = await res.json();
-      const first = data?.items?.find(r => r.url?.includes('/watch?v='));
-      if (first?.url) {
-        const videoId = new URL('https://youtube.com' + first.url).searchParams.get('v');
-        if (videoId) {
-          return {
-            url: `https://www.youtube.com/watch?v=${videoId}`,
-            title: first.title ?? null,
-          };
-        }
-      }
-      errors.push(`${base}: no results`);
-    } catch (e) {
-      errors.push(`${base}: ${e.message}`);
-    }
+  const res = await fetch(url.toString(), {
+    signal: AbortSignal.timeout(5000),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`YouTube API ${res.status}: ${body.slice(0, 200)}`);
   }
-  return { url: null, title: null, errors };
+
+  const data = await res.json();
+  const item = data.items?.[0];
+  if (!item?.id?.videoId) return { url: null, title: null };
+
+  return {
+    url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+    title: item.snippet?.title ?? null,
+  };
 }
 
 export default {
-  async fetch(req) {
+  async fetch(req, env) {
     if (req.method === 'OPTIONS') {
       return new Response(null, {
         headers: {
@@ -53,18 +43,18 @@ export default {
     const q = searchParams.get('q');
     if (!q) return Response.json({ error: 'missing q' }, { status: 400, headers: CORS });
 
-    const result = await searchYouTube(q);
-
-    if (!result.url) {
-      return Response.json(
-        { error: 'no results', debug: result.errors },
-        { status: 502, headers: CORS },
-      );
+    if (!env.YOUTUBE_API_KEY) {
+      return Response.json({ error: 'YOUTUBE_API_KEY secret not configured' }, { status: 500, headers: CORS });
     }
 
-    return Response.json(
-      { url: result.url, title: result.title },
-      { headers: CORS },
-    );
+    try {
+      const result = await searchYouTube(q, env.YOUTUBE_API_KEY);
+      if (!result.url) {
+        return Response.json({ error: 'no results' }, { status: 404, headers: CORS });
+      }
+      return Response.json(result, { headers: CORS });
+    } catch (e) {
+      return Response.json({ error: e.message }, { status: 502, headers: CORS });
+    }
   },
 };
