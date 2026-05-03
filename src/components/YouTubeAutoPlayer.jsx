@@ -27,15 +27,19 @@ function loadApi() {
  * Key the component on videoId to force remount on song change.
  */
 export default function YouTubeAutoPlayer({ videoId, onEnded }) {
-  const divRef = useRef(null);
+  // wrapperRef is owned by React — never touched by YT.
+  // YT gets a fresh child div it can replace with its iframe.
+  const wrapperRef = useRef(null);
   const playerRef = useRef(null);
 
   useEffect(() => {
     loadApi();
 
     function initPlayer() {
-      if (!divRef.current) return;
-      playerRef.current = new window.YT.Player(divRef.current, {
+      if (!wrapperRef.current) return;
+      const playerDiv = document.createElement('div');
+      wrapperRef.current.appendChild(playerDiv);
+      playerRef.current = new window.YT.Player(playerDiv, {
         videoId,
         playerVars: { autoplay: 1, rel: 0, modestbranding: 1 },
         events: {
@@ -61,8 +65,9 @@ export default function YouTubeAutoPlayer({ videoId, onEnded }) {
       }
       playerRef.current?.destroy();
       playerRef.current = null;
+      if (wrapperRef.current) wrapperRef.current.innerHTML = '';
     };
   }, [videoId]);
 
-  return <div ref={divRef} className={s.ytEmbed} />;
+  return <div ref={wrapperRef} className={s.ytEmbed} />;
 }
