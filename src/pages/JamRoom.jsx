@@ -122,7 +122,7 @@ export default function JamRoom() {
             participantCount={participants.length}
             userId={user?.id}
             onQueueChange={refreshQueue}
-            repeat={session.repeat ?? false}
+            repeatMode={session.repeat_mode ?? 'none'}
           />
           <QueueList
             items={queueItems}
