@@ -35,6 +35,7 @@ jobs:
           FLAG_VOTE_TO_SKIP: 'true'
           FLAG_DJ_TOKEN: 'true'
           FLAG_YOUTUBE_EMBED: 'true'
+          FLAG_AUTO_PLAY_QUEUE: 'true'
           FLAG_PLATFORM_AUTODETECT: 'true'
           FLAG_REACTIONS: 'false'
           FLAG_CHAT: 'false'

@@ -56,7 +56,10 @@ export function extractYouTubeId(url) {
   try {
     const u = new URL(url);
     if (u.hostname.includes('youtu.be')) return u.pathname.slice(1);
-    return u.searchParams.get('v');
+    const v = u.searchParams.get('v');
+    if (v) return v;
+    const match = u.pathname.match(/\/(v|embed)\/([^/?]+)/);
+    return match?.[2] ?? null;
   } catch { return null; }
 }
 

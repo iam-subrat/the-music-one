@@ -8,7 +8,7 @@ export async function resolveToYouTubeId(query) {
   if (!PROXY) return { id: null, title: null };
   try {
     const res = await fetch(`${PROXY}?q=${encodeURIComponent(query)}`, {
-      signal: AbortSignal.timeout(6000),
+      signal: AbortSignal.timeout(5500),
     });
     if (!res.ok) return { id: null, title: null };
     const { url, title } = await res.json();

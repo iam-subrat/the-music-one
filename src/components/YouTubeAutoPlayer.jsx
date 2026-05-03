@@ -6,15 +6,16 @@ let apiLoaded = false;
 let apiReady = false;
 const readyCallbacks = [];
 
-window.onYouTubeIframeAPIReady = function () {
-  apiReady = true;
-  readyCallbacks.forEach(cb => cb());
-  readyCallbacks.length = 0;
-};
-
 function loadApi() {
   if (apiLoaded) return;
   apiLoaded = true;
+  const prev = window.onYouTubeIframeAPIReady;
+  window.onYouTubeIframeAPIReady = function () {
+    prev?.();
+    apiReady = true;
+    readyCallbacks.forEach(cb => cb());
+    readyCallbacks.length = 0;
+  };
   const tag = document.createElement('script');
   tag.src = 'https://www.youtube.com/iframe_api';
   document.head.appendChild(tag);

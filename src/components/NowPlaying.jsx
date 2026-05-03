@@ -27,14 +27,12 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
     setYtResolvedTitle(null);
 
     // 1. Direct YouTube link
-    const directId = extractYouTubeId(
-      nowPlaying.platform_links?.youtube || nowPlaying.platform_links?.youtubemusic
-    );
+    const ytUrl = nowPlaying.platform_links?.youtube || nowPlaying.platform_links?.youtubemusic;
+    const directId = extractYouTubeId(ytUrl);
     if (directId) { setYtId(directId); return; }
 
     // 2. YouTube search URL → resolve via SearXNG
-    const ytSearchUrl = nowPlaying.platform_links?.youtube || nowPlaying.platform_links?.youtubemusic;
-    if (ytSearchUrl && isYouTubeSearchUrl(ytSearchUrl)) {
+    if (ytUrl && isYouTubeSearchUrl(ytUrl)) {
       const q = extractSearchQuery(ytSearchUrl);
       if (q) {
         resolveToYouTubeId(q).then(({ id, title }) => {
