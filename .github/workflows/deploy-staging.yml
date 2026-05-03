@@ -28,6 +28,7 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_PROXY_URL: ${{ secrets.VITE_PROXY_URL }}
+          VITE_SEARXNG_PROXY_URL: ${{ secrets.VITE_SEARXNG_PROXY_URL }}
           FLAG_JAM_SESSION: 'true'
           FLAG_VOTE_TO_SKIP: 'true'
           FLAG_DJ_TOKEN: 'true'
