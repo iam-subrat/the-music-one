@@ -5,11 +5,12 @@ import { FLAGS } from '../lib/flags';
 import { resolveToYouTubeId } from '../lib/youtube';
 import { useSkipVotes } from '../hooks/useSkipVotes';
 import { castSkipVote, removeSkipVote, playNext, patchYouTubeLink } from '../lib/queue';
+import { setRepeat } from '../lib/session';
 import { useToast } from './Toast';
 import PlatformLinks from './PlatformLinks';
 import YouTubeAutoPlayer from './YouTubeAutoPlayer';
 
-export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatform, participantCount, userId, onQueueChange }) {
+export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatform, participantCount, userId, onQueueChange, repeat }) {
   const toast = useToast();
   const { count: skipVotes, hasVoted } = useSkipVotes(nowPlaying?.id, userId);
   const skipThreshold = Math.floor(participantCount / 2) + 1;
@@ -131,7 +132,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
               ▶ Playing via YouTube: {ytResolvedTitle}
             </div>
           )}
-          <YouTubeAutoPlayer key={ytId} videoId={ytId} onEnded={handleEnded} />
+          <YouTubeAutoPlayer key={ytId} videoId={ytId} onEnded={handleEnded} repeat={repeat} />
         </>
       )}
 
@@ -148,6 +149,14 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
         {isDJ && (
           <button className="btn" onClick={() => playNext(sessionId).then(n => { onQueueChange?.(); if (!n) toast('Queue is empty!'); })}>
             Next ▶
+          </button>
+        )}
+        {isDJ && (
+          <button
+            className={`${s.repeatBtn} ${repeat ? s.repeatBtnActive : ''}`}
+            onClick={() => setRepeat(sessionId, !repeat).catch(e => toast(e.message))}
+          >
+            🔁 Repeat{repeat ? ' ✓' : ''}
           </button>
         )}
         {FLAGS.VOTE_TO_SKIP && (
