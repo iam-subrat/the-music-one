@@ -33,7 +33,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
 
     // 2. YouTube search URL → resolve via SearXNG
     if (ytUrl && isYouTubeSearchUrl(ytUrl)) {
-      const q = extractSearchQuery(ytSearchUrl);
+      const q = extractSearchQuery(ytUrl);
       if (q) {
         resolveToYouTubeId(q).then(({ id, title }) => {
           if (resolveKey.current !== key) return;
