@@ -60,7 +60,10 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
     try {
       const next = await playNext(sessionId);
       onQueueChange?.();
-      if (!next) toast('Queue is empty!');
+      if (!next) {
+        toast('Queue is empty!');
+        if (repeat) setRepeat(sessionId, false).catch(() => {});
+      }
     } catch (e) {
       toast(e.message);
     }
