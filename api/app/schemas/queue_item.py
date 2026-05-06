@@ -1,0 +1,33 @@
+from uuid import UUID
+from datetime import datetime
+from typing import Optional
+from pydantic import BaseModel
+
+
+class QueueItemCreate(BaseModel):
+    url: str
+
+
+class QueueItemResponse(BaseModel):
+    id: UUID
+    session_id: UUID
+    added_by_user_id: Optional[UUID] = None
+    position: int
+    title: str
+    artist: str
+    thumbnail_url: Optional[str] = None
+    platform_links: dict = {}
+    status: str
+    added_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class YouTubeLinkUpdate(BaseModel):
+    youtube_url: str
+
+
+class SkipVoteResponse(BaseModel):
+    queue_item_id: UUID
+    count: int
+    user_ids: list[UUID]
