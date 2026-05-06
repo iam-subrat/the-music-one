@@ -1,3 +1,4 @@
+-- AUTO-GENERATED. Do not edit. Run api/scripts/dump_schema.sh to regenerate.
 -- User profiles (extends auth.users)
 CREATE TABLE IF NOT EXISTS profiles (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
