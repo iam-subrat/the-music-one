@@ -1,20 +1,25 @@
+// ui/src/hooks/useParticipants.js — full file replacement
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { getParticipants } from '../lib/session';
+import { api } from '../lib/api';
+import { openSSE } from '../lib/sse';
 
 export function useParticipants(sessionId) {
   const [participants, setParticipants] = useState([]);
 
+  async function fetchParticipants() {
+    if (!sessionId) return;
+    const res = await api(`/sessions/${sessionId}/participants`);
+    if (res.ok) setParticipants(await res.json());
+  }
+
   useEffect(() => {
     if (!sessionId) return;
-    getParticipants(sessionId).then(setParticipants);
-
-    const channel = supabase.channel(`participants:${sessionId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'session_participants', filter: `session_id=eq.${sessionId}` },
-        () => getParticipants(sessionId).then(setParticipants))
-      .subscribe();
-
-    return () => channel.unsubscribe();
+    fetchParticipants();
+    const cleanup = openSSE(sessionId, {
+      participants_changed: () => fetchParticipants(),
+      onReconnect: () => fetchParticipants(),
+    });
+    return cleanup;
   }, [sessionId]);
 
   return participants;
