@@ -1,8 +1,9 @@
 from __future__ import annotations
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Response
-from app.dependencies import get_current_user, get_session_service
+from app.dependencies import get_current_user, get_session_service, get_queue_service
 from app.schemas.session import SessionResponse, RepeatModeUpdate, DjPassRequest
+from app.schemas.queue_item import QueueItemCreate, QueueItemResponse
 
 router = APIRouter()
 
@@ -92,3 +93,41 @@ async def list_participants(
     svc=Depends(get_session_service),
 ):
     return await svc.get_participants(session_id)
+
+
+@router.get("/{session_id}/queue", response_model=list[QueueItemResponse])
+async def get_queue(
+    session_id: UUID,
+    svc=Depends(get_queue_service),
+):
+    return await svc.get_queue(session_id)
+
+
+@router.post("/{session_id}/queue", response_model=QueueItemResponse)
+async def add_to_queue(
+    session_id: UUID,
+    body: QueueItemCreate,
+    user_id: UUID = Depends(get_current_user),
+    svc=Depends(get_queue_service),
+):
+    return await svc.add(session_id, user_id, body.url)
+
+
+@router.post("/{session_id}/queue/next")
+async def play_next(
+    session_id: UUID,
+    user_id: UUID = Depends(get_current_user),
+    svc=Depends(get_queue_service),
+):
+    next_id = await svc.play_next(session_id)
+    return {"next_item_id": str(next_id) if next_id else None}
+
+
+@router.post("/{session_id}/queue/skip")
+async def force_skip(
+    session_id: UUID,
+    user_id: UUID = Depends(get_current_user),
+    svc=Depends(get_queue_service),
+):
+    next_id = await svc.force_skip(session_id)
+    return {"next_item_id": str(next_id) if next_id else None}
