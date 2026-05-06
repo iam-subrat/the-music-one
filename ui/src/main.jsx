@@ -2,18 +2,14 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
-import { supabase } from './lib/supabase';
-import { loadRemoteFlags } from './lib/flags';
-import { ToastProvider } from './components/Toast';
+import { loadFlags } from './lib/flags';
 import './styles/base.css';
 
-loadRemoteFlags(supabase).then(() => {
+loadFlags().finally(() => {
   ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
       <BrowserRouter>
-        <ToastProvider>
-          <App />
-        </ToastProvider>
+        <App />
       </BrowserRouter>
     </React.StrictMode>
   );

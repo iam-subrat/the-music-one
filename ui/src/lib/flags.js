@@ -17,9 +17,13 @@ export const FLAGS = {
   EMBED_WIDGET:        JSON.parse(__FLAG_EMBED_WIDGET__),
 };
 
-export async function loadRemoteFlags(supabase) {
+export async function loadFlags() {
   try {
-    const { data } = await supabase.from('feature_flags').select('key, enabled');
-    if (data) data.forEach(r => { if (r.key in FLAGS) FLAGS[r.key] = r.enabled; });
+    const res = await fetch('/api/flags/', { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    data.forEach(({ key, enabled }) => {
+      if (key in FLAGS) FLAGS[key] = enabled;
+    });
   } catch { /* remote unavailable — static defaults remain */ }
 }
