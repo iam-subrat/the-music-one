@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthBar from '../components/AuthBar';
 import { useAuth } from '../hooks/useAuth';
-import { fetchSongMeta, } from '../lib/odesli';
+import { api } from '../lib/api';
 import { FLAGS } from '../lib/flags';
 import { useToast } from '../components/Toast';
 import { PLATFORM_META } from '../lib/platform';
@@ -27,7 +27,9 @@ export default function Home() {
     setStatus('loading');
     setSong(null);
     try {
-      const meta = await fetchSongMeta(url);
+      const res = await api(`/song/?url=${encodeURIComponent(url)}`);
+      if (!res.ok) throw new Error(`Song lookup failed (${res.status})`);
+      const meta = await res.json();
       setSong(meta);
       setStatus('done');
       history.replaceState({}, '', `?url=${encodeURIComponent(url)}`);
