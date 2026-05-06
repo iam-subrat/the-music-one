@@ -1,72 +1,46 @@
-import { supabase } from './supabase';
+import { api } from './api';
 
-export async function addToQueue(sessionId, userId, meta) {
-  // position is GENERATED ALWAYS AS IDENTITY in DB — no JS-side calculation needed,
-  // eliminates race condition from simultaneous inserts.
-  const { data, error } = await supabase.from('queue_items').insert({
-    session_id: sessionId,
-    added_by_user_id: userId,
-    title: meta.title,
-    artist: meta.artist,
-    thumbnail_url: meta.thumbnailUrl ?? null,
-    platform_links: meta.platformLinks,
-    status: 'queued',
-  }).select().single();
-  if (error) throw new Error(error.message);
-  return data;
+export async function addToQueue(sessionId, _userId, meta) {
+  const res = await api(`/sessions/${sessionId}/queue`, {
+    method: 'POST',
+    body: JSON.stringify({ url: meta.sourceUrl ?? meta.platformLinks?.spotify ?? '' }),
+  });
+  if (!res.ok) throw new Error('Failed to add to queue');
+  return res.json();
 }
 
 export async function getQueue(sessionId) {
-  const { data, error } = await supabase
-    .from('queue_items')
-    // Explicit FK hint avoids silent join failure when schema cache is stale
-    .select('*, profiles!queue_items_added_by_user_id_fkey(display_name, avatar_url)')
-    .eq('session_id', sessionId)
-    .order('position', { ascending: true });
-  if (error) console.error('getQueue error:', error.message);
-  return data ?? [];
+  const res = await api(`/sessions/${sessionId}/queue`);
+  return res.ok ? res.json() : [];
 }
 
 export async function playNext(sessionId) {
-  const { data, error } = await supabase.rpc('play_next', {
-    p_session_id: sessionId,
-    p_skip_status: 'played',
-  });
-  if (error) throw new Error(error.message);
-  return data;
+  const res = await api(`/sessions/${sessionId}/queue/next`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to advance queue');
+  return res.json();
 }
 
 export async function forceSkip(sessionId) {
-  const { data, error } = await supabase.rpc('play_next', {
-    p_session_id: sessionId,
-    p_skip_status: 'skipped',
-  });
-  if (error) throw new Error(error.message);
-  return data;
+  const res = await api(`/sessions/${sessionId}/queue/skip`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to skip');
+  return res.json();
 }
 
-export async function castSkipVote(queueItemId, userId, threshold) {
-  const { data, error } = await supabase.rpc('cast_skip_vote', {
-    p_queue_item_id: queueItemId,
-    p_user_id: userId,
-    p_threshold: threshold,
-  });
-  if (error) throw new Error(error.message);
-  return data; // boolean: true if song was skipped
+export async function castSkipVote(queueItemId, _userId, _threshold) {
+  const res = await api(`/items/${queueItemId}/votes`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to cast vote');
+  const data = await res.json();
+  return data.skipped;
 }
 
-export async function removeSkipVote(queueItemId, userId) {
-  const { error } = await supabase.from('skip_votes')
-    .delete()
-    .eq('queue_item_id', queueItemId)
-    .eq('user_id', userId);
-  if (error) throw new Error(error.message);
+export async function removeSkipVote(queueItemId, _userId) {
+  const res = await api(`/items/${queueItemId}/votes`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to remove vote');
 }
 
 export async function patchYouTubeLink(itemId, youtubeUrl) {
-  const { error } = await supabase.rpc('patch_youtube_link', {
-    p_item_id: itemId,
-    p_youtube_url: youtubeUrl,
+  await api(`/items/${itemId}/youtube-link`, {
+    method: 'PUT',
+    body: JSON.stringify({ youtube_url: youtubeUrl }),
   });
-  if (error) console.warn('patchYouTubeLink:', error.message);
 }
