@@ -1,7 +1,7 @@
 # v2 Architecture Design: UI/API Split with FastAPI Backend
 
 **Date:** 2026-05-06  
-**Branch:** `main/v2`  
+**Branch:** `v2/main`  
 **Status:** Approved — pending implementation plan
 
 ---
