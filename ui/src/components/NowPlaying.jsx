@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import s from '../styles/jam.module.css';
 import { preferredLink, extractYouTubeId, isYouTubeSearchUrl, extractSearchQuery, PLATFORM_META } from '../lib/platform';
 import { FLAGS } from '../lib/flags';
-import { resolveToYouTubeId } from '../lib/youtube';
+import { api } from '../lib/api';
 import { useSkipVotes } from '../hooks/useSkipVotes';
 import { castSkipVote, removeSkipVote, playNext, patchYouTubeLink } from '../lib/queue';
 import { setRepeatMode } from '../lib/session';
@@ -36,23 +36,27 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
     if (ytUrl && isYouTubeSearchUrl(ytUrl)) {
       const q = extractSearchQuery(ytUrl);
       if (q) {
-        resolveToYouTubeId(q).then(({ id, title }) => {
-          if (resolveKey.current !== key) return;
-          if (id) { setYtId(id); setYtResolvedTitle(title); }
-        });
+        api(`/youtube/?q=${encodeURIComponent(q)}`)
+          .then(res => res.ok ? res.json() : { id: null, title: null })
+          .then(({ id, title }) => {
+            if (resolveKey.current !== key) return;
+            if (id) { setYtId(id); setYtResolvedTitle(title); }
+          });
         return;
       }
     }
 
     // 3. Fallback: title + artist search — persist result so all clients benefit
-    resolveToYouTubeId(`${nowPlaying.title} ${nowPlaying.artist}`).then(({ id, title }) => {
-      if (resolveKey.current !== key) return;
-      if (id) {
-        setYtId(id);
-        setYtResolvedTitle(title);
-        patchYouTubeLink(nowPlaying.id, `https://www.youtube.com/watch?v=${id}`);
-      }
-    });
+    api(`/youtube/?q=${encodeURIComponent(`${nowPlaying.title} ${nowPlaying.artist}`)}`)
+      .then(res => res.ok ? res.json() : { id: null, title: null })
+      .then(({ id, title }) => {
+        if (resolveKey.current !== key) return;
+        if (id) {
+          setYtId(id);
+          setYtResolvedTitle(title);
+          patchYouTubeLink(nowPlaying.id, `https://www.youtube.com/watch?v=${id}`);
+        }
+      });
   }, [nowPlaying?.id]);
 
   async function handleEnded() {

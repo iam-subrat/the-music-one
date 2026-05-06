@@ -1,9 +1,9 @@
 import { api } from './api';
 
-export async function addToQueue(sessionId, _userId, meta) {
+export async function addToQueue(sessionId, url) {
   const res = await api(`/sessions/${sessionId}/queue`, {
     method: 'POST',
-    body: JSON.stringify({ url: meta.sourceUrl ?? meta.platformLinks?.spotify ?? '' }),
+    body: JSON.stringify({ url }),
   });
   if (!res.ok) throw new Error('Failed to add to queue');
   return res.json();

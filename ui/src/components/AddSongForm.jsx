@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import s from '../styles/jam.module.css';
-import { fetchSongMeta } from '../lib/odesli';
 import { addToQueue } from '../lib/queue';
 import { detectPlatform } from '../lib/platform';
 import { FLAGS } from '../lib/flags';
@@ -20,9 +19,8 @@ export default function AddSongForm({ sessionId, userId, profile, onPlatformDete
         const platform = detectPlatform(url.trim());
         if (platform) onPlatformDetected(platform);
       }
-      const meta = await fetchSongMeta(url.trim());
-      await addToQueue(sessionId, userId, meta);
-      toast(`"${meta.title}" added to queue`);
+      const item = await addToQueue(sessionId, url.trim());
+      toast(`"${item.title}" added to queue`);
       setUrl('');
       onAdded?.();
     } catch {
