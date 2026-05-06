@@ -10,7 +10,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useSession } from '../hooks/useSession';
 import { useQueue } from '../hooks/useQueue';
 import { useParticipants } from '../hooks/useParticipants';
-import { joinSession, leaveSession, endSession } from '../lib/session';
+import { joinSession, endSession } from '../lib/session';
 import s from '../styles/jam.module.css';
 
 export default function JamRoom() {
@@ -25,23 +25,41 @@ export default function JamRoom() {
   }, [authLoading, user, navigate, code]);
 
   useEffect(() => {
-    if (session?.id && user?.id) joinSession(session.id, user.id);
+    if (session?.id && user?.id) joinSession(session.id);
   }, [session?.id, user?.id]);
 
-  // Store latest ids in refs so cleanup always has current values
+  // Store session id in ref for cleanup
   const sessionIdRef = useRef(null);
-  const userIdRef = useRef(null);
   useEffect(() => { sessionIdRef.current = session?.id ?? null; }, [session?.id]);
-  useEffect(() => { userIdRef.current = user?.id ?? null; }, [user?.id]);
 
-  // Cleanup on unmount only — reads from refs, not stale closure values
+  // Cleanup on unmount / tab hide — sendBeacon ensures request completes
   useEffect(() => {
+    const handleHide = () => {
+      if (document.visibilityState === 'hidden' && sessionIdRef.current) {
+        navigator.sendBeacon(`/api/sessions/${sessionIdRef.current}/leave`);
+      }
+    };
+    document.addEventListener('visibilitychange', handleHide);
     return () => {
-      if (sessionIdRef.current && userIdRef.current) {
-        leaveSession(sessionIdRef.current, userIdRef.current);
+      document.removeEventListener('visibilitychange', handleHide);
+      if (sessionIdRef.current) {
+        navigator.sendBeacon(`/api/sessions/${sessionIdRef.current}/leave`);
       }
     };
   }, []); // intentionally empty — runs once on mount/unmount
+
+  // 30s heartbeat to keep session alive
+  useEffect(() => {
+    if (!session?.id) return;
+    const interval = setInterval(() => {
+      fetch(`/api/sessions/${session.id}/heartbeat`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      }).catch(() => {});
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [session?.id]);
 
   if (authLoading || sessionLoading) {
     return (
