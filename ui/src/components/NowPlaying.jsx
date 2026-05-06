@@ -12,7 +12,7 @@ import YouTubeAutoPlayer from './YouTubeAutoPlayer';
 
 export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatform, participantCount, userId, onQueueChange, repeatMode }) {
   const toast = useToast();
-  const { count: skipVotes, hasVoted } = useSkipVotes(nowPlaying?.id, userId);
+  const { count: skipVotes, hasVoted } = useSkipVotes(nowPlaying?.id, userId, sessionId);
   const skipThreshold = Math.floor(participantCount / 2) + 1;
 
   const [ytId, setYtId] = useState(null);
