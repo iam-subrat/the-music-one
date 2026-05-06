@@ -2,12 +2,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
+from app.services.event_bus import bus
 from app.routers import auth, sessions, items, profiles, songs, youtube, flags, events
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
+    bus.shutdown()
 
 
 app = FastAPI(title="MusicOne API", lifespan=lifespan)
