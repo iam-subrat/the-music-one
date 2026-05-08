@@ -1,15 +1,75 @@
+import { useState, useEffect, useRef } from 'react';
 import s from '../styles/jam.module.css';
-import { preferredLink, extractYouTubeId, PLATFORM_META } from '../lib/platform';
+import { preferredLink, extractYouTubeId, isYouTubeSearchUrl, extractSearchQuery, PLATFORM_META } from '../lib/platform';
 import { FLAGS } from '../lib/flags';
+import { resolveToYouTubeId } from '../lib/youtube';
 import { useSkipVotes } from '../hooks/useSkipVotes';
-import { castSkipVote, removeSkipVote, playNext } from '../lib/queue';
+import { castSkipVote, removeSkipVote, playNext, patchYouTubeLink } from '../lib/queue';
+import { setRepeatMode } from '../lib/session';
 import { useToast } from './Toast';
 import PlatformLinks from './PlatformLinks';
+import YouTubeAutoPlayer from './YouTubeAutoPlayer';
 
-export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatform, participantCount, userId, onQueueChange }) {
+export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatform, participantCount, userId, onQueueChange, repeatMode }) {
   const toast = useToast();
   const { count: skipVotes, hasVoted } = useSkipVotes(nowPlaying?.id, userId);
   const skipThreshold = Math.floor(participantCount / 2) + 1;
+
+  const [ytId, setYtId] = useState(null);
+  const [ytResolvedTitle, setYtResolvedTitle] = useState(null);
+  const resolveKey = useRef(null);
+
+  // Derived outside effect so it can be a dependency — re-runs when the
+  // pre-resolver patches platform_links.youtube on the same now-playing item.
+  const ytUrl = nowPlaying?.platform_links?.youtube || nowPlaying?.platform_links?.youtubemusic;
+
+  useEffect(() => {
+    if (!FLAGS.AUTO_PLAY_QUEUE || !nowPlaying) { setYtId(null); setYtResolvedTitle(null); return; }
+
+    const key = nowPlaying.id;
+    resolveKey.current = key;
+
+    // 1. Direct YouTube link — also catches a late patch from the pre-resolver
+    const directId = extractYouTubeId(ytUrl);
+    if (directId) { setYtId(directId); setYtResolvedTitle(null); return; }
+
+    // Async paths: clear player first
+    setYtId(null);
+    setYtResolvedTitle(null);
+
+    // 2. YouTube search URL → resolve via SearXNG
+    if (ytUrl && isYouTubeSearchUrl(ytUrl)) {
+      const q = extractSearchQuery(ytUrl);
+      if (q) {
+        resolveToYouTubeId(q).then(({ id, title }) => {
+          if (resolveKey.current !== key) return;
+          if (id) { setYtId(id); setYtResolvedTitle(title); }
+        });
+        return;
+      }
+    }
+
+    // 3. Fallback: title + artist search — persist result so all clients benefit
+    resolveToYouTubeId(`${nowPlaying.title} ${nowPlaying.artist}`).then(({ id, title }) => {
+      if (resolveKey.current !== key) return;
+      if (id) {
+        setYtId(id);
+        setYtResolvedTitle(title);
+        patchYouTubeLink(nowPlaying.id, `https://www.youtube.com/watch?v=${id}`);
+      }
+    });
+  }, [nowPlaying?.id, ytUrl]);
+
+  async function handleEnded() {
+    if (!isDJ) return;
+    try {
+      const next = await playNext(sessionId);
+      onQueueChange?.();
+      if (!next) toast('Queue is empty!');
+    } catch (e) {
+      toast(e.message);
+    }
+  }
 
   if (!nowPlaying) {
     return (
@@ -28,22 +88,8 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
   }
 
   const pref = preferredLink(nowPlaying.platform_links, preferredPlatform);
-  const ytId = FLAGS.YOUTUBE_EMBED ? extractYouTubeId(nowPlaying.platform_links?.youtube || nowPlaying.platform_links?.youtubemusic) : null;
   const query = `${nowPlaying.title} ${nowPlaying.artist}`;
   const prefMeta = pref ? PLATFORM_META[pref.platform] : null;
-
-  async function handleSkipVote() {
-    try {
-      if (hasVoted) {
-        await removeSkipVote(nowPlaying.id, userId);
-      } else {
-        const skipped = await castSkipVote(nowPlaying.id, userId, skipThreshold);
-        if (skipped) onQueueChange?.();
-      }
-    } catch (e) {
-      toast(e.message);
-    }
-  }
 
   return (
     <div className={s.nowPlaying}>
@@ -84,7 +130,18 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
         />
       </div>
 
-      {ytId && (
+      {FLAGS.AUTO_PLAY_QUEUE && ytId && (
+        <>
+          {ytResolvedTitle && (
+            <div style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>
+              ▶ Playing via YouTube: {ytResolvedTitle}
+            </div>
+          )}
+          <YouTubeAutoPlayer key={ytId} videoId={ytId} onEnded={handleEnded} repeat={repeatMode === 'song'} />
+        </>
+      )}
+
+      {FLAGS.YOUTUBE_EMBED && !FLAGS.AUTO_PLAY_QUEUE && ytId && (
         <iframe
           className={s.ytEmbed}
           src={`https://www.youtube-nocookie.com/embed/${ytId}`}
@@ -99,6 +156,14 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
             Next ▶
           </button>
         )}
+        {isDJ && (
+          <button
+            className={`${s.repeatBtn} ${repeatMode !== 'none' ? s.repeatBtnActive : ''}`}
+            onClick={() => setRepeatMode(sessionId, { none: 'song', song: 'queue', queue: 'none' }[repeatMode]).catch(e => toast(e.message))}
+          >
+            {repeatMode === 'queue' ? '🔂 Queue ✓' : repeatMode === 'song' ? '🔁 Repeat ✓' : '🔁 Repeat'}
+          </button>
+        )}
         {FLAGS.VOTE_TO_SKIP && (
           <button
             className={`${s.skipBtn} ${hasVoted ? s.skipBtnVoted : ''}`}
@@ -110,4 +175,17 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
       </div>
     </div>
   );
+
+  async function handleSkipVote() {
+    try {
+      if (hasVoted) {
+        await removeSkipVote(nowPlaying.id, userId);
+      } else {
+        const skipped = await castSkipVote(nowPlaying.id, userId, skipThreshold);
+        if (skipped) onQueueChange?.();
+      }
+    } catch (e) {
+      toast(e.message);
+    }
+  }
 }

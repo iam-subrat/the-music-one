@@ -9,6 +9,7 @@ export default defineConfig({
     __FLAG_VOTE_TO_SKIP__:        JSON.stringify(process.env.FLAG_VOTE_TO_SKIP        ?? 'true'),
     __FLAG_DJ_TOKEN__:            JSON.stringify(process.env.FLAG_DJ_TOKEN            ?? 'true'),
     __FLAG_YOUTUBE_EMBED__:       JSON.stringify(process.env.FLAG_YOUTUBE_EMBED       ?? 'true'),
+    __FLAG_AUTO_PLAY_QUEUE__:     JSON.stringify(process.env.FLAG_AUTO_PLAY_QUEUE     ?? 'true'),
     __FLAG_PLATFORM_AUTODETECT__: JSON.stringify(process.env.FLAG_PLATFORM_AUTODETECT ?? 'true'),
     __FLAG_REACTIONS__:           JSON.stringify(process.env.FLAG_REACTIONS           ?? 'false'),
     __FLAG_CHAT__:                JSON.stringify(process.env.FLAG_CHAT                ?? 'false'),

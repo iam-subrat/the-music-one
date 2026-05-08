@@ -20,7 +20,6 @@ export default function JamRoom() {
   const { session, loading: sessionLoading } = useSession(code);
   const { items: queueItems, refresh: refreshQueue } = useQueue(session?.id);
   const participants = useParticipants(session?.id);
-
   useEffect(() => {
     if (!authLoading && !user) navigate(`/login?next=/jam/${code}`);
   }, [authLoading, user, navigate, code]);
@@ -90,7 +89,7 @@ export default function JamRoom() {
   const isHost = session.host_user_id === user?.id;
 
   return (
-    <div className="page" style={{ padding: 0 }}>
+    <div className={`page ${s.page}`}>
       <AuthBar />
       <div className={s.layout}>
         <div className={s.jamHeader}>
@@ -123,6 +122,7 @@ export default function JamRoom() {
             participantCount={participants.length}
             userId={user?.id}
             onQueueChange={refreshQueue}
+            repeatMode={session.repeat_mode ?? 'none'}
           />
           <QueueList
             items={queueItems}

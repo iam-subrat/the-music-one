@@ -62,3 +62,11 @@ export async function removeSkipVote(queueItemId, userId) {
     .eq('user_id', userId);
   if (error) throw new Error(error.message);
 }
+
+export async function patchYouTubeLink(itemId, youtubeUrl) {
+  const { error } = await supabase.rpc('patch_youtube_link', {
+    p_item_id: itemId,
+    p_youtube_url: youtubeUrl,
+  });
+  if (error) console.warn('patchYouTubeLink:', error.message);
+}

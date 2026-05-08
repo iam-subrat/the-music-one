@@ -23,15 +23,29 @@ jobs:
 
       - run: npm ci
 
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Run DB migrations
+        run: |
+          supabase link --project-ref ${{ vars.SUPABASE_PROJECT_REF }}
+          supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
       - name: Build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_PROXY_URL: ${{ secrets.VITE_PROXY_URL }}
+          VITE_SEARXNG_PROXY_URL: ${{ secrets.VITE_SEARXNG_PROXY_URL }}
           FLAG_JAM_SESSION: 'true'
           FLAG_VOTE_TO_SKIP: 'true'
           FLAG_DJ_TOKEN: 'true'
           FLAG_YOUTUBE_EMBED: 'true'
+          FLAG_AUTO_PLAY_QUEUE: 'true'
           FLAG_PLATFORM_AUTODETECT: 'true'
           FLAG_REACTIONS: 'false'
           FLAG_CHAT: 'false'

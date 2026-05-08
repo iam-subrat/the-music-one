@@ -39,6 +39,11 @@ export async function endSession(sessionId) {
   if (error) throw new Error(error.message);
 }
 
+export async function setRepeatMode(sessionId, mode) {
+  const { error } = await supabase.rpc('set_repeat_mode', { p_session_id: sessionId, p_mode: mode });
+  if (error) throw new Error(error.message);
+}
+
 export async function passDjToken(sessionId, newDjUserId) {
   const { error } = await supabase.rpc('pass_dj_token', {
     p_session_id: sessionId,
