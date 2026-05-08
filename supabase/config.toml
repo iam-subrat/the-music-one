@@ -1,2 +1,0 @@
-# Local dev only — CI uses SUPABASE_PROJECT_REF env variable per GitHub environment
-project_id = "hjcezrajovkpiwdihduy"

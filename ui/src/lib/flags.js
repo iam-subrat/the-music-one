@@ -19,7 +19,8 @@ export const FLAGS = {
 
 export async function loadFlags() {
   try {
-    const res = await fetch('/api/flags/', { credentials: 'include' });
+    const { API_BASE } = await import('./api.js');
+    const res = await fetch(`${API_BASE}/api/flags/`, { credentials: 'include' });
     if (!res.ok) return;
     const data = await res.json();
     data.forEach(({ key, enabled }) => {

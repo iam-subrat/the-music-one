@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     supabase_anon_key: str
     supabase_jwt_secret: str
     odesli_api_key: str = ""
-    searxng_url: str = ""
+    youtube_api_key: str = ""
     allowed_origins: str = "http://localhost:5173"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")

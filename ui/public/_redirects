@@ -1,0 +1,4 @@
+# Proxy /api/* to FastAPI backend (Cloudflare Pages — UAT + staging)
+# Set VITE_API_URL in GitHub environment secrets to enable absolute URL mode instead.
+# For GitHub Pages (prod), a reverse proxy at the DNS level is required.
+/api/* https://api.yourdomain.com/api/:splat 200

@@ -43,38 +43,30 @@ class SongService:
         }
 
     async def resolve_youtube(self, query: str) -> dict:
-        if not settings.searxng_url:
+        if not settings.youtube_api_key:
             return {"id": None, "title": None}
         async with httpx.AsyncClient() as client:
             try:
                 res = await client.get(
-                    settings.searxng_url,
-                    params={"q": query},
+                    "https://www.googleapis.com/youtube/v3/search",
+                    params={
+                        "part": "snippet",
+                        "type": "video",
+                        "maxResults": 1,
+                        "q": query,
+                        "key": settings.youtube_api_key,
+                    },
                     timeout=5.5,
                 )
                 if not res.is_success:
                     return {"id": None, "title": None}
-                data = res.json()
-                url = data.get("url")
-                if not url:
+                items = res.json().get("items", [])
+                if not items:
                     return {"id": None, "title": None}
-                video_id = _extract_video_id(url)
-                return {"id": video_id, "title": data.get("title")}
+                item = items[0]
+                return {
+                    "id": item["id"]["videoId"],
+                    "title": item["snippet"]["title"],
+                }
             except Exception:
                 return {"id": None, "title": None}
-
-
-def _extract_video_id(url: str) -> str | None:
-    try:
-        from urllib.parse import urlparse, parse_qs
-        u = urlparse(url)
-        if "youtu.be" in u.hostname:
-            return u.path.lstrip("/")
-        v = parse_qs(u.query).get("v", [None])[0]
-        if v:
-            return v
-        import re
-        match = re.search(r"/(v|embed)/([^/?]+)", u.path)
-        return match.group(2) if match else None
-    except Exception:
-        return None

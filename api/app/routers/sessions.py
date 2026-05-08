@@ -35,6 +35,7 @@ async def join_session(
 
 
 @router.delete("/{session_id}/leave")
+@router.post("/{session_id}/leave")
 async def leave_session(
     session_id: UUID,
     user_id: UUID = Depends(get_current_user),
@@ -83,7 +84,9 @@ async def pass_dj(
 async def heartbeat(
     session_id: UUID,
     user_id: UUID = Depends(get_current_user),
+    svc=Depends(get_session_service),
 ):
+    await svc.touch(session_id)
     return {"ok": True}
 
 
@@ -119,7 +122,7 @@ async def play_next(
     user_id: UUID = Depends(get_current_user),
     svc=Depends(get_queue_service),
 ):
-    next_id = await svc.play_next(session_id)
+    next_id = await svc.play_next(session_id, user_id)
     return {"next_item_id": str(next_id) if next_id else None}
 
 
@@ -129,5 +132,5 @@ async def force_skip(
     user_id: UUID = Depends(get_current_user),
     svc=Depends(get_queue_service),
 ):
-    next_id = await svc.force_skip(session_id)
+    next_id = await svc.force_skip(session_id, user_id)
     return {"next_item_id": str(next_id) if next_id else None}

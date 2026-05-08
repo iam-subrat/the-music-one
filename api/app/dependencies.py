@@ -7,10 +7,17 @@ from app.config import settings
 from app.database import get_db
 
 
+_CSRF_EXEMPT_SUFFIXES = ("/leave",)
+
+
 def _require_xrw(request: Request) -> None:
-    if request.method not in ("GET", "HEAD", "OPTIONS"):
-        if request.headers.get("X-Requested-With") != "XMLHttpRequest":
-            raise HTTPException(status_code=403, detail="CSRF check failed")
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return
+    # sendBeacon cannot set custom headers — exempt leave endpoint (cookie auth still enforced)
+    if any(request.url.path.endswith(s) for s in _CSRF_EXEMPT_SUFFIXES):
+        return
+    if request.headers.get("X-Requested-With") != "XMLHttpRequest":
+        raise HTTPException(status_code=403, detail="CSRF check failed")
 
 
 async def get_current_user(

@@ -3,6 +3,7 @@ from uuid import UUID
 from sqlalchemy import select, delete, text
 from app.models.skip_vote import SkipVote
 from app.repositories.base import AbstractRepository
+from app.repositories.db_auth import set_jwt_claims
 
 
 class SkipVoteRepository(AbstractRepository):
@@ -19,6 +20,7 @@ class SkipVoteRepository(AbstractRepository):
         return vote
 
     async def cast_vote(self, queue_item_id: UUID, user_id: UUID, threshold: int) -> bool:
+        await set_jwt_claims(self.db, user_id)
         result = await self.db.execute(
             text("SELECT cast_skip_vote(:item_id, :user_id, :threshold)"),
             {"item_id": str(queue_item_id), "user_id": str(user_id), "threshold": threshold},

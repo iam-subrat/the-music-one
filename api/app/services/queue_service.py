@@ -29,14 +29,14 @@ class QueueService:
             status="queued",
         )
 
-    async def play_next(self, session_id: UUID) -> Optional[UUID]:
-        return await self.repo.play_next(session_id, "played")
+    async def play_next(self, session_id: UUID, user_id: UUID) -> Optional[UUID]:
+        return await self.repo.play_next(session_id, user_id, "played")
 
-    async def force_skip(self, session_id: UUID) -> Optional[UUID]:
-        return await self.repo.force_skip(session_id)
+    async def force_skip(self, session_id: UUID, user_id: UUID) -> Optional[UUID]:
+        return await self.repo.force_skip(session_id, user_id)
 
-    async def patch_youtube_link(self, item_id: UUID, youtube_url: str) -> None:
-        await self.repo.patch_youtube_link(item_id, youtube_url)
+    async def patch_youtube_link(self, item_id: UUID, youtube_url: str, user_id: UUID) -> None:
+        await self.repo.patch_youtube_link(item_id, youtube_url, user_id)
 
     async def cast_vote(self, queue_item_id: UUID, user_id: UUID) -> bool:
         return await self.vote_repo.cast_vote(queue_item_id, user_id, SKIP_THRESHOLD)

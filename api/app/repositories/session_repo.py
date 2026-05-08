@@ -66,6 +66,14 @@ class SessionRepository(AbstractRepository):
         )
         await self.db.commit()
 
+    async def touch(self, session_id: UUID) -> None:
+        await self.db.execute(
+            update(Session)
+            .where(Session.id == session_id)
+            .values(last_activity_at=datetime.now(timezone.utc))
+        )
+        await self.db.commit()
+
     async def get_participants(self, session_id: UUID) -> list:
         result = await self.db.execute(
             select(SessionParticipant, Profile)

@@ -14,7 +14,7 @@ async def patch_youtube_link(
     user_id: UUID = Depends(get_current_user),
     svc=Depends(get_queue_service),
 ):
-    await svc.patch_youtube_link(item_id, body.youtube_url)
+    await svc.patch_youtube_link(item_id, body.youtube_url, user_id)
     return {"ok": True}
 
 
@@ -36,3 +36,11 @@ async def remove_vote(
 ):
     await svc.remove_vote(item_id, user_id)
     return {"ok": True}
+
+
+@router.get("/{item_id}/votes")
+async def get_votes(
+    item_id: UUID,
+    svc=Depends(get_queue_service),
+):
+    return await svc.get_votes(item_id)

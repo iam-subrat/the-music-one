@@ -1,6 +1,6 @@
 // ui/src/hooks/useAuth.js — full file replacement
 import { useState, useEffect } from 'react';
-import { api } from '../lib/api';
+import { api, API_BASE } from '../lib/api';
 
 export function useAuth() {
   const [user, setUser] = useState(null);
@@ -12,7 +12,7 @@ export function useAuth() {
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data) {
-          setUser({ id: data.id, email: data.email });
+          setUser({ id: data.id });
           setProfile(data);
         }
       })
@@ -20,7 +20,7 @@ export function useAuth() {
   }, []);
 
   function signInWithGoogle(redirectTo = window.location.href) {
-    window.location.href = '/api/auth/google';
+    window.location.href = `${API_BASE}/api/auth/google`;
   }
 
   async function signOut() {

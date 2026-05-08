@@ -1,12 +1,7 @@
-// ui/src/lib/sse.js
+const API_BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
 
-/**
- * Opens an SSE connection to /api/sessions/{sessionId}/stream.
- * handlers: { session_updated, queue_changed, participants_changed, votes_changed, onReconnect }
- * Returns a cleanup function.
- */
 export function openSSE(sessionId, handlers) {
-  const es = new EventSource(`/api/sessions/${sessionId}/stream`, { withCredentials: true });
+  const es = new EventSource(`${API_BASE}/api/sessions/${sessionId}/stream`, { withCredentials: true });
 
   es.onmessage = (e) => {
     try {

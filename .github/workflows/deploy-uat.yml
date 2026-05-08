@@ -1,8 +1,8 @@
-name: Deploy to Staging (Cloudflare Pages)
+name: Deploy to UAT (Cloudflare Pages)
 
 on:
   push:
-    branches: [staging]
+    branches: [uat]
 
 permissions:
   contents: read
@@ -11,7 +11,7 @@ permissions:
 jobs:
   migrate:
     runs-on: ubuntu-latest
-    environment: staging
+    environment: uat
     defaults:
       run:
         working-directory: api
@@ -37,7 +37,7 @@ jobs:
   deploy:
     needs: migrate
     runs-on: ubuntu-latest
-    environment: staging
+    environment: uat
     steps:
       - uses: actions/checkout@v4
 
@@ -75,7 +75,7 @@ jobs:
           FLAG_EMBED_WIDGET: 'false'
         run: npm run build
 
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy to Cloudflare Pages (UAT)
         uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

@@ -11,6 +11,7 @@ import { useSession } from '../hooks/useSession';
 import { useQueue } from '../hooks/useQueue';
 import { useParticipants } from '../hooks/useParticipants';
 import { joinSession, endSession } from '../lib/session';
+import { API_BASE } from '../lib/api';
 import s from '../styles/jam.module.css';
 
 export default function JamRoom() {
@@ -36,14 +37,14 @@ export default function JamRoom() {
   useEffect(() => {
     const handleHide = () => {
       if (document.visibilityState === 'hidden' && sessionIdRef.current) {
-        navigator.sendBeacon(`/api/sessions/${sessionIdRef.current}/leave`);
+        navigator.sendBeacon(`${API_BASE}/api/sessions/${sessionIdRef.current}/leave`);
       }
     };
     document.addEventListener('visibilitychange', handleHide);
     return () => {
       document.removeEventListener('visibilitychange', handleHide);
       if (sessionIdRef.current) {
-        navigator.sendBeacon(`/api/sessions/${sessionIdRef.current}/leave`);
+        navigator.sendBeacon(`${API_BASE}/api/sessions/${sessionIdRef.current}/leave`);
       }
     };
   }, []); // intentionally empty — runs once on mount/unmount
@@ -52,7 +53,7 @@ export default function JamRoom() {
   useEffect(() => {
     if (!session?.id) return;
     const interval = setInterval(() => {
-      fetch(`/api/sessions/${session.id}/heartbeat`, {
+      fetch(`${API_BASE}/api/sessions/${session.id}/heartbeat`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'X-Requested-With': 'XMLHttpRequest' },

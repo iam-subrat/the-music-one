@@ -4,6 +4,7 @@ from sqlalchemy import text
 from app.models.session import Session
 from app.repositories.session_repo import SessionRepository
 from app.repositories.profile_repo import ProfileRepository
+from app.repositories.db_auth import set_jwt_claims
 
 
 class SessionService:
@@ -35,6 +36,7 @@ class SessionService:
         await self.repo.end(session_id)
 
     async def set_repeat_mode(self, session_id: UUID, mode: str, user_id: UUID) -> None:
+        await set_jwt_claims(self.repo.db, user_id)
         await self.repo.db.execute(
             text("SELECT set_repeat_mode(:sid, :mode)"),
             {"sid": str(session_id), "mode": mode},
@@ -42,11 +44,15 @@ class SessionService:
         await self.repo.db.commit()
 
     async def pass_dj(self, session_id: UUID, new_dj_id: UUID, user_id: UUID) -> None:
+        await set_jwt_claims(self.repo.db, user_id)
         await self.repo.db.execute(
             text("SELECT pass_dj_token(:sid, :new_dj)"),
             {"sid": str(session_id), "new_dj": str(new_dj_id)},
         )
         await self.repo.db.commit()
+
+    async def touch(self, session_id: UUID) -> None:
+        await self.repo.touch(session_id)
 
     async def get_participants(self, session_id: UUID) -> list:
         return await self.repo.get_participants(session_id)
