@@ -19,18 +19,23 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
   const [ytResolvedTitle, setYtResolvedTitle] = useState(null);
   const resolveKey = useRef(null);
 
+  // Derived outside effect so it can be a dependency — re-runs when the
+  // pre-resolver patches platform_links.youtube on the same now-playing item.
+  const ytUrl = nowPlaying?.platform_links?.youtube || nowPlaying?.platform_links?.youtubemusic;
+
   useEffect(() => {
     if (!FLAGS.AUTO_PLAY_QUEUE || !nowPlaying) { setYtId(null); setYtResolvedTitle(null); return; }
 
     const key = nowPlaying.id;
     resolveKey.current = key;
+
+    // 1. Direct YouTube link — also catches a late patch from the pre-resolver
+    const directId = extractYouTubeId(ytUrl);
+    if (directId) { setYtId(directId); setYtResolvedTitle(null); return; }
+
+    // Async paths: clear player first
     setYtId(null);
     setYtResolvedTitle(null);
-
-    // 1. Direct YouTube link
-    const ytUrl = nowPlaying.platform_links?.youtube || nowPlaying.platform_links?.youtubemusic;
-    const directId = extractYouTubeId(ytUrl);
-    if (directId) { setYtId(directId); return; }
 
     // 2. YouTube search URL → resolve via SearXNG
     if (ytUrl && isYouTubeSearchUrl(ytUrl)) {
@@ -53,7 +58,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
         patchYouTubeLink(nowPlaying.id, `https://www.youtube.com/watch?v=${id}`);
       }
     });
-  }, [nowPlaying?.id]);
+  }, [nowPlaying?.id, ytUrl]);
 
   async function handleEnded() {
     if (!isDJ) return;
