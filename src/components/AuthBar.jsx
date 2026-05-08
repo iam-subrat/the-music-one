@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import s from '../styles/authbar.module.css';
 
 export default function AuthBar() {
   const { user, profile, signOut } = useAuth();
@@ -7,9 +8,8 @@ export default function AuthBar() {
 
   if (!user) {
     return (
-      <div style={{ position: 'fixed', top: 16, right: 16 }}>
-        <button className="btn btn-ghost" style={{ fontSize: '0.85rem', padding: '8px 14px' }}
-          onClick={() => navigate('/login')}>
+      <div className={s.bar}>
+        <button className={`btn btn-ghost ${s.signInBtn}`} onClick={() => navigate('/login')}>
           Sign in
         </button>
       </div>
@@ -17,14 +17,16 @@ export default function AuthBar() {
   }
 
   return (
-    <div style={{ position: 'fixed', top: 16, right: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+    <div className={s.bar}>
       {profile?.avatar_url && (
-        <img src={profile.avatar_url} alt={profile.display_name}
-          style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+        <img
+          src={profile.avatar_url}
+          alt={profile.display_name}
+          className={s.avatar}
+        />
       )}
-      <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>{profile?.display_name}</span>
-      <button className="btn btn-ghost" style={{ fontSize: '0.82rem', padding: '6px 12px' }}
-        onClick={signOut}>
+      <span className={s.name}>{profile?.display_name}</span>
+      <button className={`btn btn-ghost ${s.signOutBtn}`} onClick={signOut}>
         Sign out
       </button>
     </div>
