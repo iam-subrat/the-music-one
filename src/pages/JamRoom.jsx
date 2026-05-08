@@ -89,7 +89,7 @@ export default function JamRoom() {
   const isHost = session.host_user_id === user?.id;
 
   return (
-    <div className="page" style={{ padding: 0 }}>
+    <div className={`page ${s.page}`}>
       <AuthBar />
       <div className={s.layout}>
         <div className={s.jamHeader}>

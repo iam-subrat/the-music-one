@@ -19,11 +19,7 @@ export default function AuthBar() {
   return (
     <div className={s.bar}>
       {profile?.avatar_url && (
-        <img
-          src={profile.avatar_url}
-          alt={profile.display_name}
-          className={s.avatar}
-        />
+        <img src={profile.avatar_url} alt={profile.display_name} className={s.avatar} />
       )}
       <span className={s.name}>{profile?.display_name}</span>
       <button className={`btn btn-ghost ${s.signOutBtn}`} onClick={signOut}>
