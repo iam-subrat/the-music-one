@@ -141,11 +141,17 @@
   letter-spacing: 0.3px;
 }
 
-.djControls { display: flex; gap: 10px; }
+.djControls { display: flex; gap: 10px; flex-wrap: wrap; }
 .repeatBtn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 0.82rem; cursor: pointer; transition: border-color 0.2s, color 0.2s; }
 .repeatBtn:hover, .repeatBtnActive { border-color: var(--accent); color: var(--accent); }
 .skipBtn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 0.82rem; cursor: pointer; transition: border-color 0.2s, color 0.2s; }
 .skipBtn:hover, .skipBtnVoted { border-color: #ff6b6b; color: #ff6b6b; }
+
+@media (max-width: 480px) {
+  .preferredBtn { padding: 8px 12px; font-size: 0.8rem; gap: 6px; }
+  .repeatBtn, .skipBtn { padding: 6px 10px; font-size: 0.75rem; }
+  .djControls { gap: 8px; }
+}
 
 .ytEmbed {
   width: 100%;

@@ -38,6 +38,10 @@ a { color: inherit; }
 }
 .btn:hover { background: var(--accent-hover); }
 
+@media (max-width: 480px) {
+  .btn { padding: 9px 14px; font-size: 0.85rem; }
+}
+
 .btn-ghost {
   background: transparent;
   border: 1px solid var(--border);
