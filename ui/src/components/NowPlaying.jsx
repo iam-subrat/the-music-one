@@ -10,7 +10,7 @@ import { useToast } from './Toast';
 import PlatformLinks from './PlatformLinks';
 import YouTubeAutoPlayer from './YouTubeAutoPlayer';
 
-export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatform, participantCount, userId, onQueueChange, repeatMode }) {
+export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatform, participantCount, userId, onQueueChange, repeatMode, onRepeatModeChange }) {
   const toast = useToast();
   const { count: skipVotes, hasVoted } = useSkipVotes(nowPlaying?.id, userId, sessionId);
   const skipThreshold = Math.floor(participantCount / 2) + 1;
@@ -158,9 +158,13 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
         {isDJ && (
           <button
             className={`${s.repeatBtn} ${repeatMode !== 'none' ? s.repeatBtnActive : ''}`}
-            onClick={() => setRepeatMode(sessionId, { none: 'song', song: 'queue', queue: 'none' }[repeatMode]).catch(e => toast(e.message))}
+            onClick={() => {
+              const next = { none: 'song', song: 'queue', queue: 'none' }[repeatMode];
+              onRepeatModeChange?.(next);
+              setRepeatMode(sessionId, next).catch(e => { onRepeatModeChange?.(repeatMode); toast(e.message); });
+            }}
           >
-            {repeatMode === 'queue' ? '🔂 Queue ✓' : repeatMode === 'song' ? '🔁 Repeat ✓' : '🔁 Repeat'}
+            {repeatMode === 'queue' ? '🔁 Queue ✓' : repeatMode === 'song' ? '🔂 Song ✓' : '🔁 Repeat'}
           </button>
         )}
         {FLAGS.VOTE_TO_SKIP && (

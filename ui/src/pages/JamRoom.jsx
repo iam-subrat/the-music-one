@@ -18,8 +18,8 @@ export default function JamRoom() {
   const { code } = useParams();
   const navigate = useNavigate();
   const { user, profile, loading: authLoading, setPreferredPlatform } = useAuth();
-  const { session, loading: sessionLoading } = useSession(code);
-  const { items: queueItems, refresh: refreshQueue } = useQueue(session?.id);
+  const { session, loading: sessionLoading, setSession } = useSession(code);
+  const { items: queueItems, refresh: refreshQueue, addItem } = useQueue(session?.id);
   const { participants, refresh: refreshParticipants } = useParticipants(session?.id);
   useEffect(() => {
     if (!authLoading && !user) navigate(`/login?next=/jam/${code}`);
@@ -145,6 +145,7 @@ export default function JamRoom() {
             userId={user?.id}
             onQueueChange={refreshQueue}
             repeatMode={session.repeat_mode ?? 'none'}
+            onRepeatModeChange={(mode) => setSession(prev => ({ ...prev, repeat_mode: mode }))}
           />
           <QueueList
             items={queueItems}
@@ -152,7 +153,7 @@ export default function JamRoom() {
             userId={user?.id}
             profile={profile}
             onPlatformDetected={setPreferredPlatform}
-            onAdded={refreshQueue}
+            onAdded={(item) => { addItem(item); refreshQueue(); }}
           />
         </div>
 

@@ -22,5 +22,9 @@ export function useQueue(sessionId) {
     return cleanup;
   }, [sessionId]);
 
-  return { items, refresh };
+  const addItem = useCallback((item) => {
+    setItems(prev => [...prev, item]);
+  }, []);
+
+  return { items, refresh, addItem };
 }

@@ -70,6 +70,7 @@ async def set_repeat_mode(
     svc=Depends(get_session_service),
 ):
     await svc.set_repeat_mode(session_id, body.mode, user_id)
+    await bus.publish(str(session_id), "session_updated", {"repeat_mode": body.mode})
     return {"ok": True}
 
 

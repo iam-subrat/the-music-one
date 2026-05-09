@@ -22,7 +22,7 @@ export default function AddSongForm({ sessionId, userId, profile, onPlatformDete
       const item = await addToQueue(sessionId, url.trim());
       toast(`"${item.title}" added to queue`);
       setUrl('');
-      onAdded?.();
+      onAdded?.(item);
     } catch (e) {
       toast(e.message || 'Could not add song.');
     } finally {
