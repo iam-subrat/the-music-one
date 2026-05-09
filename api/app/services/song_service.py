@@ -1,4 +1,5 @@
 import httpx
+from fastapi import HTTPException
 from app.config import settings
 
 _KEY_REMAP = {
@@ -21,8 +22,20 @@ class SongService:
             params["key"] = settings.odesli_api_key
 
         async with httpx.AsyncClient() as client:
-            res = await client.get(_ODESLI_URL, params=params, timeout=10)
-            res.raise_for_status()
+            try:
+                res = await client.get(_ODESLI_URL, params=params, timeout=10)
+                res.raise_for_status()
+            except httpx.TimeoutException:
+                raise HTTPException(status_code=503, detail="Song lookup timed out. Try again.")
+            except httpx.HTTPStatusError as e:
+                status = e.response.status_code
+                if status == 400:
+                    raise HTTPException(status_code=422, detail="Unrecognized or unsupported URL.")
+                if status == 429:
+                    raise HTTPException(status_code=429, detail="Too many requests. Try again shortly.")
+                raise HTTPException(status_code=502, detail="Song lookup service unavailable.")
+            except httpx.RequestError:
+                raise HTTPException(status_code=502, detail="Song lookup service unavailable.")
             data = res.json()
 
         key = data.get("entityUniqueId") or next(iter(data.get("entitiesByUniqueId", {})), None)

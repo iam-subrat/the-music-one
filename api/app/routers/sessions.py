@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from app.dependencies import get_current_user, get_session_service, get_queue_service
 from app.schemas.session import SessionResponse, RepeatModeUpdate, DjPassRequest
 from app.schemas.queue_item import QueueItemCreate, QueueItemResponse
+from app.services.event_bus import bus
 
 router = APIRouter()
 
@@ -31,6 +32,7 @@ async def join_session(
     svc=Depends(get_session_service),
 ):
     await svc.join(session_id, user_id)
+    await bus.publish(str(session_id), "participants_changed", {})
     return {"ok": True}
 
 
@@ -42,6 +44,7 @@ async def leave_session(
     svc=Depends(get_session_service),
 ):
     await svc.leave(session_id, user_id)
+    await bus.publish(str(session_id), "participants_changed", {})
     return {"ok": True}
 
 
@@ -55,6 +58,7 @@ async def end_session(
         await svc.end(session_id, user_id)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
+    await bus.publish(str(session_id), "session_updated", {"status": "ended"})
     return {"ok": True}
 
 
@@ -113,7 +117,9 @@ async def add_to_queue(
     user_id: UUID = Depends(get_current_user),
     svc=Depends(get_queue_service),
 ):
-    return await svc.add(session_id, user_id, body.url)
+    item = await svc.add(session_id, user_id, body.url)
+    await bus.publish(str(session_id), "queue_changed", {})
+    return item
 
 
 @router.post("/{session_id}/queue/next")
@@ -123,6 +129,7 @@ async def play_next(
     svc=Depends(get_queue_service),
 ):
     next_id = await svc.play_next(session_id, user_id)
+    await bus.publish(str(session_id), "queue_changed", {})
     return {"next_item_id": str(next_id) if next_id else None}
 
 
@@ -133,4 +140,5 @@ async def force_skip(
     svc=Depends(get_queue_service),
 ):
     next_id = await svc.force_skip(session_id, user_id)
+    await bus.publish(str(session_id), "queue_changed", {})
     return {"next_item_id": str(next_id) if next_id else None}

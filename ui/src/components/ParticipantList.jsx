@@ -17,13 +17,13 @@ export default function ParticipantList({ participants, session, currentUserId }
             : <div className={s.pAvatar} />}
           <span className={s.pName}>{p.display_name || 'Guest'}</span>
           {p.id === session.dj_user_id && <span className={s.pDj}>👑</span>}
-          {FLAGS.DJ_TOKEN && isHost && p.id !== currentUserId && (
+          {FLAGS.DJ_TOKEN && isHost && p.id !== currentUserId && p.id !== session.dj_user_id && (
             <button
               className="btn btn-ghost"
               style={{ fontSize: '0.72rem', padding: '3px 8px' }}
               onClick={() => passDjToken(session.id, p.id).then(() => toast('DJ token passed!'))}
             >
-              DJ
+              Make DJ
             </button>
           )}
         </div>

@@ -1,16 +1,15 @@
-// ui/src/hooks/useParticipants.js — full file replacement
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import { openSSE } from '../lib/sse';
 
 export function useParticipants(sessionId) {
   const [participants, setParticipants] = useState([]);
 
-  async function fetchParticipants() {
+  const fetchParticipants = useCallback(async () => {
     if (!sessionId) return;
     const res = await api(`/sessions/${sessionId}/participants`);
     if (res.ok) setParticipants(await res.json());
-  }
+  }, [sessionId]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -20,7 +19,7 @@ export function useParticipants(sessionId) {
       onReconnect: () => fetchParticipants(),
     });
     return cleanup;
-  }, [sessionId]);
+  }, [sessionId, fetchParticipants]);
 
-  return participants;
+  return { participants, refresh: fetchParticipants };
 }

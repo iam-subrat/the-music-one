@@ -5,7 +5,10 @@ export async function addToQueue(sessionId, url) {
     method: 'POST',
     body: JSON.stringify({ url }),
   });
-  if (!res.ok) throw new Error('Failed to add to queue');
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || 'Failed to add to queue');
+  }
   return res.json();
 }
 
@@ -26,8 +29,11 @@ export async function forceSkip(sessionId) {
   return res.json();
 }
 
-export async function castSkipVote(queueItemId, _userId, _threshold) {
-  const res = await api(`/items/${queueItemId}/votes`, { method: 'POST' });
+export async function castSkipVote(queueItemId, threshold) {
+  const res = await api(`/items/${queueItemId}/votes`, {
+    method: 'POST',
+    body: JSON.stringify({ threshold }),
+  });
   if (!res.ok) throw new Error('Failed to cast vote');
   const data = await res.json();
   return data.skipped;

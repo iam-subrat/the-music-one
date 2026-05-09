@@ -38,8 +38,8 @@ class QueueService:
     async def patch_youtube_link(self, item_id: UUID, youtube_url: str, user_id: UUID) -> None:
         await self.repo.patch_youtube_link(item_id, youtube_url, user_id)
 
-    async def cast_vote(self, queue_item_id: UUID, user_id: UUID) -> bool:
-        return await self.vote_repo.cast_vote(queue_item_id, user_id, SKIP_THRESHOLD)
+    async def cast_vote(self, queue_item_id: UUID, user_id: UUID, threshold: int = SKIP_THRESHOLD) -> bool:
+        return await self.vote_repo.cast_vote(queue_item_id, user_id, threshold)
 
     async def remove_vote(self, queue_item_id: UUID, user_id: UUID) -> None:
         await self.vote_repo.remove_vote(queue_item_id, user_id)

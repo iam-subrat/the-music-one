@@ -47,7 +47,7 @@ class SessionRepository(AbstractRepository):
         await self.db.execute(
             update(Session)
             .where(Session.id == session_id)
-            .values(status="ended", ended_at=datetime.now(timezone.utc))
+            .values(status="ended", ended_at=datetime.utcnow())
         )
         await self.db.commit()
 
@@ -70,7 +70,7 @@ class SessionRepository(AbstractRepository):
         await self.db.execute(
             update(Session)
             .where(Session.id == session_id)
-            .values(last_activity_at=datetime.now(timezone.utc))
+            .values(last_activity_at=datetime.utcnow())
         )
         await self.db.commit()
 

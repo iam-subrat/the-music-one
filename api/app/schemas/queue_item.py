@@ -27,6 +27,10 @@ class YouTubeLinkUpdate(BaseModel):
     youtube_url: str
 
 
+class CastVoteRequest(BaseModel):
+    threshold: int = 3
+
+
 class SkipVoteResponse(BaseModel):
     queue_item_id: UUID
     count: int

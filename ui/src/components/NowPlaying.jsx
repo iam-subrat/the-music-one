@@ -20,7 +20,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
   const resolveKey = useRef(null);
 
   useEffect(() => {
-    if (!FLAGS.AUTO_PLAY_QUEUE || !nowPlaying) { setYtId(null); setYtResolvedTitle(null); return; }
+    if (!FLAGS.AUTO_PLAY_QUEUE || !nowPlaying || !isDJ) { setYtId(null); setYtResolvedTitle(null); return; }
 
     const key = nowPlaying.id;
     resolveKey.current = key;
@@ -57,7 +57,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
           patchYouTubeLink(nowPlaying.id, `https://www.youtube.com/watch?v=${id}`);
         }
       });
-  }, [nowPlaying?.id]);
+  }, [nowPlaying?.id, isDJ]);
 
   async function handleEnded() {
     if (!isDJ) return;
@@ -129,7 +129,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
         />
       </div>
 
-      {FLAGS.AUTO_PLAY_QUEUE && ytId && (
+      {FLAGS.AUTO_PLAY_QUEUE && ytId && isDJ && (
         <>
           {ytResolvedTitle && (
             <div style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>
@@ -180,7 +180,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
       if (hasVoted) {
         await removeSkipVote(nowPlaying.id, userId);
       } else {
-        const skipped = await castSkipVote(nowPlaying.id, userId, skipThreshold);
+        const skipped = await castSkipVote(nowPlaying.id, skipThreshold);
         if (skipped) onQueueChange?.();
       }
     } catch (e) {

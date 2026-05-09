@@ -20,34 +20,37 @@ export default function JamRoom() {
   const { user, profile, loading: authLoading, setPreferredPlatform } = useAuth();
   const { session, loading: sessionLoading } = useSession(code);
   const { items: queueItems, refresh: refreshQueue } = useQueue(session?.id);
-  const participants = useParticipants(session?.id);
+  const { participants, refresh: refreshParticipants } = useParticipants(session?.id);
   useEffect(() => {
     if (!authLoading && !user) navigate(`/login?next=/jam/${code}`);
   }, [authLoading, user, navigate, code]);
 
   useEffect(() => {
-    if (session?.id && user?.id) joinSession(session.id);
-  }, [session?.id, user?.id]);
+    if (!session?.id || !user?.id) return;
+    joinSession(session.id).then(() => refreshParticipants());
+  }, [session?.id, user?.id, refreshParticipants]);
 
   // Store session id in ref for cleanup
   const sessionIdRef = useRef(null);
   useEffect(() => { sessionIdRef.current = session?.id ?? null; }, [session?.id]);
 
-  // Cleanup on unmount / tab hide — sendBeacon ensures request completes
+  // Leave on SPA nav (unmount) or actual tab/browser close (pagehide).
+  // Do NOT leave on visibilitychange:hidden — tab-switching fires that and
+  // there is no re-join on return, causing false participant drops.
   useEffect(() => {
-    const handleHide = () => {
-      if (document.visibilityState === 'hidden' && sessionIdRef.current) {
-        navigator.sendBeacon(`${API_BASE}/api/sessions/${sessionIdRef.current}/leave`);
-      }
-    };
-    document.addEventListener('visibilitychange', handleHide);
-    return () => {
-      document.removeEventListener('visibilitychange', handleHide);
+    const handlePageHide = () => {
       if (sessionIdRef.current) {
         navigator.sendBeacon(`${API_BASE}/api/sessions/${sessionIdRef.current}/leave`);
       }
     };
-  }, []); // intentionally empty — runs once on mount/unmount
+    window.addEventListener('pagehide', handlePageHide);
+    return () => {
+      window.removeEventListener('pagehide', handlePageHide);
+      if (sessionIdRef.current) {
+        navigator.sendBeacon(`${API_BASE}/api/sessions/${sessionIdRef.current}/leave`);
+      }
+    };
+  }, []);
 
   // 30s heartbeat to keep session alive
   useEffect(() => {
@@ -124,7 +127,7 @@ export default function JamRoom() {
               <button
                 className="btn btn-danger"
                 style={{ fontSize: '0.82rem', padding: '8px 14px' }}
-                onClick={() => { if (window.confirm('End this jam for everyone?')) endSession(session.id); }}
+                onClick={async () => { if (window.confirm('End this jam for everyone?')) { await endSession(session.id); navigate('/'); } }}
               >
                 End Session
               </button>

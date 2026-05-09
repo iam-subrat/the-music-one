@@ -23,8 +23,8 @@ export default function AddSongForm({ sessionId, userId, profile, onPlatformDete
       toast(`"${item.title}" added to queue`);
       setUrl('');
       onAdded?.();
-    } catch {
-      toast('Could not add song. Check the URL.');
+    } catch (e) {
+      toast(e.message || 'Could not add song.');
     } finally {
       setBusy(false);
     }

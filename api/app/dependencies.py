@@ -1,10 +1,30 @@
-from typing import Annotated
 from uuid import UUID
+import httpx
 from fastapi import Depends, HTTPException, Request, status
-from jose import JWTError, jwt
+from jose import JWTError, jwk, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
+
+_jwks_cache: dict | None = None
+
+
+async def _public_key(kid: str):
+    global _jwks_cache
+    if _jwks_cache is None:
+        async with httpx.AsyncClient() as client:
+            res = await client.get(f"{settings.supabase_url}/auth/v1/.well-known/jwks.json")
+            _jwks_cache = res.json()
+    for key in _jwks_cache.get("keys", []):
+        if key.get("kid") == kid:
+            return jwk.construct(key)
+    raise ValueError(f"kid {kid!r} not in JWKS")
+
+
+async def _decode(token: str):
+    header = jwt.get_unverified_header(token)
+    key = await _public_key(header["kid"])
+    return jwt.decode(token, key, algorithms=[header["alg"]], audience="authenticated")
 
 
 _CSRF_EXEMPT_SUFFIXES = ("/leave",)
@@ -28,15 +48,12 @@ async def get_current_user(
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     try:
-        payload = jwt.decode(
-            token,
-            settings.supabase_jwt_secret,
-            algorithms=["HS256"],
-            audience="authenticated",
-        )
+        payload = await _decode(token)
         return UUID(payload["sub"])
-    except (JWTError, KeyError, ValueError):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from exc
 
 
 async def get_optional_user(request: Request) -> UUID | None:
@@ -44,9 +61,7 @@ async def get_optional_user(request: Request) -> UUID | None:
     if not token:
         return None
     try:
-        payload = jwt.decode(
-            token, settings.supabase_jwt_secret, algorithms=["HS256"], audience="authenticated"
-        )
+        payload = await _decode(token)
         return UUID(payload["sub"])
     except Exception:
         return None

@@ -51,7 +51,7 @@ async def auth_callback(
         avatar_url=user_meta.get("user_metadata", {}).get("avatar_url"),
     )
 
-    redirect = RedirectResponse(url="/", status_code=302)
+    redirect = RedirectResponse(url=settings.frontend_url, status_code=302)
     redirect.set_cookie("access_token", tokens["access_token"], httponly=True, samesite="lax", secure=True, max_age=60 * 60 * 24 * 7)
     redirect.set_cookie("refresh_token", tokens["refresh_token"], httponly=True, samesite="lax", secure=True, max_age=60 * 60 * 24 * 30)
     redirect.delete_cookie("pkce_verifier")
@@ -78,6 +78,7 @@ async def refresh(
         raise HTTPException(status_code=401, detail="Refresh failed")
     response.set_cookie("access_token", tokens["access_token"], httponly=True, samesite="lax", secure=True, max_age=60 * 60 * 24 * 7)
     return {"ok": True}
+
 
 
 @router.get("/me", response_model=UserResponse)
