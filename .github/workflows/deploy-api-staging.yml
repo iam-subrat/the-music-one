@@ -1,0 +1,55 @@
+name: Deploy API (Staging)
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - "api/**"
+      - "docker-compose*.yml"
+      - ".github/workflows/deploy-api-staging.yml"
+
+jobs:
+  migrate:
+    name: Migrate → Staging DB
+    runs-on: ubuntu-latest
+    environment: staging
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          version: latest
+      - run: uv sync
+      - run: uv run alembic upgrade head
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+  deploy:
+    name: Deploy → Staging
+    needs: migrate
+    runs-on: [self-hosted, musicone-staging]
+    environment: staging
+    env:
+      COMPOSE_PROJECT_NAME: musicone-staging
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build & deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          ODESLI_API_KEY: ${{ secrets.ODESLI_API_KEY }}
+          ALLOWED_ORIGINS: ${{ vars.ALLOWED_ORIGINS }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build api
+          docker image prune -f
+      - name: Health check
+        run: |
+          sleep 15
+          curl -f http://127.0.0.1:8001/api/health || exit 1

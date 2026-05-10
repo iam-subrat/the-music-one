@@ -6,7 +6,6 @@ services:
       - DATABASE_URL
       - SUPABASE_URL
       - SUPABASE_ANON_KEY
-      - SUPABASE_JWT_SECRET
       - YOUTUBE_API_KEY
       - ODESLI_API_KEY
       - ALLOWED_ORIGINS

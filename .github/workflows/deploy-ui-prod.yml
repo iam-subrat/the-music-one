@@ -3,6 +3,9 @@ name: Deploy to Production (GitHub Pages)
 on:
   push:
     branches: [main]
+    paths:
+      - "ui/**"
+      - ".github/workflows/deploy-ui-prod.yml"
 
 permissions:
   contents: read
@@ -10,33 +13,7 @@ permissions:
   id-token: write
 
 jobs:
-  migrate:
-    runs-on: ubuntu-latest
-    environment: production
-    defaults:
-      run:
-        working-directory: api
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: astral-sh/setup-uv@v3
-        with:
-          version: latest
-
-      - name: Install dependencies
-        run: uv sync
-
-      - name: Run DB migrations
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-        run: uv run alembic upgrade head
-
   build:
-    needs: migrate
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -55,8 +32,6 @@ jobs:
       - name: Build UI
         working-directory: ui
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           FLAG_JAM_SESSION: 'true'
           FLAG_VOTE_TO_SKIP: 'true'
