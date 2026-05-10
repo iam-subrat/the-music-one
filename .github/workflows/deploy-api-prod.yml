@@ -46,6 +46,7 @@ jobs:
           ODESLI_API_KEY: ${{ secrets.ODESLI_API_KEY }}
           ALLOWED_ORIGINS: ${{ vars.ALLOWED_ORIGINS }}
           FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+          ROOT_PATH: ${{ vars.ROOT_PATH }}
         run: |
           docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build api
           docker image prune -f
