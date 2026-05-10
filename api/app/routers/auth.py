@@ -54,14 +54,14 @@ async def auth_callback(
     redirect = RedirectResponse(url=settings.frontend_url, status_code=302)
     redirect.set_cookie("access_token", tokens["access_token"], httponly=True, samesite="none", secure=True, max_age=60 * 60 * 24 * 7)
     redirect.set_cookie("refresh_token", tokens["refresh_token"], httponly=True, samesite="none", secure=True, max_age=60 * 60 * 24 * 30)
-    redirect.delete_cookie("pkce_verifier")
+    redirect.delete_cookie("pkce_verifier", samesite="lax", secure=True)
     return redirect
 
 
 @router.post("/logout")
 async def logout(response: Response):
-    response.delete_cookie("access_token")
-    response.delete_cookie("refresh_token")
+    response.delete_cookie("access_token", samesite="none", secure=True)
+    response.delete_cookie("refresh_token", samesite="none", secure=True)
     return {"ok": True}
 
 
@@ -77,6 +77,8 @@ async def refresh(
     except Exception:
         raise HTTPException(status_code=401, detail="Refresh failed")
     response.set_cookie("access_token", tokens["access_token"], httponly=True, samesite="none", secure=True, max_age=60 * 60 * 24 * 7)
+    if tokens.get("refresh_token"):
+        response.set_cookie("refresh_token", tokens["refresh_token"], httponly=True, samesite="none", secure=True, max_age=60 * 60 * 24 * 30)
     return {"ok": True}
 
 
