@@ -1,0 +1,5 @@
+services:
+  api:
+    container_name: musicone-api-staging
+    ports:
+      - "127.0.0.1:8001:8000"

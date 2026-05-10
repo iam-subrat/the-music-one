@@ -35,12 +35,10 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: uv run alembic upgrade head
 
-  deploy:
+  build:
     needs: migrate
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    environment: production
     steps:
       - uses: actions/checkout@v4
 
@@ -86,5 +84,13 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ui/dist
+
+  deploy-pages:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
