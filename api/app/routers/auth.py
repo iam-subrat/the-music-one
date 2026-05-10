@@ -52,8 +52,8 @@ async def auth_callback(
     )
 
     redirect = RedirectResponse(url=settings.frontend_url, status_code=302)
-    redirect.set_cookie("access_token", tokens["access_token"], httponly=True, samesite="lax", secure=True, max_age=60 * 60 * 24 * 7)
-    redirect.set_cookie("refresh_token", tokens["refresh_token"], httponly=True, samesite="lax", secure=True, max_age=60 * 60 * 24 * 30)
+    redirect.set_cookie("access_token", tokens["access_token"], httponly=True, samesite="none", secure=True, max_age=60 * 60 * 24 * 7)
+    redirect.set_cookie("refresh_token", tokens["refresh_token"], httponly=True, samesite="none", secure=True, max_age=60 * 60 * 24 * 30)
     redirect.delete_cookie("pkce_verifier")
     return redirect
 
@@ -76,7 +76,7 @@ async def refresh(
         tokens = await _auth_svc.refresh_token(refresh_token)
     except Exception:
         raise HTTPException(status_code=401, detail="Refresh failed")
-    response.set_cookie("access_token", tokens["access_token"], httponly=True, samesite="lax", secure=True, max_age=60 * 60 * 24 * 7)
+    response.set_cookie("access_token", tokens["access_token"], httponly=True, samesite="none", secure=True, max_age=60 * 60 * 24 * 7)
     return {"ok": True}
 
 
