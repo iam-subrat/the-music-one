@@ -12,7 +12,7 @@ async def lifespan(app: FastAPI):
     bus.shutdown()
 
 
-app = FastAPI(title="MusicOne API", lifespan=lifespan)
+app = FastAPI(title="MusicOne API", root_path=settings.root_path, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

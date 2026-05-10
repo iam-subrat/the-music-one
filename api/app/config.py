@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     youtube_api_key: str = ""
     allowed_origins: str = "http://localhost:5173"
     frontend_url: str = "http://localhost:5173"
+    root_path: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
