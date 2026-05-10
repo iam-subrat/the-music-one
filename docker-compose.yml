@@ -10,3 +10,4 @@ services:
       - ODESLI_API_KEY
       - ALLOWED_ORIGINS
       - FRONTEND_URL
+      - ROOT_PATH
