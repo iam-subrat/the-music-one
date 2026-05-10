@@ -47,7 +47,7 @@ jobs:
           ALLOWED_ORIGINS: ${{ vars.ALLOWED_ORIGINS }}
           FRONTEND_URL: ${{ vars.FRONTEND_URL }}
         run: |
-          docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build api
+          docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build api
           docker image prune -f
       - name: Health check
         run: |
