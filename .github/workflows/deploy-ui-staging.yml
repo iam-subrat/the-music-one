@@ -1,4 +1,4 @@
-name: Deploy to Staging (Cloudflare Pages)
+name: Deploy Staging UI (Cloudflare Pages)
 
 on:
   push:

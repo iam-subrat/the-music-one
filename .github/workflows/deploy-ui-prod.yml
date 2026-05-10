@@ -1,4 +1,4 @@
-name: Deploy to Production (GitHub Pages)
+name: Deploy Production UI (GitHub Pages)
 
 on:
   push:
