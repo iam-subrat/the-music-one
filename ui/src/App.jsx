@@ -19,7 +19,6 @@ function JamNew() {
   return <div className="page" style={{ justifyContent: 'center' }}><div className="spinner" /></div>;
 }
 
-// main app
 export default function App() {
   return (
     <Routes>
