@@ -51,17 +51,35 @@ async def auth_callback(
         avatar_url=user_meta.get("user_metadata", {}).get("avatar_url"),
     )
 
+    _cookie_kwargs = {
+        "httponly": True,
+        "samesite": settings.cookie_samesite,
+        "secure": True,
+    }
+    if settings.cookie_domain:
+        _cookie_kwargs["domain"] = settings.cookie_domain
+
     redirect = RedirectResponse(url=settings.frontend_url, status_code=302)
-    redirect.set_cookie("access_token", tokens["access_token"], httponly=True, samesite="none", secure=True, max_age=60 * 60 * 24 * 7)
-    redirect.set_cookie("refresh_token", tokens["refresh_token"], httponly=True, samesite="none", secure=True, max_age=60 * 60 * 24 * 30)
+    redirect.set_cookie("access_token", tokens["access_token"], max_age=60 * 60 * 24 * 7, **_cookie_kwargs)
+    redirect.set_cookie("refresh_token", tokens["refresh_token"], max_age=60 * 60 * 24 * 30, **_cookie_kwargs)
     redirect.delete_cookie("pkce_verifier", samesite="lax", secure=True)
     return redirect
 
 
+def _cookie_attrs() -> dict:
+    attrs = {"httponly": True, "samesite": settings.cookie_samesite, "secure": True}
+    if settings.cookie_domain:
+        attrs["domain"] = settings.cookie_domain
+    return attrs
+
+
 @router.post("/logout")
 async def logout(response: Response):
-    response.delete_cookie("access_token", samesite="none", secure=True)
-    response.delete_cookie("refresh_token", samesite="none", secure=True)
+    attrs = {"samesite": settings.cookie_samesite, "secure": True}
+    if settings.cookie_domain:
+        attrs["domain"] = settings.cookie_domain
+    response.delete_cookie("access_token", **attrs)
+    response.delete_cookie("refresh_token", **attrs)
     return {"ok": True}
 
 
@@ -76,9 +94,10 @@ async def refresh(
         tokens = await _auth_svc.refresh_token(refresh_token)
     except Exception:
         raise HTTPException(status_code=401, detail="Refresh failed")
-    response.set_cookie("access_token", tokens["access_token"], httponly=True, samesite="none", secure=True, max_age=60 * 60 * 24 * 7)
+    attrs = _cookie_attrs()
+    response.set_cookie("access_token", tokens["access_token"], max_age=60 * 60 * 24 * 7, **attrs)
     if tokens.get("refresh_token"):
-        response.set_cookie("refresh_token", tokens["refresh_token"], httponly=True, samesite="none", secure=True, max_age=60 * 60 * 24 * 30)
+        response.set_cookie("refresh_token", tokens["refresh_token"], max_age=60 * 60 * 24 * 30, **attrs)
     return {"ok": True}
 
 

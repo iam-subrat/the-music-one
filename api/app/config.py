@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     allowed_origins: str = "http://localhost:5173"
     frontend_url: str = "http://localhost:5173"
     root_path: str = ""
+    cookie_domain: str = ""
+    cookie_samesite: str = "lax"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

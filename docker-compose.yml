@@ -11,3 +11,5 @@ services:
       - ALLOWED_ORIGINS
       - FRONTEND_URL
       - ROOT_PATH
+      - COOKIE_DOMAIN
+      - COOKIE_SAMESITE
