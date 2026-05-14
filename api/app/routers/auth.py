@@ -53,7 +53,7 @@ async def auth_callback(
 
     _cookie_kwargs = {
         "httponly": True,
-        "samesite": settings.cookie_samesite,
+        "samesite": settings.cookie_samesite_value,
         "secure": True,
     }
     if settings.cookie_domain:
@@ -67,7 +67,7 @@ async def auth_callback(
 
 
 def _cookie_attrs() -> dict:
-    attrs = {"httponly": True, "samesite": settings.cookie_samesite, "secure": True}
+    attrs = {"httponly": True, "samesite": settings.cookie_samesite_value, "secure": True}
     if settings.cookie_domain:
         attrs["domain"] = settings.cookie_domain
     return attrs
@@ -75,7 +75,7 @@ def _cookie_attrs() -> dict:
 
 @router.post("/logout")
 async def logout(response: Response):
-    attrs = {"samesite": settings.cookie_samesite, "secure": True}
+    attrs = {"samesite": settings.cookie_samesite_value, "secure": True}
     if settings.cookie_domain:
         attrs["domain"] = settings.cookie_domain
     response.delete_cookie("access_token", **attrs)

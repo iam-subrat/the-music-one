@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     cookie_domain: str = ""
     cookie_samesite: str = "lax"
 
+    @property
+    def cookie_samesite_value(self) -> str:
+        v = self.cookie_samesite.strip().lower()
+        return v if v in ("strict", "lax", "none") else "lax"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     @property
