@@ -47,6 +47,7 @@ export default function YouTubeAutoPlayer({ videoId, onEnded, repeat }) {
         videoId,
         playerVars: { autoplay: 1, rel: 0, modestbranding: 1 },
         events: {
+          onReady: (e) => e.target.playVideo(),
           onStateChange: (e) => {
             if (e.data === window.YT.PlayerState.ENDED) {
               if (repeatRef.current) {
