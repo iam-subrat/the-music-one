@@ -22,20 +22,34 @@ function loadApi() {
 }
 
 /**
- * Embeds a YouTube player that autoplays videoId.
- * Calls onEnded when playback finishes (unless repeat is true, in which case it restarts).
- * Key the component on videoId to force remount on song change.
+ * Embeds a YouTube player. First song requires a user tap on mobile (autoplay policy).
+ * Subsequent songs use loadVideoById on the same player instance — iOS keeps the
+ * underlying <video> element "unlocked" after the first user gesture, so autoplay works.
+ *
+ * Do NOT use key={videoId} on this component. Let the videoId prop change in place.
  */
 export default function YouTubeAutoPlayer({ videoId, onEnded, repeat }) {
-  // wrapperRef is owned by React — never touched by YT.
-  // YT gets a fresh child div it can replace with its iframe.
   const wrapperRef = useRef(null);
   const playerRef = useRef(null);
   const repeatRef = useRef(repeat);
+  const onEndedRef = useRef(onEnded);
+  // Always reflects the latest videoId so initPlayer uses it even if the prop
+  // changed while waiting for the YT API to load.
+  const videoIdRef = useRef(videoId);
 
-  // Keep repeatRef current without remounting the player
   useEffect(() => { repeatRef.current = repeat; }, [repeat]);
+  useEffect(() => { onEndedRef.current = onEnded; }, [onEnded]);
 
+  // Song change: swap video in the existing player (keeps iOS media element "activated").
+  // On first mount playerRef is null — initPlayer handles the initial videoId.
+  useEffect(() => {
+    videoIdRef.current = videoId;
+    if (playerRef.current) {
+      playerRef.current.loadVideoById(videoId);
+    }
+  }, [videoId]);
+
+  // Create the player exactly once per mount.
   useEffect(() => {
     loadApi();
 
@@ -44,17 +58,16 @@ export default function YouTubeAutoPlayer({ videoId, onEnded, repeat }) {
       const playerDiv = document.createElement('div');
       wrapperRef.current.appendChild(playerDiv);
       playerRef.current = new window.YT.Player(playerDiv, {
-        videoId,
+        videoId: videoIdRef.current,
         playerVars: { autoplay: 1, rel: 0, modestbranding: 1 },
         events: {
-          onReady: (e) => e.target.playVideo(),
           onStateChange: (e) => {
             if (e.data === window.YT.PlayerState.ENDED) {
               if (repeatRef.current) {
                 playerRef.current.seekTo(0);
                 playerRef.current.playVideo();
               } else {
-                onEnded?.();
+                onEndedRef.current?.();
               }
             }
           },
@@ -79,7 +92,7 @@ export default function YouTubeAutoPlayer({ videoId, onEnded, repeat }) {
       playerRef.current = null;
       if (wrapperRef.current) wrapperRef.current.innerHTML = '';
     };
-  }, [videoId]);
+  }, []);
 
   return <div ref={wrapperRef} className={s.ytEmbed} />;
 }

@@ -24,8 +24,9 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
 
     const key = nowPlaying.id;
     resolveKey.current = key;
-    setYtId(null);
     setYtResolvedTitle(null);
+    // Don't null ytId here — keeping the player mounted preserves the iOS media
+    // element "activation" so subsequent songs autoplay after the first user tap.
 
     // 1. Direct YouTube link
     const ytUrl = nowPlaying.platform_links?.youtube || nowPlaying.platform_links?.youtubemusic;
@@ -136,7 +137,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
               ▶ Playing via YouTube: {ytResolvedTitle}
             </div>
           )}
-          <YouTubeAutoPlayer key={ytId} videoId={ytId} onEnded={handleEnded} repeat={repeatMode === 'song'} />
+          <YouTubeAutoPlayer videoId={ytId} onEnded={handleEnded} repeat={repeatMode === 'song'} />
         </>
       )}
 
