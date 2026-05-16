@@ -6,6 +6,16 @@
 
 ---
 
+## Feature Flag
+
+Gated behind `FLAGS.PLAYLIST_IMPORT` (default `false`).  
+- `flags.js`: `PLAYLIST_IMPORT: JSON.parse(__FLAG_PLAYLIST_IMPORT__)`  
+- `vite.config.js`: `__FLAG_PLAYLIST_IMPORT__` → env `FLAG_PLAYLIST_IMPORT`, default `'false'`  
+- Toggle without redeploy via Supabase `feature_flags` table (`key: "PLAYLIST_IMPORT"`)  
+- `AddSongForm` playlist detection branch only runs when `FLAGS.PLAYLIST_IMPORT` is true
+
+---
+
 ## Overview
 
 Users can paste a Spotify or YouTube playlist URL into the "Add to Queue" input in a Jam Session. A track-selection modal appears showing up to 50 tracks from the playlist. Selected tracks are added to the queue immediately using platform metadata (no Odesli call at add time). Odesli resolution happens lazily when each track is about to play, respecting rate limits naturally via song duration spacing.

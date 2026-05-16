@@ -31,5 +31,6 @@ export default defineConfig({
     __FLAG_SCHEDULED_JAMS__:      JSON.stringify(process.env.FLAG_SCHEDULED_JAMS      ?? 'false'),
     __FLAG_QUEUE_RULES__:         JSON.stringify(process.env.FLAG_QUEUE_RULES         ?? 'false'),
     __FLAG_EMBED_WIDGET__:        JSON.stringify(process.env.FLAG_EMBED_WIDGET        ?? 'false'),
+    __FLAG_PLAYLIST_IMPORT__:     JSON.stringify(process.env.FLAG_PLAYLIST_IMPORT     ?? 'false'),
   },
 });
