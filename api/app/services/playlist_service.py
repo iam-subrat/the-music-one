@@ -77,25 +77,26 @@ class SpotifyPlaylistService:
             SpotifyPlaylistService._token_expiry = time.time() + data.get("expires_in", 3600)
             return SpotifyPlaylistService._token
 
-    async def _fetch_with_token(self, playlist_id: str, token: str) -> PlaylistPreview:
-        fields = "name,items(track(name,artists(name),external_urls(spotify),album(images)))"
+    async def _fetch_with_token(self, playlist_id: str, token: str) -> Optional[PlaylistPreview]:
         async with httpx.AsyncClient() as client:
             res = await client.get(
-                f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks",
-                params={"limit": 50, "fields": fields},
+                f"https://api.spotify.com/v1/playlists/{playlist_id}",
+                params={
+                    "fields": "name,tracks.items(track(name,artists(name),external_urls(spotify),album(images)))",
+                },
                 headers={"Authorization": f"Bearer {token}"},
                 timeout=10,
             )
-            if res.status_code == 401:
-                return None  # signal caller to retry
             if res.status_code == 404:
                 raise HTTPException(status_code=404, detail="Playlist not found or private.")
+            if res.status_code == 401:
+                return None  # sentinel: caller retries with fresh token
             if not res.is_success:
                 raise HTTPException(status_code=502, detail="Spotify unavailable.")
             data = res.json()
 
         tracks: list[PlaylistTrack] = []
-        for item in data.get("items", []):
+        for item in data.get("tracks", {}).get("items", [])[:50]:
             track = item.get("track")
             if not track:
                 continue
@@ -138,6 +139,20 @@ class YouTubePlaylistService:
             raise HTTPException(status_code=503, detail="YouTube API not configured on this server.")
 
         async with httpx.AsyncClient() as client:
+            # Preflight: get actual playlist title
+            pl_res = await client.get(
+                "https://www.googleapis.com/youtube/v3/playlists",
+                params={"part": "snippet", "maxResults": 1, "id": playlist_id, "key": settings.youtube_api_key},
+                timeout=10,
+            )
+            if pl_res.status_code == 404 or not pl_res.is_success:
+                playlist_name = "YouTube Playlist"
+            else:
+                pl_data = pl_res.json()
+                pl_items = pl_data.get("items", [])
+                playlist_name = pl_items[0]["snippet"]["title"] if pl_items else "YouTube Playlist"
+
+            # Get tracks
             res = await client.get(
                 "https://www.googleapis.com/youtube/v3/playlistItems",
                 params={
@@ -154,15 +169,12 @@ class YouTubePlaylistService:
                 raise HTTPException(status_code=502, detail="YouTube unavailable.")
             data = res.json()
 
-        playlist_name = ""
         tracks: list[PlaylistTrack] = []
         for item in data.get("items", []):
             snippet = item.get("snippet", {})
             video_id = snippet.get("resourceId", {}).get("videoId")
             if not video_id:
                 continue
-            if not playlist_name:
-                playlist_name = snippet.get("playlistTitle", "")
             thumbnails = snippet.get("thumbnails", {})
             thumbnail = (
                 thumbnails.get("high", {}).get("url")
@@ -176,7 +188,7 @@ class YouTubePlaylistService:
             ))
 
         return PlaylistPreview(
-            name=playlist_name or "YouTube Playlist",
+            name=playlist_name,
             platform="youtube",
             tracks=tracks,
         )

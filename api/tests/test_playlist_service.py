@@ -73,17 +73,19 @@ async def test_spotify_fetch_returns_preview(monkeypatch):
     playlist_response.is_success = True
     playlist_response.json.return_value = {
         "name": "Test Playlist",
-        "items": [
-            {
-                "track": {
-                    "name": "Song One",
-                    "artists": [{"name": "Artist A"}],
-                    "external_urls": {"spotify": "https://open.spotify.com/track/abc123"},
-                    "album": {"images": [{"url": "https://example.com/img.jpg"}]},
-                }
-            },
-            {"track": None},  # null track (removed from Spotify) — should be skipped
-        ],
+        "tracks": {
+            "items": [
+                {
+                    "track": {
+                        "name": "Song One",
+                        "artists": [{"name": "Artist A"}],
+                        "external_urls": {"spotify": "https://open.spotify.com/track/abc123"},
+                        "album": {"images": [{"url": "https://example.com/img.jpg"}]},
+                    }
+                },
+                {"track": None},  # null track (removed from Spotify) — should be skipped
+            ]
+        },
     }
 
     mock_client = AsyncMock()
@@ -120,8 +122,16 @@ async def test_youtube_raises_503_when_not_configured(monkeypatch):
 async def test_youtube_fetch_returns_preview(monkeypatch):
     monkeypatch.setattr(settings, "youtube_api_key", "fake_yt_key")
 
+    pl_response = MagicMock()
+    pl_response.is_success = True
+    pl_response.status_code = 200
+    pl_response.json.return_value = {
+        "items": [{"snippet": {"title": "YT Playlist"}}]
+    }
+
     yt_response = MagicMock()
     yt_response.is_success = True
+    yt_response.status_code = 200
     yt_response.json.return_value = {
         "items": [
             {
@@ -130,14 +140,13 @@ async def test_youtube_fetch_returns_preview(monkeypatch):
                     "videoOwnerChannelTitle": "YT Artist",
                     "resourceId": {"videoId": "abc123"},
                     "thumbnails": {"default": {"url": "https://img.youtube.com/vi/abc123/default.jpg"}},
-                    "playlistTitle": "YT Playlist",
                 }
             }
         ]
     }
 
     mock_client = AsyncMock()
-    mock_client.get = AsyncMock(return_value=yt_response)
+    mock_client.get = AsyncMock(side_effect=[pl_response, yt_response])
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=None)
 
@@ -146,6 +155,7 @@ async def test_youtube_fetch_returns_preview(monkeypatch):
         preview = await svc.fetch("testplaylistid")
 
     assert preview.platform == "youtube"
+    assert preview.name == "YT Playlist"
     assert len(preview.tracks) == 1
     assert preview.tracks[0].title == "YT Song"
     assert preview.tracks[0].url == "https://www.youtube.com/watch?v=abc123"
