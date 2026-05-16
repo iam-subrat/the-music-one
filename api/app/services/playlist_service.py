@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+import logging
 import time
 from urllib.parse import urlparse, parse_qs
 from typing import Literal, Optional
@@ -7,6 +8,8 @@ import httpx
 from pydantic import BaseModel
 from fastapi import HTTPException
 from app.config import settings
+
+_log = logging.getLogger(__name__)
 
 _spotify_token_lock = asyncio.Lock()
 
@@ -93,8 +96,11 @@ class SpotifyPlaylistService:
                 raise HTTPException(status_code=502, detail="Spotify unavailable.")
             data = res.json()
 
+        raw_tracks = data.get("tracks", {})
+        _log.warning("spotify raw tracks keys=%s items_count=%s", list(raw_tracks.keys()), len(raw_tracks.get("items", [])))
+
         tracks: list[PlaylistTrack] = []
-        for item in data.get("tracks", {}).get("items", [])[:50]:
+        for item in raw_tracks.get("items", [])[:50]:
             track = item.get("track")
             if not track:
                 continue
