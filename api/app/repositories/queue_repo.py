@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 from uuid import UUID, uuid4
 from sqlalchemy import select, text
@@ -50,5 +51,73 @@ class QueueRepository(AbstractRepository):
         await self.db.execute(
             text("SELECT patch_youtube_link(:item_id, :url)"),
             {"item_id": str(item_id), "url": youtube_url},
+        )
+        await self.db.commit()
+
+    async def get_next_queued(self, session_id: UUID) -> Optional[QueueItem]:
+        result = await self.db.execute(
+            select(QueueItem)
+            .where(QueueItem.session_id == session_id, QueueItem.status == "queued")
+            .order_by(QueueItem.position)
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    async def create_stub(
+        self,
+        session_id: UUID,
+        added_by_user_id: UUID,
+        title: str,
+        artist: str,
+        thumbnail_url: Optional[str],
+        source_url: str,
+    ) -> QueueItem:
+        item = QueueItem(
+            id=uuid4(),
+            session_id=session_id,
+            added_by_user_id=added_by_user_id,
+            title=title,
+            artist=artist,
+            thumbnail_url=thumbnail_url,
+            source_url=source_url,
+            platform_links={},
+            status="queued",
+            resolve_status="resolving",
+        )
+        self.db.add(item)
+        await self.db.commit()
+        return await self._get_with_profile(item.id)
+
+    async def mark_resolved(self, item_id: UUID, meta: dict, user_id: UUID) -> None:
+        await set_jwt_claims(self.db, user_id)
+        await self.db.execute(
+            text("""
+                UPDATE queue_items
+                SET title = :title,
+                    artist = :artist,
+                    thumbnail_url = :thumbnail_url,
+                    platform_links = :platform_links::jsonb,
+                    resolve_status = 'resolved'
+                WHERE id = :item_id
+            """),
+            {
+                "item_id": str(item_id),
+                "title": meta.get("title", ""),
+                "artist": meta.get("artist", ""),
+                "thumbnail_url": meta.get("thumbnailUrl"),
+                "platform_links": json.dumps(meta.get("platformLinks", {})),
+            },
+        )
+        await self.db.commit()
+
+    async def mark_failed(self, item_id: UUID, user_id: UUID) -> None:
+        await set_jwt_claims(self.db, user_id)
+        await self.db.execute(
+            text("""
+                UPDATE queue_items
+                SET resolve_status = 'failed', status = 'skipped'
+                WHERE id = :item_id
+            """),
+            {"item_id": str(item_id)},
         )
         await self.db.commit()
