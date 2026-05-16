@@ -8,10 +8,18 @@ class QueueItemCreate(BaseModel):
     url: str
 
 
+class ProfileSummary(BaseModel):
+    display_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
 class QueueItemResponse(BaseModel):
     id: UUID
     session_id: UUID
     added_by_user_id: Optional[UUID] = None
+    profiles: Optional[ProfileSummary] = None
     position: int
     title: str
     artist: str

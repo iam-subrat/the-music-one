@@ -1,28 +1,34 @@
 from typing import Optional
 from uuid import UUID, uuid4
 from sqlalchemy import select, text
+from sqlalchemy.orm import selectinload
 from app.models.queue_item import QueueItem
 from app.repositories.base import AbstractRepository
 from app.repositories.db_auth import set_jwt_claims
 
 
 class QueueRepository(AbstractRepository):
-    async def get_by_id(self, id: UUID) -> Optional[QueueItem]:
-        result = await self.db.execute(select(QueueItem).where(QueueItem.id == id))
+    async def _get_with_profile(self, id: UUID) -> Optional[QueueItem]:
+        result = await self.db.execute(
+            select(QueueItem).where(QueueItem.id == id).options(selectinload(QueueItem.profiles))
+        )
         return result.scalar_one_or_none()
+
+    async def get_by_id(self, id: UUID) -> Optional[QueueItem]:
+        return await self._get_with_profile(id)
 
     async def create(self, **kwargs) -> QueueItem:
         item = QueueItem(id=uuid4(), **kwargs)
         self.db.add(item)
         await self.db.commit()
-        await self.db.refresh(item)
-        return item
+        return await self._get_with_profile(item.id)
 
     async def get_queue(self, session_id: UUID) -> list[QueueItem]:
         result = await self.db.execute(
             select(QueueItem)
             .where(QueueItem.session_id == session_id)
             .order_by(QueueItem.position)
+            .options(selectinload(QueueItem.profiles))
         )
         return result.scalars().all()
 
