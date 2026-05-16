@@ -1,4 +1,5 @@
 from urllib.parse import quote, urlsplit, urlunsplit
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,7 +31,7 @@ class Settings(BaseSettings):
     odesli_api_key: str = ""
     youtube_api_key: str = ""
     spotify_client_id: str = ""
-    spotify_client_secret: str = ""
+    spotify_client_secret: SecretStr = SecretStr("")
     allowed_origins: str = "http://localhost:5173"
     frontend_url: str = "http://localhost:5173"
     root_path: str = ""
