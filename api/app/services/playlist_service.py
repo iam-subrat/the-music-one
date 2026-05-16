@@ -136,27 +136,14 @@ class SpotifyPlaylistService:
         return PlaylistPreview(name="Spotify Playlist", platform="spotify", tracks=tracks)
 
     async def fetch(self, playlist_id: str) -> PlaylistPreview:
-        _log.info("spotify fetch playlist_id=%s client_id_set=%s secret_set=%s",
-                  playlist_id,
-                  bool(settings.spotify_client_id),
-                  bool(settings.spotify_client_secret.get_secret_value()))
-        if not settings.spotify_client_id or not settings.spotify_client_secret.get_secret_value():
-            _log.error("spotify not configured: client_id=%r secret_set=%s",
-                       settings.spotify_client_id, bool(settings.spotify_client_secret.get_secret_value()))
-            raise HTTPException(status_code=503, detail="Spotify not configured on this server.")
-
-        token = await self._get_token()
-        result = await self._fetch_with_token(playlist_id, token)
-        if result is None:
-            _log.warning("spotify 401 retry: clearing cached token and retrying")
-            async with _spotify_token_lock:
-                SpotifyPlaylistService._token = None
-            token = await self._get_token()
-            result = await self._fetch_with_token(playlist_id, token)
-            if result is None:
-                _log.error("spotify auth failed after token refresh retry")
-                raise HTTPException(status_code=502, detail="Spotify auth failed after retry.")
-        return result
+        # Spotify playlist access requires user OAuth (Authorization Code flow).
+        # Client Credentials cannot access user-created playlists per Spotify API policy.
+        # Re-enable when user OAuth is implemented.
+        _log.info("spotify fetch blocked — user OAuth not implemented yet playlist_id=%s", playlist_id)
+        raise HTTPException(
+            status_code=503,
+            detail="Spotify playlists aren't supported yet — try a YouTube playlist instead.",
+        )
 
 
 class YouTubePlaylistService:
