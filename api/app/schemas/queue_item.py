@@ -1,6 +1,6 @@
 from uuid import UUID
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel
 
 
@@ -27,7 +27,7 @@ class QueueItemResponse(BaseModel):
     platform_links: dict = {}
     status: str
     source_url: Optional[str] = None
-    resolve_status: str = "resolved"
+    resolve_status: Literal["resolving", "resolved", "failed"] = "resolved"
     added_at: datetime
 
     model_config = {"from_attributes": True}
