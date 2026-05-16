@@ -96,6 +96,7 @@ class SpotifyPlaylistService:
                 raise HTTPException(status_code=502, detail="Spotify unavailable.")
             data = res.json()
 
+        _log.warning("spotify response top-level keys=%s", list(data.keys()))
         raw_tracks = data.get("tracks", {})
         _log.warning("spotify raw tracks keys=%s items_count=%s", list(raw_tracks.keys()), len(raw_tracks.get("items", [])))
 
