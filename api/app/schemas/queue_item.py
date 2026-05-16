@@ -8,6 +8,21 @@ class QueueItemCreate(BaseModel):
     url: str
 
 
+class BatchTrackItem(BaseModel):
+    url: str
+    title: str
+    artist: str
+    thumbnail_url: Optional[str] = None
+
+
+class BatchQueueRequest(BaseModel):
+    tracks: list[BatchTrackItem]
+
+    @property
+    def capped(self) -> list[BatchTrackItem]:
+        return self.tracks[:50]
+
+
 class ProfileSummary(BaseModel):
     display_name: Optional[str] = None
     avatar_url: Optional[str] = None

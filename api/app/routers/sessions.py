@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Response
 from app.dependencies import get_current_user, get_session_service, get_queue_service
 from app.schemas.session import SessionResponse, RepeatModeUpdate, DjPassRequest
-from app.schemas.queue_item import QueueItemCreate, QueueItemResponse
+from app.schemas.queue_item import QueueItemCreate, QueueItemResponse, BatchQueueRequest
 from app.services.event_bus import bus
 
 router = APIRouter()
@@ -121,6 +121,19 @@ async def add_to_queue(
     item = await svc.add(session_id, user_id, body.url)
     await bus.publish(str(session_id), "queue_changed", {})
     return item
+
+
+@router.post("/{session_id}/queue/batch")
+async def add_batch_to_queue(
+    session_id: UUID,
+    body: BatchQueueRequest,
+    user_id: UUID = Depends(get_current_user),
+    svc=Depends(get_queue_service),
+):
+    tracks = [t.model_dump() for t in body.capped]
+    added = await svc.add_batch(session_id, user_id, tracks)
+    await bus.publish(str(session_id), "queue_changed", {})
+    return {"added": [QueueItemResponse.model_validate(item) for item in added]}
 
 
 @router.post("/{session_id}/queue/next")
