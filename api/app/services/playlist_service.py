@@ -81,9 +81,7 @@ class SpotifyPlaylistService:
         async with httpx.AsyncClient() as client:
             res = await client.get(
                 f"https://api.spotify.com/v1/playlists/{playlist_id}",
-                params={
-                    "fields": "name,tracks.items(track(name,artists(name),external_urls(spotify),album(images)))",
-                },
+                params={"additional_types": "track"},
                 headers={"Authorization": f"Bearer {token}"},
                 timeout=10,
             )
