@@ -11,12 +11,13 @@ def _encode_db_url(raw: str, driver: str) -> str:
     # Normalise driver
     base = raw.replace("+asyncpg", "").replace("+psycopg2", "")
     scheme, rest = base.split("://", 1)
+    scheme = "postgresql" if scheme == "postgres" else scheme
 
     at = rest.rfind("@")
-    credentials, hostpart = rest[:at], rest[at + 1:]
+    credentials, hostpart = rest[:at], rest[at + 1 :]
 
     colon = credentials.find(":")
-    user, password = credentials[:colon], credentials[colon + 1:]
+    user, password = credentials[:colon], credentials[colon + 1 :]
 
     encoded = f"{scheme}+{driver}://{user}:{quote(password, safe='')}@{hostpart}"
     return encoded
