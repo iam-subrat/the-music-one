@@ -98,7 +98,7 @@ class QueueRepository(AbstractRepository):
                 SET title = :title,
                     artist = :artist,
                     thumbnail_url = :thumbnail_url,
-                    platform_links = :platform_links::jsonb,
+                    platform_links = CAST(:platform_links AS jsonb),
                     resolve_status = 'resolved'
                 WHERE id = :item_id
             """),

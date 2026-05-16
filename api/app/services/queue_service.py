@@ -61,11 +61,13 @@ class QueueService:
             return None
 
         if next_item.resolve_status == "resolving":
+            item_id = next_item.id
+            source_url = next_item.source_url
             try:
-                meta = await self.song_svc.resolve_song_meta(next_item.source_url)
-                await self.repo.mark_resolved(next_item.id, meta, user_id)
+                meta = await self.song_svc.resolve_song_meta(source_url)
+                await self.repo.mark_resolved(item_id, meta, user_id)
             except Exception:
-                await self.repo.mark_failed(next_item.id, user_id)
+                await self.repo.mark_failed(item_id, user_id)
                 return await self.play_next(session_id, user_id, depth + 1)
 
         return await self.repo.play_next(session_id, user_id, "played")
