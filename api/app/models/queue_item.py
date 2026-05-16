@@ -23,4 +23,6 @@ class QueueItem(Base):
     thumbnail_url: Mapped[Optional[str]]
     platform_links: Mapped[dict] = mapped_column(JSONB, default=dict)
     status: Mapped[str] = mapped_column(default="queued")
+    source_url: Mapped[Optional[str]]
+    resolve_status: Mapped[str] = mapped_column(default="resolved")
     added_at: Mapped[datetime] = mapped_column(server_default=func.now())

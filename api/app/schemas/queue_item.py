@@ -26,6 +26,8 @@ class QueueItemResponse(BaseModel):
     thumbnail_url: Optional[str] = None
     platform_links: dict = {}
     status: str
+    source_url: Optional[str] = None
+    resolve_status: str = "resolved"
     added_at: datetime
 
     model_config = {"from_attributes": True}
