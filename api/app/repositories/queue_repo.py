@@ -60,6 +60,7 @@ class QueueRepository(AbstractRepository):
             .where(QueueItem.session_id == session_id, QueueItem.status == "queued")
             .order_by(QueueItem.position)
             .limit(1)
+            .options(selectinload(QueueItem.profiles))
         )
         return result.scalar_one_or_none()
 
