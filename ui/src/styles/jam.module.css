@@ -181,3 +181,135 @@
 
 /* Ended */
 .endedBanner { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 40px; text-align: center; color: var(--muted); grid-column: 1 / -1; }
+
+/* PlaylistModal */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modalHeader {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modalTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.modalSubtitle {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.modalSelectAll {
+  font-size: 0.78rem;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  width: fit-content;
+}
+
+.modalTrackList {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modalTrackRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.modalTrackRow:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.modalTrackRowSelected { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
+.modalTrackThumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.modalTrackMeta { flex: 1; min-width: 0; }
+.modalTrackTitle { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.modalTrackArtist { font-size: 0.75rem; color: var(--muted); }
+
+.modalCheckbox { flex-shrink: 0; width: 16px; height: 16px; accent-color: var(--accent); }
+
+.modalFooter {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.modalError {
+  padding: 20px;
+  color: #ff6b6b;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.modalLoading {
+  padding: 40px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.resolvingBadge {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.failedBadge {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, #ff6b6b 15%, transparent);
+  color: #ff6b6b;
+  flex-shrink: 0;
+}
+
+.queueCardResolving { opacity: 0.6; }
+.queueCardFailed { opacity: 0.4; }
