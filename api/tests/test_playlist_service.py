@@ -149,3 +149,50 @@ async def test_youtube_fetch_returns_preview(monkeypatch):
     assert len(preview.tracks) == 1
     assert preview.tracks[0].title == "YT Song"
     assert preview.tracks[0].url == "https://www.youtube.com/watch?v=abc123"
+
+
+@pytest.mark.asyncio
+async def test_spotify_fetch_raises_404_for_private_playlist(monkeypatch):
+    monkeypatch.setattr(settings, "spotify_client_id", "test_id")
+    from pydantic import SecretStr
+    monkeypatch.setattr(settings, "spotify_client_secret", SecretStr("test_secret"))
+
+    token_response = MagicMock()
+    token_response.is_success = True
+    token_response.json.return_value = {"access_token": "fake_token", "expires_in": 3600}
+
+    not_found_response = MagicMock()
+    not_found_response.status_code = 404
+    not_found_response.is_success = False
+
+    mock_client = AsyncMock()
+    mock_client.post = AsyncMock(return_value=token_response)
+    mock_client.get = AsyncMock(return_value=not_found_response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("app.services.playlist_service.httpx.AsyncClient", return_value=mock_client):
+        svc = SpotifyPlaylistService()
+        with pytest.raises(HTTPException) as exc:
+            await svc.fetch("privateid")
+    assert exc.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_youtube_fetch_raises_404_for_private_playlist(monkeypatch):
+    monkeypatch.setattr(settings, "youtube_api_key", "fake_key")
+
+    not_found_response = MagicMock()
+    not_found_response.status_code = 404
+    not_found_response.is_success = False
+
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=not_found_response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("app.services.playlist_service.httpx.AsyncClient", return_value=mock_client):
+        svc = YouTubePlaylistService()
+        with pytest.raises(HTTPException) as exc:
+            await svc.fetch("privateid")
+    assert exc.value.status_code == 404

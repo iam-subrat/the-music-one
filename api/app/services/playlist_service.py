@@ -1,11 +1,14 @@
 from __future__ import annotations
+import asyncio
 import time
 from urllib.parse import urlparse, parse_qs
-from typing import Optional
+from typing import Literal, Optional
 import httpx
 from pydantic import BaseModel
 from fastapi import HTTPException
 from app.config import settings
+
+_spotify_token_lock = asyncio.Lock()
 
 
 class PlaylistTrack(BaseModel):
@@ -17,13 +20,15 @@ class PlaylistTrack(BaseModel):
 
 class PlaylistPreview(BaseModel):
     name: str
-    platform: str
+    platform: Literal["spotify", "youtube"]
     tracks: list[PlaylistTrack]
 
 
 def detect_playlist(url: str) -> Optional[tuple[str, str]]:
     try:
         parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return None
     except Exception:
         return None
 
@@ -55,27 +60,24 @@ class SpotifyPlaylistService:
     _token_expiry: float = 0.0
 
     async def _get_token(self) -> str:
-        if self._token and time.time() < self._token_expiry - 60:
-            return self._token
-        async with httpx.AsyncClient() as client:
-            res = await client.post(
-                "https://accounts.spotify.com/api/token",
-                data={"grant_type": "client_credentials"},
-                auth=(settings.spotify_client_id, settings.spotify_client_secret.get_secret_value()),
-                timeout=10,
-            )
-            if not res.is_success:
-                raise HTTPException(status_code=502, detail="Spotify auth failed.")
-            data = res.json()
-            self._token = data["access_token"]
-            self._token_expiry = time.time() + data.get("expires_in", 3600)
-            return self._token
+        async with _spotify_token_lock:
+            if self._token and time.time() < self._token_expiry - 60:
+                return self._token
+            async with httpx.AsyncClient() as client:
+                res = await client.post(
+                    "https://accounts.spotify.com/api/token",
+                    data={"grant_type": "client_credentials"},
+                    auth=(settings.spotify_client_id, settings.spotify_client_secret.get_secret_value()),
+                    timeout=10,
+                )
+                if not res.is_success:
+                    raise HTTPException(status_code=502, detail="Spotify auth failed.")
+                data = res.json()
+            SpotifyPlaylistService._token = data["access_token"]
+            SpotifyPlaylistService._token_expiry = time.time() + data.get("expires_in", 3600)
+            return SpotifyPlaylistService._token
 
-    async def fetch(self, playlist_id: str) -> PlaylistPreview:
-        if not settings.spotify_client_id or not settings.spotify_client_secret.get_secret_value():
-            raise HTTPException(status_code=503, detail="Spotify not configured on this server.")
-
-        token = await self._get_token()
+    async def _fetch_with_token(self, playlist_id: str, token: str) -> PlaylistPreview:
         fields = "name,items(track(name,artists(name),external_urls(spotify),album(images)))"
         async with httpx.AsyncClient() as client:
             res = await client.get(
@@ -84,16 +86,14 @@ class SpotifyPlaylistService:
                 headers={"Authorization": f"Bearer {token}"},
                 timeout=10,
             )
+            if res.status_code == 401:
+                return None  # signal caller to retry
+            if res.status_code == 404:
+                raise HTTPException(status_code=404, detail="Playlist not found or private.")
+            if not res.is_success:
+                raise HTTPException(status_code=502, detail="Spotify unavailable.")
+            data = res.json()
 
-        if res.status_code == 404:
-            raise HTTPException(status_code=404, detail="Playlist not found or private.")
-        if res.status_code == 401:
-            self._token = None
-            raise HTTPException(status_code=502, detail="Spotify auth expired. Try again.")
-        if not res.is_success:
-            raise HTTPException(status_code=502, detail="Spotify unavailable.")
-
-        data = res.json()
         tracks: list[PlaylistTrack] = []
         for item in data.get("items", []):
             track = item.get("track")
@@ -115,6 +115,22 @@ class SpotifyPlaylistService:
 
         return PlaylistPreview(name=data.get("name", "Playlist"), platform="spotify", tracks=tracks)
 
+    async def fetch(self, playlist_id: str) -> PlaylistPreview:
+        if not settings.spotify_client_id or not settings.spotify_client_secret.get_secret_value():
+            raise HTTPException(status_code=503, detail="Spotify not configured on this server.")
+
+        token = await self._get_token()
+        result = await self._fetch_with_token(playlist_id, token)
+        if result is None:
+            # 401: token expired mid-session, clear and retry once
+            async with _spotify_token_lock:
+                SpotifyPlaylistService._token = None
+            token = await self._get_token()
+            result = await self._fetch_with_token(playlist_id, token)
+            if result is None:
+                raise HTTPException(status_code=502, detail="Spotify auth failed after retry.")
+        return result
+
 
 class YouTubePlaylistService:
     async def fetch(self, playlist_id: str) -> PlaylistPreview:
@@ -132,22 +148,21 @@ class YouTubePlaylistService:
                 },
                 timeout=10,
             )
+            if res.status_code == 404:
+                raise HTTPException(status_code=404, detail="Playlist not found or private.")
+            if not res.is_success:
+                raise HTTPException(status_code=502, detail="YouTube unavailable.")
+            data = res.json()
 
-        if res.status_code == 404:
-            raise HTTPException(status_code=404, detail="Playlist not found or private.")
-        if not res.is_success:
-            raise HTTPException(status_code=502, detail="YouTube unavailable.")
-
-        data = res.json()
-        playlist_name = "YouTube Playlist"
+        playlist_name = ""
         tracks: list[PlaylistTrack] = []
         for item in data.get("items", []):
             snippet = item.get("snippet", {})
             video_id = snippet.get("resourceId", {}).get("videoId")
             if not video_id:
                 continue
-            if not playlist_name and snippet.get("playlistTitle"):
-                playlist_name = snippet["playlistTitle"]
+            if not playlist_name:
+                playlist_name = snippet.get("playlistTitle", "")
             thumbnails = snippet.get("thumbnails", {})
             thumbnail = (
                 thumbnails.get("high", {}).get("url")
@@ -160,4 +175,8 @@ class YouTubePlaylistService:
                 thumbnail_url=thumbnail,
             ))
 
-        return PlaylistPreview(name=playlist_name, platform="youtube", tracks=tracks)
+        return PlaylistPreview(
+            name=playlist_name or "YouTube Playlist",
+            platform="youtube",
+            tracks=tracks,
+        )
