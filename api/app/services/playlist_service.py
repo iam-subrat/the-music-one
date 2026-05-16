@@ -81,30 +81,15 @@ class SpotifyPlaylistService:
             return SpotifyPlaylistService._token
 
     async def _fetch_with_token(self, playlist_id: str, token: str) -> Optional[PlaylistPreview]:
-        headers = {"Authorization": f"Bearer {token}"}
         async with httpx.AsyncClient() as client:
-            # Get playlist name
-            pl_res = await client.get(
-                f"https://api.spotify.com/v1/playlists/{playlist_id}",
-                params={"fields": "name"},
-                headers=headers,
-                timeout=10,
-            )
-            if pl_res.status_code == 404:
-                raise HTTPException(status_code=404, detail="Playlist not found or private.")
-            if pl_res.status_code == 401:
-                return None
-            if not pl_res.is_success:
-                raise HTTPException(status_code=502, detail="Spotify unavailable.")
-            playlist_name = pl_res.json().get("name", "Playlist")
-
-            # Get tracks
             tr_res = await client.get(
                 f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks",
                 params={"limit": 50, "additional_types": "track"},
-                headers=headers,
+                headers={"Authorization": f"Bearer {token}"},
                 timeout=10,
             )
+            if tr_res.status_code == 404:
+                raise HTTPException(status_code=404, detail="Playlist not found or private.")
             if tr_res.status_code == 401:
                 return None
             if not tr_res.is_success:
@@ -130,7 +115,7 @@ class SpotifyPlaylistService:
                 thumbnail_url=thumbnail,
             ))
 
-        return PlaylistPreview(name=playlist_name, platform="spotify", tracks=tracks)
+        return PlaylistPreview(name="Spotify Playlist", platform="spotify", tracks=tracks)
 
     async def fetch(self, playlist_id: str) -> PlaylistPreview:
         if not settings.spotify_client_id or not settings.spotify_client_secret.get_secret_value():

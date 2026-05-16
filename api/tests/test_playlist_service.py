@@ -69,11 +69,6 @@ async def test_spotify_fetch_returns_preview(monkeypatch):
     token_response.is_success = True
     token_response.json.return_value = {"access_token": "fake_token", "expires_in": 3600}
 
-    name_response = MagicMock()
-    name_response.is_success = True
-    name_response.status_code = 200
-    name_response.json.return_value = {"name": "Test Playlist"}
-
     tracks_response = MagicMock()
     tracks_response.is_success = True
     tracks_response.status_code = 200
@@ -93,7 +88,7 @@ async def test_spotify_fetch_returns_preview(monkeypatch):
 
     mock_client = AsyncMock()
     mock_client.post = AsyncMock(return_value=token_response)
-    mock_client.get = AsyncMock(side_effect=[name_response, tracks_response])
+    mock_client.get = AsyncMock(return_value=tracks_response)
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=None)
 
@@ -101,7 +96,7 @@ async def test_spotify_fetch_returns_preview(monkeypatch):
         svc = SpotifyPlaylistService()
         preview = await svc.fetch("testplaylistid")
 
-    assert preview.name == "Test Playlist"
+    assert preview.name == "Spotify Playlist"
     assert preview.platform == "spotify"
     assert len(preview.tracks) == 1
     assert preview.tracks[0].title == "Song One"
