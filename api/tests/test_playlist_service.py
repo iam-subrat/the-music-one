@@ -61,48 +61,14 @@ async def test_spotify_raises_503_when_not_configured(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_spotify_fetch_returns_preview(monkeypatch):
+async def test_spotify_fetch_raises_503_always(monkeypatch):
     monkeypatch.setattr(settings, "spotify_client_id", "test_id")
     monkeypatch.setattr(settings, "spotify_client_secret", SecretStr("test_secret"))
-
-    token_response = MagicMock()
-    token_response.is_success = True
-    token_response.json.return_value = {"access_token": "fake_token", "expires_in": 3600}
-
-    tracks_response = MagicMock()
-    tracks_response.is_success = True
-    tracks_response.status_code = 200
-    tracks_response.json.return_value = {
-        "items": [
-            {
-                "track": {
-                    "name": "Song One",
-                    "artists": [{"name": "Artist A"}],
-                    "external_urls": {"spotify": "https://open.spotify.com/track/abc123"},
-                    "album": {"images": [{"url": "https://example.com/img.jpg"}]},
-                }
-            },
-            {"track": None},  # null track (removed from Spotify) — should be skipped
-        ]
-    }
-
-    mock_client = AsyncMock()
-    mock_client.post = AsyncMock(return_value=token_response)
-    mock_client.get = AsyncMock(return_value=tracks_response)
-    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.__aexit__ = AsyncMock(return_value=None)
-
-    with patch("app.services.playlist_service.httpx.AsyncClient", return_value=mock_client):
-        svc = SpotifyPlaylistService()
-        preview = await svc.fetch("testplaylistid")
-
-    assert preview.name == "Spotify Playlist"
-    assert preview.platform == "spotify"
-    assert len(preview.tracks) == 1
-    assert preview.tracks[0].title == "Song One"
-    assert preview.tracks[0].artist == "Artist A"
-    assert preview.tracks[0].url == "https://open.spotify.com/track/abc123"
-    assert preview.tracks[0].thumbnail_url == "https://example.com/img.jpg"
+    svc = SpotifyPlaylistService()
+    with pytest.raises(HTTPException) as exc:
+        await svc.fetch("anyplaylistid")
+    assert exc.value.status_code == 503
+    assert "YouTube" in exc.value.detail
 
 
 # ── YouTubePlaylistService ────────────────────────────────────────────────────
@@ -159,31 +125,6 @@ async def test_youtube_fetch_returns_preview(monkeypatch):
     assert preview.tracks[0].url == "https://www.youtube.com/watch?v=abc123"
 
 
-@pytest.mark.asyncio
-async def test_spotify_fetch_raises_404_for_private_playlist(monkeypatch):
-    monkeypatch.setattr(settings, "spotify_client_id", "test_id")
-    from pydantic import SecretStr
-    monkeypatch.setattr(settings, "spotify_client_secret", SecretStr("test_secret"))
-
-    token_response = MagicMock()
-    token_response.is_success = True
-    token_response.json.return_value = {"access_token": "fake_token", "expires_in": 3600}
-
-    not_found_response = MagicMock()
-    not_found_response.status_code = 404
-    not_found_response.is_success = False
-
-    mock_client = AsyncMock()
-    mock_client.post = AsyncMock(return_value=token_response)
-    mock_client.get = AsyncMock(return_value=not_found_response)
-    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.__aexit__ = AsyncMock(return_value=None)
-
-    with patch("app.services.playlist_service.httpx.AsyncClient", return_value=mock_client):
-        svc = SpotifyPlaylistService()
-        with pytest.raises(HTTPException) as exc:
-            await svc.fetch("privateid")
-    assert exc.value.status_code == 404
 
 
 @pytest.mark.asyncio
