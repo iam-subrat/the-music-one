@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 from typing import Optional
 from uuid import UUID
 from app.models.queue_item import QueueItem
@@ -45,8 +46,8 @@ class QueueService:
                     source_url=track["url"],
                 )
                 added.append(item)
-            except Exception:
-                pass
+            except Exception as exc:
+                logging.getLogger(__name__).warning("add_batch: failed to create stub for %s: %s", track.get("url"), exc)
         return added
 
     async def play_next(
