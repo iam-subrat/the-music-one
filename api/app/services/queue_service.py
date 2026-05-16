@@ -27,9 +27,46 @@ class QueueService:
             thumbnail_url=meta.get("thumbnailUrl"),
             platform_links=meta.get("platformLinks", {}),
             status="queued",
+            resolve_status="resolved",
         )
 
-    async def play_next(self, session_id: UUID, user_id: UUID) -> Optional[UUID]:
+    async def add_batch(
+        self, session_id: UUID, user_id: UUID, tracks: list[dict]
+    ) -> list[QueueItem]:
+        added: list[QueueItem] = []
+        for track in tracks:
+            try:
+                item = await self.repo.create_stub(
+                    session_id=session_id,
+                    added_by_user_id=user_id,
+                    title=track.get("title", ""),
+                    artist=track.get("artist", ""),
+                    thumbnail_url=track.get("thumbnail_url"),
+                    source_url=track["url"],
+                )
+                added.append(item)
+            except Exception:
+                pass
+        return added
+
+    async def play_next(
+        self, session_id: UUID, user_id: UUID, depth: int = 0
+    ) -> Optional[UUID]:
+        if depth >= 10:
+            return None
+
+        next_item = await self.repo.get_next_queued(session_id)
+        if not next_item:
+            return None
+
+        if next_item.resolve_status == "resolving":
+            try:
+                meta = await self.song_svc.resolve_song_meta(next_item.source_url)
+                await self.repo.mark_resolved(next_item.id, meta, user_id)
+            except Exception:
+                await self.repo.mark_failed(next_item.id, user_id)
+                return await self.play_next(session_id, user_id, depth + 1)
+
         return await self.repo.play_next(session_id, user_id, "played")
 
     async def force_skip(self, session_id: UUID, user_id: UUID) -> Optional[UUID]:
