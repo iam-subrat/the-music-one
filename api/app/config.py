@@ -1,4 +1,25 @@
+from urllib.parse import quote, urlsplit, urlunsplit
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _encode_db_url(raw: str, driver: str) -> str:
+    """Re-encode DATABASE_URL so special chars in password are percent-escaped.
+
+    Splits on the *last* '@' to correctly handle '@' inside the password,
+    then re-encodes the password with quote(safe='').
+    """
+    # Normalise driver
+    base = raw.replace("+asyncpg", "").replace("+psycopg2", "")
+    scheme, rest = base.split("://", 1)
+
+    at = rest.rfind("@")
+    credentials, hostpart = rest[:at], rest[at + 1:]
+
+    colon = credentials.find(":")
+    user, password = credentials[:colon], credentials[colon + 1:]
+
+    encoded = f"{scheme}+{driver}://{user}:{quote(password, safe='')}@{hostpart}"
+    return encoded
 
 
 class Settings(BaseSettings):
@@ -25,8 +46,12 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.allowed_origins.split(",")]
 
     @property
+    def sync_database_url(self) -> str:
+        return _encode_db_url(self.database_url, "psycopg2")
+
+    @property
     def async_database_url(self) -> str:
-        return self.database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return _encode_db_url(self.database_url, "asyncpg")
 
 
 settings = Settings()
