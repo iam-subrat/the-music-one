@@ -93,6 +93,7 @@ class SpotifyPlaylistService:
             if tr_res.status_code == 401:
                 return None
             if not tr_res.is_success:
+                _log.warning("spotify tracks error status=%s body=%s", tr_res.status_code, tr_res.text[:500])
                 raise HTTPException(status_code=502, detail="Spotify unavailable.")
             tr_data = tr_res.json()
 
