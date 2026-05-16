@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     supabase_anon_key: str
     odesli_api_key: str = ""
     youtube_api_key: str = ""
+    spotify_client_id: str = ""
+    spotify_client_secret: str = ""
     allowed_origins: str = "http://localhost:5173"
     frontend_url: str = "http://localhost:5173"
     root_path: str = ""
