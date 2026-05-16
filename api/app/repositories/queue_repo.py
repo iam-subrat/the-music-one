@@ -90,6 +90,7 @@ class QueueRepository(AbstractRepository):
         return await self._get_with_profile(item.id)
 
     async def mark_resolved(self, item_id: UUID, meta: dict, user_id: UUID) -> None:
+        await self.db.rollback()
         await set_jwt_claims(self.db, user_id)
         await self.db.execute(
             text("""
@@ -112,6 +113,7 @@ class QueueRepository(AbstractRepository):
         await self.db.commit()
 
     async def mark_failed(self, item_id: UUID, user_id: UUID) -> None:
+        await self.db.rollback()
         await set_jwt_claims(self.db, user_id)
         await self.db.execute(
             text("""
