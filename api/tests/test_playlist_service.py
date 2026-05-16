@@ -69,28 +69,31 @@ async def test_spotify_fetch_returns_preview(monkeypatch):
     token_response.is_success = True
     token_response.json.return_value = {"access_token": "fake_token", "expires_in": 3600}
 
-    playlist_response = MagicMock()
-    playlist_response.is_success = True
-    playlist_response.json.return_value = {
-        "name": "Test Playlist",
-        "tracks": {
-            "items": [
-                {
-                    "track": {
-                        "name": "Song One",
-                        "artists": [{"name": "Artist A"}],
-                        "external_urls": {"spotify": "https://open.spotify.com/track/abc123"},
-                        "album": {"images": [{"url": "https://example.com/img.jpg"}]},
-                    }
-                },
-                {"track": None},  # null track (removed from Spotify) — should be skipped
-            ]
-        },
+    name_response = MagicMock()
+    name_response.is_success = True
+    name_response.status_code = 200
+    name_response.json.return_value = {"name": "Test Playlist"}
+
+    tracks_response = MagicMock()
+    tracks_response.is_success = True
+    tracks_response.status_code = 200
+    tracks_response.json.return_value = {
+        "items": [
+            {
+                "track": {
+                    "name": "Song One",
+                    "artists": [{"name": "Artist A"}],
+                    "external_urls": {"spotify": "https://open.spotify.com/track/abc123"},
+                    "album": {"images": [{"url": "https://example.com/img.jpg"}]},
+                }
+            },
+            {"track": None},  # null track (removed from Spotify) — should be skipped
+        ]
     }
 
     mock_client = AsyncMock()
     mock_client.post = AsyncMock(return_value=token_response)
-    mock_client.get = AsyncMock(return_value=playlist_response)
+    mock_client.get = AsyncMock(side_effect=[name_response, tracks_response])
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=None)
 

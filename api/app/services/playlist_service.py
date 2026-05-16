@@ -81,27 +81,38 @@ class SpotifyPlaylistService:
             return SpotifyPlaylistService._token
 
     async def _fetch_with_token(self, playlist_id: str, token: str) -> Optional[PlaylistPreview]:
+        headers = {"Authorization": f"Bearer {token}"}
         async with httpx.AsyncClient() as client:
-            res = await client.get(
+            # Get playlist name
+            pl_res = await client.get(
                 f"https://api.spotify.com/v1/playlists/{playlist_id}",
-                params={"additional_types": "track"},
-                headers={"Authorization": f"Bearer {token}"},
+                params={"fields": "name"},
+                headers=headers,
                 timeout=10,
             )
-            if res.status_code == 404:
+            if pl_res.status_code == 404:
                 raise HTTPException(status_code=404, detail="Playlist not found or private.")
-            if res.status_code == 401:
-                return None  # sentinel: caller retries with fresh token
-            if not res.is_success:
+            if pl_res.status_code == 401:
+                return None
+            if not pl_res.is_success:
                 raise HTTPException(status_code=502, detail="Spotify unavailable.")
-            data = res.json()
+            playlist_name = pl_res.json().get("name", "Playlist")
 
-        _log.warning("spotify response top-level keys=%s", list(data.keys()))
-        raw_tracks = data.get("tracks", {})
-        _log.warning("spotify raw tracks keys=%s items_count=%s", list(raw_tracks.keys()), len(raw_tracks.get("items", [])))
+            # Get tracks
+            tr_res = await client.get(
+                f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks",
+                params={"limit": 50, "additional_types": "track"},
+                headers=headers,
+                timeout=10,
+            )
+            if tr_res.status_code == 401:
+                return None
+            if not tr_res.is_success:
+                raise HTTPException(status_code=502, detail="Spotify unavailable.")
+            tr_data = tr_res.json()
 
         tracks: list[PlaylistTrack] = []
-        for item in raw_tracks.get("items", [])[:50]:
+        for item in tr_data.get("items", []):
             track = item.get("track")
             if not track:
                 continue
@@ -119,7 +130,7 @@ class SpotifyPlaylistService:
                 thumbnail_url=thumbnail,
             ))
 
-        return PlaylistPreview(name=data.get("name", "Playlist"), platform="spotify", tracks=tracks)
+        return PlaylistPreview(name=playlist_name, platform="spotify", tracks=tracks)
 
     async def fetch(self, playlist_id: str) -> PlaylistPreview:
         if not settings.spotify_client_id or not settings.spotify_client_secret.get_secret_value():
