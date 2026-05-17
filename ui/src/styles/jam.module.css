@@ -237,3 +237,5 @@
 
 .queueCardResolving { opacity: 0.6; }
 .queueCardFailed { opacity: 0.4; }
+
+.ytEmbed { width: 100%; height: 100%; display: block; }
