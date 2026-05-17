@@ -13,6 +13,7 @@ export default function NeuSurface({ children, size = 'md', style, className, ..
         background: 'var(--surface)',
         borderRadius: 'var(--radius)',
         boxShadow: SHADOW[size],
+        overflow: 'hidden',
         ...style,
       }}
       {...props}
