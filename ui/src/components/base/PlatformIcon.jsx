@@ -1,4 +1,5 @@
 // ui/src/components/base/PlatformIcon.jsx
+import { cloneElement } from 'react';
 const ICONS = {
   spotify: (
     <svg viewBox="0 0 24 24" fill="currentColor">
@@ -52,7 +53,7 @@ export default function PlatformIcon({ platform, size = 22 }) {
   if (!icon) return null;
   return (
     <span style={{ width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--icons)' }}>
-      {icon}
+      {cloneElement(icon, { width: size, height: size })}
     </span>
   );
 }
