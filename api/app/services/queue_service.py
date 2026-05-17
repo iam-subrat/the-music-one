@@ -62,10 +62,10 @@ class QueueService:
             if self.session_repo:
                 session = await self.session_repo.get_by_id(session_id)
                 if session and session.repeat_mode == "queue":
-                    await self.repo.reset_played_to_queued(session_id)
-                    next_item = await self.repo.get_next_queued(session_id)
-            if not next_item:
-                return None
+                    # Postgres play_next marks current as played first, then resets all
+                    # played → queued atomically — handles ordering correctly
+                    return await self.repo.play_next(session_id, user_id, "played")
+            return None
 
         if next_item.resolve_status == "resolving":
             item_id = next_item.id
