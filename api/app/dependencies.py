@@ -99,10 +99,11 @@ def get_session_service(db: AsyncSession = Depends(get_db)):
 
 def get_queue_service(db: AsyncSession = Depends(get_db)):
     from app.repositories.queue_repo import QueueRepository
+    from app.repositories.session_repo import SessionRepository
     from app.repositories.skip_vote_repo import SkipVoteRepository
     from app.services.queue_service import QueueService
     from app.services.song_service import SongService
-    return QueueService(QueueRepository(db), SkipVoteRepository(db), SongService())
+    return QueueService(QueueRepository(db), SkipVoteRepository(db), SongService(), SessionRepository(db))
 
 def get_song_service():
     from app.services.song_service import SongService

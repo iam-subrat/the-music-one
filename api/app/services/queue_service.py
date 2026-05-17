@@ -10,10 +10,11 @@ SKIP_THRESHOLD = 3
 
 
 class QueueService:
-    def __init__(self, queue_repo, skip_vote_repo, song_service) -> None:
+    def __init__(self, queue_repo, skip_vote_repo, song_service, session_repo=None) -> None:
         self.repo = queue_repo
         self.vote_repo = skip_vote_repo
         self.song_svc = song_service
+        self.session_repo = session_repo
 
     async def get_queue(self, session_id: UUID) -> list[QueueItem]:
         return await self.repo.get_queue(session_id)
@@ -58,7 +59,13 @@ class QueueService:
 
         next_item = await self.repo.get_next_queued(session_id)
         if not next_item:
-            return None
+            if self.session_repo:
+                session = await self.session_repo.get_by_id(session_id)
+                if session and session.repeat_mode == "queue":
+                    await self.repo.reset_played_to_queued(session_id)
+                    next_item = await self.repo.get_next_queued(session_id)
+            if not next_item:
+                return None
 
         if next_item.resolve_status == "resolving":
             item_id = next_item.id
