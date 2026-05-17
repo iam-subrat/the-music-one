@@ -1,3 +1,4 @@
+// ui/src/pages/Home.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthBar from '../components/AuthBar';
@@ -6,17 +7,58 @@ import { api } from '../lib/api';
 import { FLAGS } from '../lib/flags';
 import { useToast } from '../components/Toast';
 import { PLATFORM_META } from '../lib/platform';
+import { NeuSurface, NeuButton, NeuInput, NeuIconWrapper, PlatformIcon } from '../components/base';
+
+function LinkIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+      <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+    </svg>
+  );
+}
+
+function ArrowRight() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+    </svg>
+  );
+}
+
+function BackIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+    </svg>
+  );
+}
+
+function MusicIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+    </svg>
+  );
+}
 
 export default function Home() {
   const [inputUrl, setInputUrl] = useState('');
-  const [song, setSong] = useState(null);       // { title, artist }
-  const [status, setStatus] = useState('idle'); // idle | loading | done | error
+  const [song, setSong] = useState(null);
+  const [status, setStatus] = useState('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const { user } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
 
-  // Pre-fill from ?url= query param
   useEffect(() => {
     const p = new URLSearchParams(location.search);
     const u = p.get('url');
@@ -62,87 +104,120 @@ export default function Home() {
     <div className="page">
       <AuthBar />
 
-      <header style={{ textAlign: 'center', marginBottom: 40 }}>
-        <h1 style={{ fontSize: '1.8rem', fontWeight: 700, letterSpacing: '-0.5px', background: 'linear-gradient(135deg, #fff 30%, var(--accent))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-          MusicOne
-        </h1>
-        <p style={{ color: 'var(--muted)', marginTop: 6, fontSize: '0.9rem' }}>Paste any streaming link — search it on every platform</p>
+      <header style={{ textAlign: 'center', marginBottom: 8 }}>
+        <h1 style={{
+          fontSize: '2.2rem', fontWeight: 800, letterSpacing: '-1px',
+          background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%)',
+          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+          marginBottom: 8,
+        }}>MusicOne</h1>
+        <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
+          Paste any streaming link — find it on every platform
+        </p>
       </header>
 
       {status !== 'done' && (
-        <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: 560, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <label style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Streaming URL (Spotify, YouTube Music, Apple Music…)</label>
-          <input
-            type="url"
-            value={inputUrl}
-            onChange={e => setInputUrl(e.target.value)}
-            placeholder="https://open.spotify.com/track/..."
-            style={{ width: '100%', padding: '14px 16px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.95rem', outline: 'none' }}
-          />
-          <button type="submit" className="btn">Find on all platforms</button>
-        </form>
+        <NeuSurface size="lg" style={{ width: '100%', maxWidth: 560, padding: '28px 28px 24px', marginTop: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--muted)' }}>
+            Streaming URL
+          </div>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <NeuInput
+              icon={<LinkIcon />}
+              type="url"
+              value={inputUrl}
+              onChange={e => setInputUrl(e.target.value)}
+              placeholder="https://open.spotify.com/track/…"
+            />
+            <NeuButton
+              variant="primary"
+              type="submit"
+              icon={<ArrowRight />}
+              style={{ width: '100%' }}
+            >
+              Search all platforms
+            </NeuButton>
+          </form>
+        </NeuSurface>
       )}
 
       {status === 'loading' && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, color: 'var(--muted)', marginTop: 32 }}>
           <div className="spinner" />
-          <span>Fetching song info…</span>
+          <span style={{ fontSize: '0.9rem' }}>Fetching song info…</span>
         </div>
       )}
 
       {status === 'error' && (
-        <div style={{ textAlign: 'center', maxWidth: 420, marginTop: 32 }}>
-          <div style={{ fontSize: '2rem', marginBottom: 10 }}>⚠️</div>
-          <p style={{ color: 'var(--muted)', fontSize: '0.9rem', lineHeight: 1.6 }}>{errorMsg}</p>
-          <p style={{ marginTop: 12 }}><a onClick={handleReset} style={{ color: 'var(--accent)', cursor: 'pointer' }}>← Try another link</a></p>
-        </div>
+        <NeuSurface style={{ textAlign: 'center', maxWidth: 420, marginTop: 32, padding: 28 }}>
+          <p style={{ color: 'var(--muted)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: 16 }}>{errorMsg}</p>
+          <NeuButton variant="ghost" onClick={handleReset} icon={<BackIcon />}>Try another link</NeuButton>
+        </NeuSurface>
       )}
 
       {status === 'done' && song && (
         <>
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 1, color: 'var(--muted)', marginBottom: 6 }}>Found song</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{song.title}</div>
-            <div style={{ fontSize: '1rem', color: 'var(--muted)', marginTop: 4 }}>{song.artist}</div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
-              <button onClick={copyPageLink} className="btn btn-ghost" style={{ fontSize: '0.82rem', padding: '8px 16px' }}>📋 Copy page link</button>
-              <button onClick={handleReset} className="btn btn-ghost" style={{ fontSize: '0.82rem', padding: '8px 16px' }}>← New search</button>
+          <NeuSurface style={{ width: '100%', maxWidth: 560, padding: '22px 26px', marginTop: 24, display: 'flex', alignItems: 'center', gap: 18 }}>
+            <NeuIconWrapper size={58} radius={16}>
+              <MusicIcon />
+            </NeuIconWrapper>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                background: 'var(--surface)', borderRadius: 20, padding: '4px 10px',
+                boxShadow: 'var(--recessed)', fontSize: '0.68rem', fontWeight: 700,
+                letterSpacing: '0.8px', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 6,
+              }}>
+                ✦ Found
+              </div>
+              <div style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: 2 }}>{song.title}</div>
+              <div style={{ fontSize: '0.87rem', color: 'var(--muted)' }}>{song.artist}</div>
             </div>
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              <NeuButton variant="ghost" onClick={copyPageLink} icon={<CopyIcon />} style={{ padding: '10px 14px' }} />
+              <NeuButton variant="ghost" onClick={handleReset} icon={<BackIcon />} style={{ padding: '10px 14px' }} />
+            </div>
+          </NeuSurface>
+
+          <div style={{ width: '100%', maxWidth: 560, fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--muted)', marginTop: 24 }}>
+            Open on your platform
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 12, width: '100%', maxWidth: 800 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(136px, 1fr))', gap: 14, width: '100%', maxWidth: 560 }}>
             {Object.entries(PLATFORM_META).map(([key, p]) => {
               const directUrl = song?.platformLinks?.[key];
               const href = directUrl || p.searchUrl(q);
               const isDirect = !!directUrl;
-              const iconSrc = p.iconSvgUrl || p.iconUrl;
               return (
-                <a key={key} href={href} target="_blank" rel="noopener noreferrer"
+                <a
+                  key={key}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   style={{
                     background: 'var(--surface)',
-                    border: `1px solid ${isDirect ? p.color + '55' : 'var(--border)'}`,
                     borderRadius: 'var(--radius)',
-                    padding: 'clamp(12px, 4vw, 20px) clamp(10px, 3vw, 16px)',
+                    padding: '18px 14px',
+                    textAlign: 'center',
+                    boxShadow: 'var(--raised)',
+                    textDecoration: 'none',
+                    color: 'var(--text)',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 8,
-                    textDecoration: 'none',
-                    color: 'var(--text)',
-                    transition: 'border-color 0.2s, transform 0.15s, box-shadow 0.2s',
-                    boxShadow: isDirect ? `0 0 0 1px ${p.color}33` : 'none',
-                    opacity: isDirect ? 1 : 0.8,
+                    gap: 9,
+                    transition: 'all 0.22s cubic-bezier(0.4,0,0.2,1)',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = p.color; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.opacity = '1'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = isDirect ? p.color + '55' : 'var(--border)'; e.currentTarget.style.transform = ''; e.currentTarget.style.opacity = isDirect ? '1' : '0.8'; }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: p.color + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {iconSrc
-                      ? <img src={iconSrc} width={24} height={24} alt={p.name} onError={e => { e.target.replaceWith(Object.assign(document.createElement('span'), { textContent: p.name.slice(0,2), style: `font-size:0.8rem;font-weight:700;color:${p.color}` })); }} />
-                      : <span style={{ fontSize: '0.8rem', fontWeight: 700, color: p.color }}>{p.name.slice(0, 2)}</span>
-                    }
-                  </div>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 600, textAlign: 'center' }}>{p.name}</div>
-                  <div style={{ fontSize: '0.72rem', color: isDirect ? p.color : 'var(--muted)', fontWeight: isDirect ? 600 : 400 }}>
+                  onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--raised-lg)'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.boxShadow = 'var(--raised)'; e.currentTarget.style.transform = ''; }}
+                  onMouseDown={e => { e.currentTarget.style.boxShadow = 'var(--pressed)'; e.currentTarget.style.transform = 'none'; }}
+                  onMouseUp={e => { e.currentTarget.style.boxShadow = 'var(--raised)'; }}
+                >
+                  <NeuIconWrapper size={48} radius={14}>
+                    <PlatformIcon platform={key} size={22} />
+                  </NeuIconWrapper>
+                  <div style={{ fontSize: '0.81rem', fontWeight: 600 }}>{p.name}</div>
+                  <div style={{ fontSize: '0.7rem', color: isDirect ? 'var(--accent)' : 'var(--muted)', fontWeight: isDirect ? 700 : 500 }}>
                     {isDirect ? 'Open ↗' : 'Search ↗'}
                   </div>
                 </a>
@@ -153,11 +228,11 @@ export default function Home() {
       )}
 
       {FLAGS.JAM_SESSION && user && (
-        <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid var(--border)', width: '100%', maxWidth: 560, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        <div style={{ marginTop: 40, width: '100%', maxWidth: 560, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
           <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>Want to listen together?</p>
-          <button className="btn" style={{ width: '100%' }} onClick={() => navigate('/jam/new')}>
+          <NeuButton variant="primary" style={{ width: '100%' }} onClick={() => navigate('/jam/new')}>
             Start a Jam Session
-          </button>
+          </NeuButton>
         </div>
       )}
     </div>
