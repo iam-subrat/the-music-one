@@ -9,7 +9,9 @@
 
 @media (max-width: 700px) {
   .layout { grid-template-columns: minmax(0, 1fr); padding: 72px 12px 60px; }
-  .sidebar { order: -1; position: static; max-height: none; overflow-y: visible; }
+  .sidebar { order: -1; }
+  .queueSection { position: static; max-height: none; overflow: visible; }
+  .queueList { overflow-y: visible; }
   .djControls { flex-wrap: wrap; }
 }
 
@@ -155,9 +157,17 @@
 .ytEmbed { width: 100%; aspect-ratio: 16/9; border-radius: 10px; border: none; overflow: hidden; display: block; }
 .ytEmbed iframe { width: 100% !important; height: 100% !important; display: block; border: none; }
 
-/* Queue */
-.queueSection { display: flex; flex-direction: column; gap: 12px; }
-.queueList { display: flex; flex-direction: column; gap: 8px; }
+/* Queue — sticky on desktop, participants scroll below */
+.queueSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 72px;
+  max-height: calc(100vh - 88px);
+  overflow: hidden;
+}
+.queueList { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; }
 
 .queueCard { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; }
 .queueCardPlayed { opacity: 0.45; }
@@ -173,16 +183,8 @@
 .addInput { flex: 1; min-width: 0; padding: 11px 14px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
 .addInput:focus { border-color: var(--accent); }
 
-/* Sidebar — sticky on desktop, scrolls within viewport */
-.sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  position: sticky;
-  top: 72px;
-  max-height: calc(100vh - 88px);
-  overflow-y: auto;
-}
+/* Sidebar */
+.sidebar { display: flex; flex-direction: column; gap: 16px; }
 .sidebarSection { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
 .sidebarTitle { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 12px; }
 .participant { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 0.85rem; }
