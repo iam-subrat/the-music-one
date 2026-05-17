@@ -198,22 +198,28 @@ InviteBadge (top bar, NeuSurface[sm] pill)
 │
 Page (max-width: 800px, centered)
 ├── NowPlaying — NeuSurface[lg]
-│     Song art (NeuIconWrapper large) + title + artist
-│     Skip vote button (NeuButton[ghost]) + vote count pill (recessed)
-│     YouTubeAutoPlayer embed (hidden, DJ only)
+│     DJ view:
+│       video-recessed div (border-radius:14px, box-shadow:var(--recessed), aspect-ratio:16/9)
+│       → YouTubeAutoPlayer IFrame renders inside, no outer raised border
+│     Non-DJ view:
+│       Compact row: animated waveform bars (accent color) + song info + skip button
+│     Both views:
+│       Playing pill (recessed, accent, animated pulse dot) + song title + artist
+│       Skip button (NeuButton[ghost]) + vote count pill (recessed, accent)
+│       DJ badge pill (recessed) — visible only to DJ
 │
 ├── AddSongForm — NeuSurface[md]
 │     NeuInput[music icon] + NeuButton[primary] "Add to queue"
 │
 ├── Section label "Up next"
 │
-├── QueueList — vertical stack, gap 12px
+├── QueueList — vertical stack, gap 10px
 │     QueueCard × N — NeuSurface[sm]
-│       Position pill (recessed) + song info + platform icon
-│       Status badge: playing (accent) | queued (muted) | played (muted, reduced opacity)
+│       Position pill (recessed, 28×28) + song info + platform icon (muted)
+│       Status: playing → full opacity | queued → 100% | played/skipped → 60% opacity
 │
 └── ParticipantList — NeuSurface[md] collapsible
-      Avatar pills (NeuIconWrapper[sm] + name) — DJ marked with accent badge
+      Avatar pills (NeuIconWrapper[sm] + name) — DJ marked with accent dot badge
 ```
 
 All existing hooks (`useSession`, `useQueue`, `useParticipants`, `useSkipVotes`) unchanged — only visual layer changes.
