@@ -14,8 +14,8 @@ export default function QueueCard({ item, index }) {
         ? <img className={s.queueThumb} src={item.thumbnail_url} alt="" />
         : <div className={s.queueThumb} />}
       <div className={s.queueMeta}>
-        <div className={s.queueTitle}>{item.title}</div>
-        <div className={s.queueArtist}>{item.artist}</div>
+        <div className={s.queueTitle} title={item.title}>{item.title}</div>
+        <div className={s.queueArtist} title={item.artist}>{item.artist}</div>
         <div className={s.queueBy}>by {item.profiles?.display_name || 'someone'}</div>
       </div>
       {item.resolve_status === 'resolving' && (
