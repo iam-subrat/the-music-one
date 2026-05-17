@@ -1,6 +1,8 @@
+// ui/src/pages/Login.jsx
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { NeuSurface, NeuButton } from '../components/base';
 
 export default function Login() {
   const { user, loading, signInWithGoogle } = useAuth();
@@ -12,34 +14,33 @@ export default function Login() {
     if (!loading && user) navigate(next, { replace: true });
   }, [user, loading]);
 
-  const handleGoogle = () => {
-    signInWithGoogle(window.location.origin + next);
-  };
-
   return (
-    <div className="page">
-      <header style={{ textAlign: 'center', marginBottom: 40 }}>
-        <h1 style={{ fontSize: '1.8rem', fontWeight: 700, background: 'linear-gradient(135deg, #fff 30%, var(--accent))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-          MusicOne
-        </h1>
-        <p style={{ color: 'var(--muted)', marginTop: 6, fontSize: '0.9rem' }}>Sign in to create or join a jam session</p>
-      </header>
+    <div className="page" style={{ justifyContent: 'center', gap: 32 }}>
+      <div style={{ textAlign: 'center' }}>
+        <h1 style={{
+          fontSize: '2.2rem', fontWeight: 800, letterSpacing: '-1px',
+          background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%)',
+          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+          marginBottom: 8,
+        }}>MusicOne</h1>
+        <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>Sign in to create or join a jam session</p>
+      </div>
 
-      <div className="card" style={{ padding: 'clamp(24px, 6vw, 40px) clamp(20px, 5vw, 32px)', maxWidth: 380, width: '100%', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <NeuSurface size="lg" style={{ padding: 'clamp(24px,6vw,40px) clamp(20px,5vw,32px)', maxWidth: 380, width: '100%', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 20 }}>
         <h2 style={{ fontSize: '1.3rem', fontWeight: 700 }}>Welcome</h2>
         <p style={{ color: 'var(--muted)', fontSize: '0.9rem', lineHeight: 1.5 }}>
           Sign in with Google to start jamming. Your preferred platform is saved automatically on first song add.
         </p>
-        <button
-          className="btn btn-ghost"
-          style={{ width: '100%', justifyContent: 'center', gap: 10 }}
-          onClick={handleGoogle}
+        <NeuButton
+          variant="ghost"
+          style={{ width: '100%', color: 'var(--text)' }}
+          onClick={() => signInWithGoogle(window.location.origin + next)}
+          icon={<GoogleIcon />}
         >
-          <GoogleIcon />
           Continue with Google
-        </button>
+        </NeuButton>
         <a href="/" style={{ color: 'var(--muted)', fontSize: '0.85rem', textDecoration: 'none' }}>← Back to home</a>
-      </div>
+      </NeuSurface>
     </div>
   );
 }
