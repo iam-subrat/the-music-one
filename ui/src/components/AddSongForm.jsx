@@ -49,7 +49,7 @@ export default function AddSongForm({ sessionId, userId, profile, onPlatformDete
 
   return (
     <>
-      <NeuSurface style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <NeuSurface style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14, flexShrink: 0 }}>
         <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--muted)' }}>
           Add to queue
         </div>
