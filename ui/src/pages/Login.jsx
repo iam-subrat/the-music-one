@@ -25,7 +25,7 @@ export default function Login() {
         <p style={{ color: 'var(--muted)', marginTop: 6, fontSize: '0.9rem' }}>Sign in to create or join a jam session</p>
       </header>
 
-      <div className="card" style={{ padding: '40px 32px', maxWidth: 380, width: '100%', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="card" style={{ padding: 'clamp(24px, 6vw, 40px) clamp(20px, 5vw, 32px)', maxWidth: 380, width: '100%', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 20 }}>
         <h2 style={{ fontSize: '1.3rem', fontWeight: 700 }}>Welcome</h2>
         <p style={{ color: 'var(--muted)', fontSize: '0.9rem', lineHeight: 1.5 }}>
           Sign in with Google to start jamming. Your preferred platform is saved automatically on first song add.

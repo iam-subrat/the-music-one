@@ -22,7 +22,7 @@ export default function AuthBar() {
         <img src={profile.avatar_url} alt={profile.display_name}
           style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
       )}
-      <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>{profile?.display_name}</span>
+      <span className="authBarName">{profile?.display_name}</span>
       <button className="btn btn-ghost" style={{ fontSize: '0.82rem', padding: '6px 12px' }}
         onClick={signOut}>
         Sign out

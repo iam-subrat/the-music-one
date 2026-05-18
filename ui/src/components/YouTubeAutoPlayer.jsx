@@ -59,6 +59,8 @@ export default function YouTubeAutoPlayer({ videoId, onEnded, repeat }) {
       wrapperRef.current.appendChild(playerDiv);
       playerRef.current = new window.YT.Player(playerDiv, {
         videoId: videoIdRef.current,
+        width: '100%',
+        height: '100%',
         playerVars: { autoplay: 1, rel: 0, modestbranding: 1 },
         events: {
           onStateChange: (e) => {

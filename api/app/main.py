@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.services.event_bus import bus
-from app.routers import auth, sessions, items, profiles, songs, youtube, flags, events
+from app.routers import auth, sessions, items, profiles, songs, youtube, flags, events, playlists
 
 
 @asynccontextmanager
@@ -31,6 +31,7 @@ app.include_router(songs.router, prefix="/api/song", tags=["songs"])
 app.include_router(youtube.router, prefix="/api/youtube", tags=["youtube"])
 app.include_router(flags.router, prefix="/api/flags", tags=["flags"])
 app.include_router(events.router, prefix="/api/sessions", tags=["events"])
+app.include_router(playlists.router, prefix="/api/playlists", tags=["playlists"])
 
 
 @app.get("/api/health")

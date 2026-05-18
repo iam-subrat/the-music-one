@@ -8,6 +8,8 @@ services:
       - SUPABASE_ANON_KEY
       - YOUTUBE_API_KEY
       - ODESLI_API_KEY
+      - SPOTIFY_CLIENT_ID
+      - SPOTIFY_CLIENT_SECRET
       - ALLOWED_ORIGINS
       - FRONTEND_URL
       - ROOT_PATH

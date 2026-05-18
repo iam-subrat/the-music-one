@@ -1,11 +1,26 @@
 from uuid import UUID
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel
 
 
 class QueueItemCreate(BaseModel):
     url: str
+
+
+class BatchTrackItem(BaseModel):
+    url: str
+    title: str
+    artist: str
+    thumbnail_url: Optional[str] = None
+
+
+class BatchQueueRequest(BaseModel):
+    tracks: list[BatchTrackItem]
+
+    @property
+    def capped(self) -> list[BatchTrackItem]:
+        return self.tracks[:50]
 
 
 class ProfileSummary(BaseModel):
@@ -26,6 +41,8 @@ class QueueItemResponse(BaseModel):
     thumbnail_url: Optional[str] = None
     platform_links: dict = {}
     status: str
+    source_url: Optional[str] = None
+    resolve_status: Literal["resolving", "resolved", "failed"] = "resolved"
     added_at: datetime
 
     model_config = {"from_attributes": True}

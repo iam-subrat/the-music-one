@@ -99,7 +99,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
         {nowPlaying.thumbnail_url
           ? <img className={s.thumb} src={nowPlaying.thumbnail_url} alt="" />
           : <div className={s.thumb} />}
-        <div>
+        <div className={s.nowPlayingText}>
           <div className={s.nowPlayingTitle}>{nowPlaying.title}</div>
           <div className={s.nowPlayingArtist}>{nowPlaying.artist}</div>
           <div className={s.nowPlayingAdded}>Added by {nowPlaying.profiles?.display_name || 'someone'}</div>

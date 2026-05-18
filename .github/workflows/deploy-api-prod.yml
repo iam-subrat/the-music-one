@@ -50,6 +50,8 @@ jobs:
           ROOT_PATH: ${{ vars.ROOT_PATH }}
           COOKIE_DOMAIN: ${{ vars.COOKIE_DOMAIN }}
           COOKIE_SAMESITE: ${{ vars.COOKIE_SAMESITE }}
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
         run: |
           docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build api
           docker image prune -f

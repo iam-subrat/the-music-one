@@ -1,15 +1,18 @@
 .layout {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: minmax(0, 1fr) 280px;
   gap: 20px;
   width: 100%;
   max-width: 1000px;
-  padding: 80px 16px 80px;
+  padding: 72px 16px 80px;
 }
 
 @media (max-width: 700px) {
-  .layout { grid-template-columns: 1fr; }
+  .layout { grid-template-columns: minmax(0, 1fr); padding: 72px 12px 60px; }
   .sidebar { order: -1; }
+  .queueSection { position: static; max-height: none; overflow: visible; }
+  .queueList { overflow-y: visible; }
+  .djControls { flex-wrap: wrap; }
 }
 
 .jamHeader {
@@ -56,8 +59,9 @@
 
 .nowPlayingMeta { display: flex; align-items: center; gap: 16px; }
 .thumb { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; background: var(--border); flex-shrink: 0; }
-.nowPlayingTitle { font-size: 1.1rem; font-weight: 700; }
-.nowPlayingArtist { font-size: 0.9rem; color: var(--muted); margin-top: 2px; }
+.nowPlayingText { min-width: 0; flex: 1; }
+.nowPlayingTitle { font-size: 1.1rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nowPlayingArtist { font-size: 0.9rem; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nowPlayingAdded { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
 
 .preferredBtn {
@@ -73,13 +77,17 @@
   font-size: 0.9rem;
   transition: filter 0.2s, transform 0.15s;
   width: fit-content;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   box-shadow: 0 2px 12px color-mix(in srgb, var(--platform-color, var(--accent)) 40%, transparent);
 }
 .preferredBtn:hover { filter: brightness(1.15); transform: translateY(-1px); }
 
 /* Platform section */
 .platformSection { display: flex; flex-direction: column; gap: 8px; }
-.platformSectionLabel { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); }
+.platformSectionLabel { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); }
 
 .platformGrid {
   display: flex;
@@ -140,17 +148,26 @@
   letter-spacing: 0.3px;
 }
 
-.djControls { display: flex; gap: 10px; }
-.repeatBtn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 0.82rem; cursor: pointer; transition: border-color 0.2s, color 0.2s; }
+.djControls { display: flex; gap: 10px; flex-wrap: wrap; }
+.repeatBtn { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 0.82rem; cursor: pointer; transition: border-color 0.2s, color 0.2s; min-height: 44px; }
 .repeatBtn:hover, .repeatBtnActive { border-color: var(--accent); color: var(--accent); }
-.skipBtn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 0.82rem; cursor: pointer; transition: border-color 0.2s, color 0.2s; }
+.skipBtn { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 0.82rem; cursor: pointer; transition: border-color 0.2s, color 0.2s; min-height: 44px; }
 .skipBtn:hover, .skipBtnVoted { border-color: #ff6b6b; color: #ff6b6b; }
 
-.ytEmbed { width: 100%; aspect-ratio: 16/9; border-radius: 10px; border: none; }
+.ytEmbed { width: 100%; aspect-ratio: 16/9; border-radius: 10px; border: none; overflow: hidden; display: block; }
+.ytEmbed iframe { width: 100% !important; height: 100% !important; display: block; border: none; }
 
-/* Queue */
-.queueSection { display: flex; flex-direction: column; gap: 12px; }
-.queueList { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 420px; }
+/* Queue — sticky on desktop, participants scroll below */
+.queueSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 72px;
+  max-height: calc(100vh - 88px);
+  overflow: hidden;
+}
+.queueList { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; }
 
 .queueCard { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; }
 .queueCardPlayed { opacity: 0.45; }
@@ -163,21 +180,154 @@
 .queuePos { font-size: 0.75rem; color: var(--muted); flex-shrink: 0; }
 
 .addForm { display: flex; gap: 8px; }
-.addInput { flex: 1; padding: 11px 14px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
+.addInput { flex: 1; min-width: 0; padding: 11px 14px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
 .addInput:focus { border-color: var(--accent); }
 
 /* Sidebar */
 .sidebar { display: flex; flex-direction: column; gap: 16px; }
 .sidebarSection { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
-.sidebarTitle { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
+.sidebarTitle { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 12px; }
 .participant { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 0.85rem; }
 .pAvatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: var(--border); flex-shrink: 0; }
 .pName { flex: 1; }
 .pDj { font-size: 0.7rem; color: var(--accent); }
 
 /* Invite badge */
-.inviteBadge { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; display: flex; align-items: center; gap: 10px; font-size: 0.85rem; }
+.inviteBadge { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; display: flex; align-items: center; gap: 10px; font-size: 0.85rem; flex-wrap: wrap; }
 .inviteCode { font-family: monospace; font-size: 1.1rem; font-weight: 700; letter-spacing: 3px; color: var(--accent); }
 
 /* Ended */
-.endedBanner { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 40px; text-align: center; color: var(--muted); grid-column: 1 / -1; }
+.endedBanner { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: clamp(24px, 5vw, 40px); text-align: center; color: var(--muted); grid-column: 1 / -1; }
+
+/* PlaylistModal */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modalHeader {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modalTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.modalSubtitle {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.modalSelectAll {
+  font-size: 0.78rem;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  width: fit-content;
+}
+
+.modalTrackList {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modalTrackRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.modalTrackRow:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.modalTrackRowSelected { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
+.modalTrackThumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.modalTrackMeta { flex: 1; min-width: 0; }
+.modalTrackTitle { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.modalTrackArtist { font-size: 0.75rem; color: var(--muted); }
+
+.modalCheckbox { flex-shrink: 0; width: 16px; height: 16px; accent-color: var(--accent); }
+
+.modalFooter {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.modalError {
+  padding: 20px;
+  color: #ff6b6b;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.modalLoading {
+  padding: 40px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.resolvingBadge {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.failedBadge {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, #ff6b6b 15%, transparent);
+  color: #ff6b6b;
+  flex-shrink: 0;
+}
+
+.queueCardResolving { opacity: 0.6; }
+.queueCardFailed { opacity: 0.4; }
