@@ -20,6 +20,7 @@
   --accent2:     #b09de8;
   --accent-glow: rgba(118, 96, 199, 0.45);
   --accent-soft: rgba(136, 116, 209, 0.10);
+  --modal-overlay: rgba(236, 235, 243, 0.7);
 
   /* Radius */
   --radius: 22px;
@@ -137,4 +138,23 @@ a { color: inherit; }
   .page { padding: 72px 12px 60px; }
   .authBarName { display: none; }
   .btn { min-height: 44px; }
+}
+
+[data-theme="dark"] {
+  --bg:      #1a1a2e;
+  --surface: #1a1a2e;
+
+  --sd: #0f0f1e;
+  --sl: rgba(255,255,255,0.08);
+
+  --text:  #e8e8f0;
+  --muted: #a0a0b0;
+  --icons: #c0c0d0;
+
+  --accent:      #8874d1;
+  --accent2:     #a88ee6;
+  --accent-glow: rgba(136, 116, 209, 0.35);
+  --accent-soft: rgba(136, 116, 209, 0.15);
+
+  --modal-overlay: rgba(26, 26, 46, 0.8);
 }
