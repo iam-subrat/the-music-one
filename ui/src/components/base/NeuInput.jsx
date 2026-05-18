@@ -1,57 +1,43 @@
 // ui/src/components/base/NeuInput.jsx
-import { useState } from 'react';
-
 export default function NeuInput({ icon, value, onChange, placeholder, type = 'text', disabled = false, style }) {
-  const [focused, setFocused] = useState(false);
+  const base = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    padding: '12px 16px',
+    borderRadius: 'var(--radius-sm)',
+    border: 'none',
+    background: 'var(--surface)',
+    boxShadow: 'var(--raised-sm)',
+    fontFamily: 'inherit',
+    fontSize: '0.93rem',
+    transition: 'all 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
+    ...style,
+  };
 
   return (
-    <div
-      style={{
-        borderRadius: 'var(--radius-sm)',
-        padding: 5,
-        background: 'var(--surface)',
-        boxShadow: focused
-          ? 'var(--raised), 0 0 0 3px var(--accent-soft)'
-          : 'var(--raised)',
-        transition: 'box-shadow 0.25s ease',
-        ...style,
-      }}
-    >
-      <div
+    <div style={base}>
+      {icon && (
+        <span style={{ display: 'flex', alignItems: 'center', opacity: 0.45, flexShrink: 0, color: 'var(--icons)' }}>
+          {icon}
+        </span>
+      )}
+      <input
+        type={type}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        disabled={disabled}
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          borderRadius: 11,
-          padding: '13px 16px',
-          background: 'var(--surface)',
-          boxShadow: 'var(--recessed)',
+          flex: 1,
+          border: 'none',
+          background: 'transparent',
+          color: 'var(--text)',
+          fontFamily: 'inherit',
+          fontSize: 'inherit',
+          outline: 'none',
         }}
-      >
-        {icon && (
-          <span style={{ display: 'flex', alignItems: 'center', opacity: 0.45, flexShrink: 0, color: 'var(--icons)' }}>
-            {icon}
-          </span>
-        )}
-        <input
-          type={type}
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          disabled={disabled}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          style={{
-            flex: 1,
-            border: 'none',
-            background: 'transparent',
-            color: 'var(--text)',
-            fontSize: '0.93rem',
-            fontFamily: 'inherit',
-            outline: 'none',
-          }}
-        />
-      </div>
+      />
     </div>
   );
 }
