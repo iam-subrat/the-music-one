@@ -6,6 +6,7 @@ import { api } from '../lib/api';
 import { FLAGS } from '../lib/flags';
 import { useToast } from '../components/Toast';
 import { PLATFORM_META } from '../lib/platform';
+import s from './home.module.css';
 
 export default function Home() {
   const [inputUrl, setInputUrl] = useState('');
@@ -62,104 +63,155 @@ export default function Home() {
     <div className="page">
       <AuthBar />
 
-      <header style={{ textAlign: 'center', marginBottom: 40 }}>
-        <h1 style={{ fontSize: '1.8rem', fontWeight: 700, letterSpacing: '-0.5px', background: 'linear-gradient(135deg, #fff 30%, var(--accent))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-          MusicOne
-        </h1>
-        <p style={{ color: 'var(--muted)', marginTop: 6, fontSize: '0.9rem' }}>Paste any streaming link — search it on every platform</p>
+      <header className={s.hero}>
+        <div className={s.logoMark}>
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+            <circle cx="14" cy="14" r="13" stroke="url(#grad)" strokeWidth="2"/>
+            <circle cx="14" cy="14" r="5" fill="url(#grad)"/>
+            <defs>
+              <linearGradient id="grad" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#fff"/>
+                <stop offset="1" stopColor="var(--accent)"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <h1 className={s.heroTitle}>MusicOne</h1>
+        <p className={s.heroSub}>Paste any streaming link — listen on every platform</p>
       </header>
 
       {status !== 'done' && (
-        <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: 560, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <label style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Streaming URL (Spotify, YouTube Music, Apple Music…)</label>
-          <input
-            type="url"
-            value={inputUrl}
-            onChange={e => setInputUrl(e.target.value)}
-            placeholder="https://open.spotify.com/track/..."
-            style={{ width: '100%', padding: '14px 16px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.95rem', outline: 'none' }}
-          />
-          <button type="submit" className="btn">Find on all platforms</button>
+        <form onSubmit={handleSubmit} className={s.searchForm}>
+          <div className={s.inputGroup}>
+            <SearchIcon className={s.inputIcon} />
+            <input
+              type="url"
+              value={inputUrl}
+              onChange={e => setInputUrl(e.target.value)}
+              placeholder="Spotify, YouTube Music, Apple Music…"
+              className={s.searchInput}
+              autoFocus
+              autoComplete="off"
+              spellCheck="false"
+            />
+          </div>
+          <button type="submit" className={`btn ${s.searchBtn}`}>
+            Find on all platforms
+          </button>
         </form>
       )}
 
       {status === 'loading' && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, color: 'var(--muted)', marginTop: 32 }}>
+        <div className={`${s.loadingState} animate-fade-in`}>
           <div className="spinner" />
-          <span>Fetching song info…</span>
+          <span>Looking up song…</span>
         </div>
       )}
 
       {status === 'error' && (
-        <div style={{ textAlign: 'center', maxWidth: 420, marginTop: 32 }}>
-          <div style={{ fontSize: '2rem', marginBottom: 10 }}>⚠️</div>
-          <p style={{ color: 'var(--muted)', fontSize: '0.9rem', lineHeight: 1.6 }}>{errorMsg}</p>
-          <p style={{ marginTop: 12 }}><a onClick={handleReset} style={{ color: 'var(--accent)', cursor: 'pointer' }}>← Try another link</a></p>
+        <div className={`${s.errorState} animate-fade-in-up`}>
+          <div className={s.errorIcon}>✦</div>
+          <p className={s.errorMsg}>{errorMsg}</p>
+          <button onClick={handleReset} className="btn btn-ghost" style={{ marginTop: 8 }}>
+            ← Try another link
+          </button>
         </div>
       )}
 
       {status === 'done' && song && (
-        <>
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 1, color: 'var(--muted)', marginBottom: 6 }}>Found song</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{song.title}</div>
-            <div style={{ fontSize: '1rem', color: 'var(--muted)', marginTop: 4 }}>{song.artist}</div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
-              <button onClick={copyPageLink} className="btn btn-ghost" style={{ fontSize: '0.82rem', padding: '8px 16px' }}>📋 Copy page link</button>
-              <button onClick={handleReset} className="btn btn-ghost" style={{ fontSize: '0.82rem', padding: '8px 16px' }}>← New search</button>
+        <div className="animate-fade-in-up" style={{ width: '100%', maxWidth: 760, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28 }}>
+          <div className={s.songCard}>
+            {song.thumbnailUrl && (
+              <img src={song.thumbnailUrl} alt={song.title} className={s.songThumb} />
+            )}
+            <div className={s.songInfo}>
+              <div className={s.songFoundBadge}>Found</div>
+              <h2 className={s.songTitle}>{song.title}</h2>
+              <p className={s.songArtist}>{song.artist}</p>
+            </div>
+            <div className={s.songActions}>
+              <button onClick={copyPageLink} className="btn btn-ghost" style={{ fontSize: '0.82rem', padding: '8px 14px' }}>
+                <CopyIcon /> Share
+              </button>
+              <button onClick={handleReset} className="btn btn-ghost" style={{ fontSize: '0.82rem', padding: '8px 14px' }}>
+                ← New
+              </button>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 12, width: '100%', maxWidth: 800 }}>
-            {Object.entries(PLATFORM_META).map(([key, p]) => {
+          <div className={s.platformGrid}>
+            {Object.entries(PLATFORM_META).map(([key, p], i) => {
               const directUrl = song?.platformLinks?.[key];
               const href = directUrl || p.searchUrl(q);
               const isDirect = !!directUrl;
               const iconSrc = p.iconSvgUrl || p.iconUrl;
               return (
-                <a key={key} href={href} target="_blank" rel="noopener noreferrer"
+                <a
+                  key={key}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${s.platformCard} ${isDirect ? s.platformCardDirect : ''}`}
                   style={{
-                    background: 'var(--surface)',
-                    border: `1px solid ${isDirect ? p.color + '55' : 'var(--border)'}`,
-                    borderRadius: 'var(--radius)',
-                    padding: 'clamp(12px, 4vw, 20px) clamp(10px, 3vw, 16px)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 8,
-                    textDecoration: 'none',
-                    color: 'var(--text)',
-                    transition: 'border-color 0.2s, transform 0.15s, box-shadow 0.2s',
-                    boxShadow: isDirect ? `0 0 0 1px ${p.color}33` : 'none',
-                    opacity: isDirect ? 1 : 0.8,
+                    '--platform-color': p.color,
+                    animationDelay: `${i * 40}ms`,
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = p.color; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.opacity = '1'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = isDirect ? p.color + '55' : 'var(--border)'; e.currentTarget.style.transform = ''; e.currentTarget.style.opacity = isDirect ? '1' : '0.8'; }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: p.color + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  title={isDirect ? `Open on ${p.name}` : `Search on ${p.name}`}
+                >
+                  <div className={s.platformIconWrap}>
                     {iconSrc
-                      ? <img src={iconSrc} width={24} height={24} alt={p.name} onError={e => { e.target.replaceWith(Object.assign(document.createElement('span'), { textContent: p.name.slice(0,2), style: `font-size:0.8rem;font-weight:700;color:${p.color}` })); }} />
-                      : <span style={{ fontSize: '0.8rem', fontWeight: 700, color: p.color }}>{p.name.slice(0, 2)}</span>
+                      ? <img
+                          src={iconSrc}
+                          width={24}
+                          height={24}
+                          alt={p.name}
+                          className={s.platformImg}
+                          onError={e => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling && (e.target.nextSibling.style.display = 'block');
+                          }}
+                        />
+                      : null
                     }
+                    <span className={s.platformFallback} style={{ color: p.color }}>{p.name.slice(0, 2)}</span>
                   </div>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 600, textAlign: 'center' }}>{p.name}</div>
-                  <div style={{ fontSize: '0.72rem', color: isDirect ? p.color : 'var(--muted)', fontWeight: isDirect ? 600 : 400 }}>
+                  <span className={s.platformName}>{p.name}</span>
+                  <span className={`${s.platformBadge} ${isDirect ? s.platformBadgeDirect : s.platformBadgeSearch}`}>
                     {isDirect ? 'Open ↗' : 'Search ↗'}
-                  </div>
+                  </span>
                 </a>
               );
             })}
           </div>
-        </>
+        </div>
       )}
 
       {FLAGS.JAM_SESSION && user && (
-        <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid var(--border)', width: '100%', maxWidth: 560, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-          <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>Want to listen together?</p>
+        <div className={s.jamCta}>
+          <p className={s.jamCtaText}>Want to listen together?</p>
           <button className="btn" style={{ width: '100%' }} onClick={() => navigate('/jam/new')}>
             Start a Jam Session
           </button>
         </div>
       )}
     </div>
+  );
+}
+
+function SearchIcon({ className }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+      <rect x="4" y="4" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M3 9H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
   );
 }
