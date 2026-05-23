@@ -3,24 +3,24 @@ import logging
 from typing import Optional
 from uuid import UUID
 from app.models.queue_item import QueueItem
-from app.repositories.queue_repo import QueueRepository
-from app.repositories.skip_vote_repo import SkipVoteRepository
+
+from app.store import Store
+from app.services.song_service import SongService
 
 SKIP_THRESHOLD = 3
 
 
 class QueueService:
-    def __init__(self, queue_repo, skip_vote_repo, song_service) -> None:
-        self.repo = queue_repo
-        self.vote_repo = skip_vote_repo
-        self.song_svc = song_service
+    def __init__(self, store: Store, song_svc: SongService) -> None:
+        self.store = store
+        self.song_svc = song_svc
 
     async def get_queue(self, session_id: UUID) -> list[QueueItem]:
-        return await self.repo.get_queue(session_id)
+        return await self.store.queue.get_queue(session_id)
 
     async def add(self, session_id: UUID, user_id: UUID, url: str) -> QueueItem:
         meta = await self.song_svc.resolve_song_meta(url)
-        return await self.repo.create(
+        return await self.store.queue.create(
             session_id=session_id,
             added_by_user_id=user_id,
             title=meta["title"],
@@ -37,7 +37,7 @@ class QueueService:
         added: list[QueueItem] = []
         for track in tracks:
             try:
-                item = await self.repo.create_stub(
+                item = await self.store.queue.create_stub(
                     session_id=session_id,
                     added_by_user_id=user_id,
                     title=track.get("title", ""),
@@ -47,7 +47,9 @@ class QueueService:
                 )
                 added.append(item)
             except Exception as exc:
-                logging.getLogger(__name__).warning("add_batch: failed to create stub for %s: %s", track.get("url"), exc)
+                logging.getLogger(__name__).warning(
+                    "add_batch: failed to create stub for %s: %s", track.get("url"), exc
+                )
         return added
 
     async def play_next(
@@ -56,7 +58,7 @@ class QueueService:
         if depth >= 10:
             return None
 
-        next_item = await self.repo.get_next_queued(session_id)
+        next_item = await self.store.queue.get_next_queued(session_id)
         if not next_item:
             return None
 
@@ -65,24 +67,28 @@ class QueueService:
             source_url = next_item.source_url
             try:
                 meta = await self.song_svc.resolve_song_meta(source_url)
-                await self.repo.mark_resolved(item_id, meta, user_id)
+                await self.store.queue.mark_resolved(item_id, meta, user_id)
             except Exception:
-                await self.repo.mark_failed(item_id, user_id)
+                await self.store.queue.mark_failed(item_id, user_id)
                 return await self.play_next(session_id, user_id, depth + 1)
 
-        return await self.repo.play_next(session_id, user_id, "played")
+        return await self.store.queue.play_next(session_id, user_id, "played")
 
     async def force_skip(self, session_id: UUID, user_id: UUID) -> Optional[UUID]:
-        return await self.repo.force_skip(session_id, user_id)
+        return await self.store.queue.force_skip(session_id, user_id)
 
-    async def patch_youtube_link(self, item_id: UUID, youtube_url: str, user_id: UUID) -> None:
-        await self.repo.patch_youtube_link(item_id, youtube_url, user_id)
+    async def patch_youtube_link(
+        self, item_id: UUID, youtube_url: str, user_id: UUID
+    ) -> None:
+        await self.store.queue.patch_youtube_link(item_id, youtube_url, user_id)
 
-    async def cast_vote(self, queue_item_id: UUID, user_id: UUID, threshold: int = SKIP_THRESHOLD) -> bool:
-        return await self.vote_repo.cast_vote(queue_item_id, user_id, threshold)
+    async def cast_vote(
+        self, queue_item_id: UUID, user_id: UUID, threshold: int = SKIP_THRESHOLD
+    ) -> bool:
+        return await self.store.skip_votes.cast_vote(queue_item_id, user_id, threshold)
 
     async def remove_vote(self, queue_item_id: UUID, user_id: UUID) -> None:
-        await self.vote_repo.remove_vote(queue_item_id, user_id)
+        await self.store.skip_votes.remove_vote(queue_item_id, user_id)
 
     async def get_votes(self, queue_item_id: UUID) -> dict:
-        return await self.vote_repo.get_votes(queue_item_id)
+        return await self.store.skip_votes.get_votes(queue_item_id)

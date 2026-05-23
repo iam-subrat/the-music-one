@@ -1,21 +1,23 @@
 from uuid import UUID
 import httpx
 from fastapi import Depends, HTTPException, Request, status
-from jose import JWTError, jwk, jwt
+from jose import jwk, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 
-_jwks_cache: dict | None = None
+_JWKS_CACHE: dict | None = None
 
 
 async def _public_key(kid: str):
-    global _jwks_cache
-    if _jwks_cache is None:
+    global _JWKS_CACHE
+    if _JWKS_CACHE is None:
         async with httpx.AsyncClient() as client:
-            res = await client.get(f"{settings.supabase_url}/auth/v1/.well-known/jwks.json")
-            _jwks_cache = res.json()
-    for key in _jwks_cache.get("keys", []):
+            res = await client.get(
+                f"{settings.supabase_url}/auth/v1/.well-known/jwks.json"
+            )
+            _JWKS_CACHE = res.json()
+    for key in _JWKS_CACHE.get("keys", []):
         if key.get("kid") == kid:
             return jwk.construct(key)
     raise ValueError(f"kid {kid!r} not in JWKS")
@@ -46,14 +48,18 @@ async def get_current_user(
 ) -> UUID:
     token = request.cookies.get("access_token")
     if not token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
+        )
     try:
         payload = await _decode(token)
         return UUID(payload["sub"])
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from exc
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+        ) from exc
 
 
 async def get_optional_user(request: Request) -> UUID | None:
@@ -67,43 +73,32 @@ async def get_optional_user(request: Request) -> UUID | None:
         return None
 
 
-# Repository DI — lazy imports to avoid circular dependency at module load time
-def get_profile_repo(db: AsyncSession = Depends(get_db)):
-    from app.repositories.profile_repo import ProfileRepository
-    return ProfileRepository(db)
+def get_store(db: AsyncSession = Depends(get_db)):
+    from app.store import Store
 
-def get_session_repo(db: AsyncSession = Depends(get_db)):
-    from app.repositories.session_repo import SessionRepository
-    return SessionRepository(db)
-
-def get_queue_repo(db: AsyncSession = Depends(get_db)):
-    from app.repositories.queue_repo import QueueRepository
-    return QueueRepository(db)
-
-def get_skip_vote_repo(db: AsyncSession = Depends(get_db)):
-    from app.repositories.skip_vote_repo import SkipVoteRepository
-    return SkipVoteRepository(db)
+    return Store(db)
 
 
-# Service DI — lazy imports
-def get_profile_service(db: AsyncSession = Depends(get_db)):
-    from app.repositories.profile_repo import ProfileRepository
+def get_profile_service(store=Depends(get_store)):
     from app.services.profile_service import ProfileService
-    return ProfileService(ProfileRepository(db))
 
-def get_session_service(db: AsyncSession = Depends(get_db)):
-    from app.repositories.session_repo import SessionRepository
-    from app.repositories.profile_repo import ProfileRepository
+    return ProfileService(store)
+
+
+def get_session_service(store=Depends(get_store)):
     from app.services.session_service import SessionService
-    return SessionService(SessionRepository(db), ProfileRepository(db))
 
-def get_queue_service(db: AsyncSession = Depends(get_db)):
-    from app.repositories.queue_repo import QueueRepository
-    from app.repositories.skip_vote_repo import SkipVoteRepository
+    return SessionService(store)
+
+
+def get_queue_service(store=Depends(get_store)):
     from app.services.queue_service import QueueService
     from app.services.song_service import SongService
-    return QueueService(QueueRepository(db), SkipVoteRepository(db), SongService())
+
+    return QueueService(store, SongService())
+
 
 def get_song_service():
     from app.services.song_service import SongService
+
     return SongService()

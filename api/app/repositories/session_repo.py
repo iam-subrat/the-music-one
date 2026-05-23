@@ -1,13 +1,13 @@
 import random
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 from uuid import UUID, uuid4
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from app.models.session import Session, SessionParticipant
 from app.models.profile import Profile
 from app.repositories.base import AbstractRepository
-
+from app.repositories.db_auth import set_jwt_claims
 
 _INVITE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
@@ -22,7 +22,9 @@ class SessionRepository(AbstractRepository):
         return result.scalar_one_or_none()
 
     async def get_by_code(self, code: str) -> Optional[Session]:
-        result = await self.db.execute(select(Session).where(Session.invite_code == code.upper()))
+        result = await self.db.execute(
+            select(Session).where(Session.invite_code == code.upper())
+        )
         return result.scalar_one_or_none()
 
     async def create(self, host_user_id: UUID, **kwargs) -> Session:
@@ -52,9 +54,11 @@ class SessionRepository(AbstractRepository):
         await self.db.commit()
 
     async def join(self, session_id: UUID, user_id: UUID) -> None:
-        stmt = pg_insert(SessionParticipant).values(
-            session_id=session_id, user_id=user_id
-        ).on_conflict_do_nothing()
+        stmt = (
+            pg_insert(SessionParticipant)
+            .values(session_id=session_id, user_id=user_id)
+            .on_conflict_do_nothing()
+        )
         await self.db.execute(stmt)
         await self.db.commit()
 
@@ -90,3 +94,19 @@ class SessionRepository(AbstractRepository):
             }
             for sp, p in result.all()
         ]
+
+    async def set_repeat_mode(self, session_id: UUID, mode: str, user_id: UUID) -> None:
+        await set_jwt_claims(self.db, user_id)
+        await self.db.execute(
+            text("SELECT set_repeat_mode(:sid, :mode)"),
+            {"sid": str(session_id), "mode": mode},
+        )
+        await self.db.commit()
+
+    async def pass_dj(self, session_id: UUID, new_dj_id: UUID, user_id: UUID) -> None:
+        await set_jwt_claims(self.db, user_id)
+        await self.db.execute(
+            text("SELECT pass_dj_token(:sid, :new_dj)"),
+            {"sid": str(session_id), "new_dj": str(new_dj_id)},
+        )
+        await self.db.commit()

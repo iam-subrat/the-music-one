@@ -24,18 +24,6 @@
   text-align: center;
 }
 
-.logoMark {
-  width: 48px;
-  height: 48px;
-  background: rgba(124, 106, 247, 0.1);
-  border: 1px solid rgba(124, 106, 247, 0.2);
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 20px rgba(124, 106, 247, 0.15);
-}
-
 .appName {
   font-size: 1.6rem;
   font-weight: 800;

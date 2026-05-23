@@ -166,9 +166,8 @@
   position: sticky;
   top: 72px;
   max-height: calc(100vh - 88px);
-  overflow: hidden;
 }
-.queueList { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; }
+.queueList { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; min-height: 0; }
 
 .queueCard { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; }
 .queueCardPlayed { opacity: 0.45; }

@@ -7,11 +7,10 @@ from fastapi import HTTPException
 
 
 def _make_svc(queue_repo=None, vote_repo=None, song_svc=None):
-    return QueueService(
-        queue_repo or AsyncMock(),
-        vote_repo or AsyncMock(),
-        song_svc or AsyncMock(),
-    )
+    store = MagicMock()
+    store.queue = queue_repo or AsyncMock()
+    store.skip_votes = vote_repo or AsyncMock()
+    return QueueService(store, song_svc or AsyncMock())
 
 
 def _make_item(resolve_status="resolved", status="queued", source_url=None):

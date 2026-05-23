@@ -2,7 +2,7 @@ from __future__ import annotations
 from uuid import UUID
 from fastapi import APIRouter, Depends
 from app.dependencies import get_current_user, get_queue_service
-from app.schemas.queue_item import YouTubeLinkUpdate, SkipVoteResponse, CastVoteRequest
+from app.schemas.queue_item import YouTubeLinkUpdate, CastVoteRequest
 from app.services.event_bus import bus
 
 router = APIRouter()
@@ -48,7 +48,9 @@ async def remove_vote(
     await svc.remove_vote(item_id, user_id)
     item = await svc.repo.get_by_id(item_id)
     if item:
-        await bus.publish(str(item.session_id), "votes_changed", {"queue_item_id": str(item_id)})
+        await bus.publish(
+            str(item.session_id), "votes_changed", {"queue_item_id": str(item_id)}
+        )
     return {"ok": True}
 
 
