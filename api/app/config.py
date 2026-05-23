@@ -1,4 +1,4 @@
-from urllib.parse import quote, urlsplit, urlunsplit
+from urllib.parse import quote
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 

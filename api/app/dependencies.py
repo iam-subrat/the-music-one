@@ -1,7 +1,7 @@
 from uuid import UUID
 import httpx
 from fastapi import Depends, HTTPException, Request, status
-from jose import JWTError, jwk, jwt
+from jose import jwk, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException
 from app.dependencies import get_current_user, get_session_service, get_queue_service
 from app.schemas.session import SessionResponse, RepeatModeUpdate, DjPassRequest
 from app.schemas.queue_item import QueueItemCreate, QueueItemResponse, BatchQueueRequest
