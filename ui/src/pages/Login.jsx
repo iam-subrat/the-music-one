@@ -21,18 +21,6 @@ export default function Login() {
     <div className="page" style={{ justifyContent: 'center' }}>
       <div className={s.wrapper}>
         <header className={s.header}>
-          <div className={s.logoMark}>
-            <svg width="22" height="22" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-              <circle cx="14" cy="14" r="13" stroke="url(#lg)" strokeWidth="2"/>
-              <circle cx="14" cy="14" r="5" fill="url(#lg)"/>
-              <defs>
-                <linearGradient id="lg" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#fff"/>
-                  <stop offset="1" stopColor="var(--accent)"/>
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
           <h1 className={s.appName}>MusicOne</h1>
         </header>
 

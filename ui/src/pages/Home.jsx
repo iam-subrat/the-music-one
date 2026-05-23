@@ -64,18 +64,6 @@ export default function Home() {
       <AuthBar />
 
       <header className={s.hero}>
-        <div className={s.logoMark}>
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-            <circle cx="14" cy="14" r="13" stroke="url(#grad)" strokeWidth="2"/>
-            <circle cx="14" cy="14" r="5" fill="url(#grad)"/>
-            <defs>
-              <linearGradient id="grad" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#fff"/>
-                <stop offset="1" stopColor="var(--accent)"/>
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
         <h1 className={s.heroTitle}>MusicOne</h1>
         <p className={s.heroSub}>Paste any streaming link — listen on every platform</p>
       </header>
