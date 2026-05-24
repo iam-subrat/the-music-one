@@ -3,7 +3,7 @@ import posthog from 'posthog-js';
 export function initAnalytics(apiKey) {
   if (!apiKey) return;
   posthog.init(apiKey, {
-    api_host: 'https://us.i.posthog.com',
+    api_host: 'https://eu.i.posthog.com',
     person_profiles: 'identified_only',
     capture_pageview: false,
     capture_pageleave: true,
