@@ -34,6 +34,8 @@ jobs:
         working-directory: ui
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+          VITE_APP_ENV: ${{ vars.VITE_APP_ENV }}
           FLAG_JAM_SESSION: 'true'
           FLAG_VOTE_TO_SKIP: 'true'
           FLAG_DJ_TOKEN: 'true'
