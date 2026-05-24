@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     root_path: str = ""
     cookie_domain: str = ""
     cookie_samesite: str = "lax"
+    log_level: str = "INFO"
 
     @property
     def cookie_samesite_value(self) -> str:
