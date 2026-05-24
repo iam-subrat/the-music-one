@@ -2,7 +2,7 @@ name: Deploy Observability Stack
 
 on:
   push:
-    branches: [main]
+    branches: [main,staging]
     paths:
       - "observability/**"
       - "docker-compose.yml"
