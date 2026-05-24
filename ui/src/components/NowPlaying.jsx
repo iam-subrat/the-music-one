@@ -9,11 +9,15 @@ import { setRepeatMode } from '../lib/session';
 import { useToast } from './Toast';
 import PlatformLinks from './PlatformLinks';
 import YouTubeAutoPlayer from './YouTubeAutoPlayer';
+import { useAnalytics } from '../lib/analytics';
 
 export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatform, participantCount, userId, onQueueChange, repeatMode, onRepeatModeChange }) {
   const toast = useToast();
   const { count: skipVotes, hasVoted } = useSkipVotes(nowPlaying?.id, userId, sessionId);
   const skipThreshold = Math.floor(participantCount / 2) + 1;
+  const { capture } = useAnalytics();
+  const prevNowPlayingIdRef = useRef(null);
+  const ytFeatureFiredRef   = useRef(false);
 
   const [ytId, setYtId] = useState(null);
   const [ytResolvedTitle, setYtResolvedTitle] = useState(null);
@@ -59,6 +63,23 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
         }
       });
   }, [nowPlaying?.id, isDJ]);
+
+  useEffect(() => {
+    if (!nowPlaying || nowPlaying.id === prevNowPlayingIdRef.current) return;
+    prevNowPlayingIdRef.current = nowPlaying.id;
+    capture('song_played', {
+      platform:    nowPlaying.platform_links ? Object.keys(nowPlaying.platform_links)[0] : 'unknown',
+      source:      isDJ ? 'manual' : 'auto',
+    });
+  }, [nowPlaying?.id]);
+
+  useEffect(() => {
+    if (!ytId || ytFeatureFiredRef.current) return;
+    if (FLAGS.YOUTUBE_EMBED || FLAGS.AUTO_PLAY_QUEUE) {
+      capture('feature_used', { feature: FLAGS.AUTO_PLAY_QUEUE ? 'auto_play_queue' : 'youtube_embed' });
+      ytFeatureFiredRef.current = true;
+    }
+  }, [ytId]);
 
   async function handleEnded() {
     if (!isDJ) return;
@@ -185,6 +206,10 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
       if (hasVoted) {
         await removeSkipVote(nowPlaying.id, userId);
       } else {
+        capture('skip_vote_cast', {
+          votes_so_far: skipVotes + 1,
+          threshold:    skipThreshold,
+        });
         const skipped = await castSkipVote(nowPlaying.id, skipThreshold);
         if (skipped) onQueueChange?.();
       }
