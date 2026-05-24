@@ -7,6 +7,7 @@ import { FLAGS } from '../lib/flags';
 import { useToast } from '../components/Toast';
 import { PLATFORM_META } from '../lib/platform';
 import s from './home.module.css';
+import { useAnalytics } from '../lib/analytics';
 
 export default function Home() {
   const [inputUrl, setInputUrl] = useState('');
@@ -16,6 +17,7 @@ export default function Home() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
+  const { capture } = useAnalytics();
 
   // Pre-fill from ?url= query param
   useEffect(() => {
@@ -24,7 +26,12 @@ export default function Home() {
     if (u) { setInputUrl(u); runSearch(u); }
   }, []);
 
+  useEffect(() => {
+    capture('page_viewed', { page: 'home' });
+  }, []);
+
   async function runSearch(url) {
+    capture('lookup_started');
     setStatus('loading');
     setSong(null);
     try {
@@ -33,17 +40,23 @@ export default function Home() {
       const meta = await res.json();
       setSong(meta);
       setStatus('done');
+      capture('lookup_succeeded', { platform_count: Object.keys(meta.platformLinks ?? {}).length });
       history.replaceState({}, '', `?url=${encodeURIComponent(url)}`);
     } catch (err) {
       setErrorMsg(err.message || 'Failed to fetch song info.');
       setStatus('error');
+      capture('lookup_failed', { error: err.message });
     }
   }
 
   function handleSubmit(e) {
     e.preventDefault();
     if (!inputUrl.trim()) return;
-    runSearch(inputUrl.trim());
+    const trimmed = inputUrl.trim();
+    try {
+      capture('url_pasted', { url_domain: new URL(trimmed).hostname });
+    } catch { /* non-URL input — skip domain capture */ }
+    runSearch(trimmed);
   }
 
   function handleReset() {
@@ -145,6 +158,7 @@ export default function Home() {
                     animationDelay: `${i * 40}ms`,
                   }}
                   title={isDirect ? `Open on ${p.name}` : `Search on ${p.name}`}
+                  onClick={() => capture('platform_link_clicked', { platform: key, song_title: song?.title })}
                 >
                   <div className={s.platformIconWrap}>
                     {iconSrc
