@@ -1,0 +1,53 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: musicone-api
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: label
+            values: ["com.docker.compose.service=api"]
+    relabel_configs:
+      # Keep only containers from this compose project
+      - source_labels: [__meta_docker_container_label_com_docker_compose_service]
+        action: keep
+        regex: api
+      - source_labels: [__meta_docker_container_name]
+        target_label: container
+      - source_labels: [__meta_docker_container_label_com_docker_compose_project]
+        target_label: project
+    pipeline_stages:
+      # Parse the JSON log line emitted by JsonFormatter
+      - json:
+          expressions:
+            level: level
+            path: path
+            status_code: status_code
+            duration_ms: duration_ms
+            request_id: request_id
+            method: method
+      # Promote high-cardinality-safe fields to Loki labels
+      - labels:
+          level:
+          method:
+      # Store the rest as structured metadata (queryable but not indexed)
+      - structured_metadata:
+          path: path
+          status_code: status_code
+          duration_ms: duration_ms
+          request_id: request_id
+      # Use the log-line timestamp if present, else fall back to ingest time
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+          fallback_formats:
+            - RFC3339
