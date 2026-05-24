@@ -180,7 +180,7 @@ input:focus, textarea:focus {
 }
 
 @media (max-width: 480px) {
-  .page { padding: 72px 12px 72px; }
+  .page { padding: 88px 12px 72px; }
   .authBarName { display: none; }
   .btn { min-height: 44px; }
 }

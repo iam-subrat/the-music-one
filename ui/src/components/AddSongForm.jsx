@@ -5,6 +5,7 @@ import { detectPlaylist } from '../lib/playlist';
 import { detectPlatform } from '../lib/platform';
 import { FLAGS } from '../lib/flags';
 import { useToast } from './Toast';
+import { useAnalytics } from '../lib/analytics';
 import PlaylistModal from './PlaylistModal';
 
 export default function AddSongForm({ sessionId, userId, profile, onPlatformDetected, onAdded }) {
@@ -12,6 +13,7 @@ export default function AddSongForm({ sessionId, userId, profile, onPlatformDete
   const [busy, setBusy] = useState(false);
   const [playlistUrl, setPlaylistUrl] = useState(null);
   const toast = useToast();
+  const { capture } = useAnalytics();
 
   async function handleAdd(e) {
     e.preventDefault();
@@ -19,6 +21,7 @@ export default function AddSongForm({ sessionId, userId, profile, onPlatformDete
     if (!trimmed || busy) return;
 
     if (FLAGS.PLAYLIST_IMPORT && detectPlaylist(trimmed)) {
+      capture('feature_used', { feature: 'playlist_import' });
       setPlaylistUrl(trimmed);
       setUrl('');
       return;
@@ -31,6 +34,9 @@ export default function AddSongForm({ sessionId, userId, profile, onPlatformDete
         if (platform) onPlatformDetected(platform);
       }
       const item = await addToQueue(sessionId, trimmed);
+      const platform = detectPlatform(trimmed) ?? 'unknown';
+      const hasYoutube = !!(item.platform_links?.youtube || item.platform_links?.youtubemusic);
+      capture('song_added', { platform, has_youtube: hasYoutube });
       toast(`"${item.title}" added to queue`);
       setUrl('');
       onAdded?.(item);

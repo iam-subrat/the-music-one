@@ -2,9 +2,11 @@ import s from '../styles/jam.module.css';
 import { FLAGS } from '../lib/flags';
 import { passDjToken } from '../lib/session';
 import { useToast } from './Toast';
+import { useAnalytics } from '../lib/analytics';
 
 export default function ParticipantList({ participants, session, currentUserId }) {
   const toast = useToast();
+  const { capture } = useAnalytics();
   const isHost = session.host_user_id === currentUserId;
 
   return (
@@ -21,7 +23,13 @@ export default function ParticipantList({ participants, session, currentUserId }
             <button
               className="btn btn-ghost"
               style={{ fontSize: '0.72rem', padding: '3px 8px' }}
-              onClick={() => passDjToken(session.id, p.id).then(() => toast('DJ token passed!'))}
+              onClick={() =>
+                passDjToken(session.id, p.id).then(() => {
+                  capture('dj_token_passed', { session_id: session.id });
+                  capture('feature_used', { feature: 'dj_token' });
+                  toast('DJ token passed!');
+                })
+              }
             >
               Make DJ
             </button>

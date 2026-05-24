@@ -18,7 +18,7 @@ export default function Login() {
   };
 
   return (
-    <div className={`page ${s.page}`} style={{ justifyContent: 'center' }}>
+    <div className={s.page}>
       <div className={s.wrapper}>
         <header className={s.header}>
           <h1 className={s.appName}>MusicOne</h1>
