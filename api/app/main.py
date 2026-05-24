@@ -2,8 +2,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
+from app.logging_config import configure_logging
+from app.middleware import LoggingMiddleware
 from app.services.event_bus import bus
 from app.routers import auth, sessions, items, profiles, songs, youtube, flags, events, playlists
+
+configure_logging(settings.log_level)
 
 
 @asynccontextmanager
@@ -13,6 +17,10 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="MusicOne API", root_path=settings.root_path, lifespan=lifespan)
+
+# LoggingMiddleware must be added before CORSMiddleware so it captures
+# the actual response status (including CORS preflight 200s).
+app.add_middleware(LoggingMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
