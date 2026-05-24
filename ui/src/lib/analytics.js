@@ -9,6 +9,9 @@ export function initAnalytics(apiKey) {
     capture_pageleave: true,
     disable_session_recording: true,
   });
+  posthog.register({
+    environment: import.meta.env.VITE_APP_ENV ?? import.meta.env.MODE,
+  });
 }
 
 export function useAnalytics() {
