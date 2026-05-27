@@ -1,0 +1,393 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Production deployment pipeline.
+#
+# Required GitHub environments (configure in repo Settings → Environments):
+#   • production   — required reviewers configured here. Gates the entire run.
+#                    All deploy jobs also reference this env to access secrets.
+#                    NOTE: GitHub's per-job re-approval behavior is undocumented.
+#                    If deploy jobs trigger extra approval prompts, create a
+#                    `production-deploy` env (no reviewers, same secrets) and
+#                    replace `environment: production` on migrate/build-ui/deploy-api.
+#   • github-pages — default GitHub Pages environment (auto-managed).
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: Deploy → Production
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ui/**"
+      - "api/**"
+      - "docker-compose*.yml"
+      - ".github/workflows/deploy-prod.yml"
+  workflow_dispatch:
+    inputs:
+      deploy_ui:
+        description: "Deploy UI"
+        type: boolean
+        default: true
+      deploy_api:
+        description: "Deploy API"
+        type: boolean
+        default: true
+
+# Serialize runs so concurrent pushes don't race on tag creation.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # ── 1. Detect changes + compute next semver ───────────────────────────────────
+  detect:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      ui:       ${{ steps.filter.outputs.ui }}
+      api:      ${{ steps.filter.outputs.api }}
+      last_tag: ${{ steps.version.outputs.last_tag }}
+      next:     ${{ steps.version.outputs.next }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed paths
+        id: filter
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "ui=${{ inputs.deploy_ui }}"   >> "$GITHUB_OUTPUT"
+            echo "api=${{ inputs.deploy_api }}"  >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.sha }}"
+
+          # First push, or force-push to an unreachable commit → assume both changed.
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "$BEFORE" 2>/dev/null; then
+            echo "ui=true"  >> "$GITHUB_OUTPUT"
+            echo "api=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git diff --name-only "$BEFORE..$AFTER" > /tmp/changed.txt
+
+          if grep -qE "^(ui/|\.github/workflows/deploy-prod\.yml)" /tmp/changed.txt; then
+            echo "ui=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "ui=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if grep -qE "^(api/|docker-compose|\.github/workflows/deploy-prod\.yml)" /tmp/changed.txt; then
+            echo "api=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "api=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute next version
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git fetch --tags
+          LAST_TAG=$(git describe --tags --match "v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "last_tag=$LAST_TAG" >> "$GITHUB_OUTPUT"
+
+          # Resolve PR labels. Works for both merge-commit and squash-merge styles:
+          #   1. Try /commits/{sha}/pulls (works for merge-commit style)
+          #   2. Fall back to parsing (#NNN) from the commit subject (squash-merge style)
+          SHA="${{ github.sha }}"
+          PR_LABELS=$(gh api "repos/${{ github.repository }}/commits/${SHA}/pulls" \
+            --jq '.[0].labels[].name' 2>/dev/null || true)
+
+          if [ -z "$PR_LABELS" ]; then
+            PR_NUM=$(git log -1 --pretty=%s "$SHA" | grep -oE '\(#[0-9]+\)' | head -1 | tr -d '()#')
+            if [ -n "$PR_NUM" ]; then
+              PR_LABELS=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUM}" \
+                --jq '.labels[].name' 2>/dev/null || true)
+            fi
+          fi
+
+          BUMP="patch"
+          if echo "$PR_LABELS" | grep -q "^major$"; then
+            BUMP="major"
+          elif echo "$PR_LABELS" | grep -q "^minor$"; then
+            BUMP="minor"
+          fi
+
+          VERSION="${LAST_TAG#v}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          case "$BUMP" in
+            major) NEXT="$((MAJOR + 1)).0.0" ;;
+            minor) NEXT="${MAJOR}.$((MINOR + 1)).0" ;;
+            patch) NEXT="${MAJOR}.${MINOR}.$((PATCH + 1))" ;;
+          esac
+          echo "next=v${NEXT}" >> "$GITHUB_OUTPUT"
+
+  # ── 2. Draft release (reviewer edits notes before approving) ──────────────────
+  draft:
+    needs: detect
+    if: needs.detect.outputs.ui == 'true' || needs.detect.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      release_id:  ${{ steps.create.outputs.release_id }}
+      release_url: ${{ steps.create.outputs.release_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build release title
+        id: title
+        env:
+          LAST_TAG: ${{ needs.detect.outputs.last_tag }}
+          NEXT:     ${{ needs.detect.outputs.next }}
+        run: |
+          if git rev-parse "$LAST_TAG" >/dev/null 2>&1; then
+            CHANGED=$(git diff --name-only "${LAST_TAG}..HEAD" -- ui/ api/ 2>/dev/null || true)
+          else
+            CHANGED=$(git ls-files ui/ api/)
+          fi
+
+          if echo "$CHANGED" | grep -q "^ui/" && echo "$CHANGED" | grep -q "^api/"; then
+            SUFFIX="[UI + API]"
+          elif echo "$CHANGED" | grep -q "^ui/"; then
+            SUFFIX="[UI]"
+          elif echo "$CHANGED" | grep -q "^api/"; then
+            SUFFIX="[API]"
+          else
+            SUFFIX=""
+          fi
+
+          TITLE="${NEXT}"
+          [ -n "$SUFFIX" ] && TITLE="${NEXT} ${SUFFIX}"
+          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+
+      - name: Create draft release with generated notes
+        id: create
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEXT:     ${{ needs.detect.outputs.next }}
+          LAST_TAG: ${{ needs.detect.outputs.last_tag }}
+          TITLE:    ${{ steps.title.outputs.title }}
+        run: |
+          RESPONSE=$(gh api "repos/${{ github.repository }}/releases" \
+            --method POST \
+            -f tag_name="$NEXT" \
+            -f target_commitish="${{ github.sha }}" \
+            -f name="$TITLE" \
+            -f previous_tag_name="$LAST_TAG" \
+            -F draft=true \
+            -F generate_release_notes=true)
+
+          echo "release_id=$(echo  "$RESPONSE" | jq -r '.id')"       >> "$GITHUB_OUTPUT"
+          echo "release_url=$(echo "$RESPONSE" | jq -r '.html_url')" >> "$GITHUB_OUTPUT"
+
+  # ── 3. Single approval gate. ONLY job using `production` env. ─────────────────
+  approve:
+    needs: [detect, draft]
+    if: needs.detect.outputs.ui == 'true' || needs.detect.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ needs.draft.outputs.release_url }}
+    steps:
+      - run: echo "Approved — proceeding with production deployment."
+
+  # ── 4a. DB migration ──────────────────────────────────────────────────────────
+  migrate:
+    needs: [detect, approve]
+    if: needs.detect.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          version: latest
+      - run: uv sync
+      - run: uv run alembic upgrade head
+        env:
+          DATABASE_URL:      ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL:      ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+  # ── 4b. UI build (parallel with migrate) ──────────────────────────────────────
+  build-ui:
+    needs: [detect, approve]
+    if: needs.detect.outputs.ui == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ui
+        run: npm ci
+
+      - name: Build
+        working-directory: ui
+        env:
+          VITE_API_URL:             ${{ secrets.VITE_API_URL }}
+          VITE_POSTHOG_KEY:         ${{ secrets.VITE_POSTHOG_KEY }}
+          VITE_APP_ENV:             ${{ vars.VITE_APP_ENV }}
+          FLAG_JAM_SESSION:         'true'
+          FLAG_VOTE_TO_SKIP:        'true'
+          FLAG_DJ_TOKEN:            'true'
+          FLAG_YOUTUBE_EMBED:       'true'
+          FLAG_AUTO_PLAY_QUEUE:     'true'
+          FLAG_PLATFORM_AUTODETECT: 'true'
+          FLAG_REACTIONS:           'false'
+          FLAG_CHAT:                'false'
+          FLAG_SESSION_HISTORY:     'false'
+          FLAG_USER_PROFILES:       'false'
+          FLAG_SHARED_PLAYLISTS:    'false'
+          FLAG_DISCOVERY_FEED:      'false'
+          FLAG_TASTE_MATCHING:      'false'
+          FLAG_SCHEDULED_JAMS:      'false'
+          FLAG_QUEUE_RULES:         'false'
+          FLAG_EMBED_WIDGET:        'false'
+        run: npm run build
+
+      - name: Write CNAME
+        working-directory: ui
+        run: echo "${{ vars.CNAME_DOMAIN }}" > dist/CNAME
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ui/dist
+
+  # ── 5a. API deploy ────────────────────────────────────────────────────────────
+  deploy-api:
+    needs: [detect, migrate]
+    if: needs.detect.outputs.api == 'true' && needs.migrate.result == 'success'
+    runs-on: [self-hosted, musicone-prod]
+    environment: production
+    env:
+      COMPOSE_PROJECT_NAME: musicone-prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build & deploy
+        env:
+          DATABASE_URL:          ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL:          ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY:     ${{ secrets.SUPABASE_ANON_KEY }}
+          YOUTUBE_API_KEY:       ${{ secrets.YOUTUBE_API_KEY }}
+          ODESLI_API_KEY:        ${{ secrets.ODESLI_API_KEY }}
+          SPOTIFY_CLIENT_ID:     ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+          ALLOWED_ORIGINS:       ${{ vars.ALLOWED_ORIGINS }}
+          FRONTEND_URL:          ${{ vars.FRONTEND_URL }}
+          ROOT_PATH:             ${{ vars.ROOT_PATH }}
+          COOKIE_DOMAIN:         ${{ vars.COOKIE_DOMAIN }}
+          COOKIE_SAMESITE:       ${{ vars.COOKIE_SAMESITE }}
+        run: |
+          docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build api
+          docker image prune -f --filter "until=24h"
+
+      - name: Health check (poll)
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/api/health; then
+              echo "API healthy after ${i} attempt(s)."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Health check failed after 60s."
+          exit 1
+
+  # ── 5b. UI deploy to GitHub Pages ────────────────────────────────────────────
+  deploy-ui:
+    needs: [detect, build-ui]
+    if: needs.detect.outputs.ui == 'true' && needs.build-ui.result == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  # ── 6. Tag + publish release (only if every requested deploy succeeded) ──────
+  release:
+    needs: [detect, draft, deploy-ui, deploy-api]
+    if: |
+      always() &&
+      needs.detect.result == 'success' &&
+      needs.draft.result  == 'success' &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      (needs.deploy-ui.result == 'success' || needs.deploy-api.result == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create annotated tag
+        env:
+          NEXT: ${{ needs.detect.outputs.next }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$NEXT" -m "Release $NEXT" "${{ github.sha }}"
+          git push origin "$NEXT"
+
+      - name: Publish release
+        env:
+          GH_TOKEN:   ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.draft.outputs.release_id }}
+        run: |
+          gh api "repos/${{ github.repository }}/releases/$RELEASE_ID" \
+            --method PATCH \
+            -F draft=false \
+            --jq '"Published: " + .html_url'
+
+  # ── 7. Cleanup orphan draft if deploy failed ─────────────────────────────────
+  cleanup-draft:
+    needs: [draft, deploy-ui, deploy-api, release]
+    if: |
+      always() &&
+      needs.draft.result == 'success' &&
+      needs.release.result != 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Delete orphan draft release
+        env:
+          GH_TOKEN:   ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.draft.outputs.release_id }}
+        run: |
+          gh api "repos/${{ github.repository }}/releases/$RELEASE_ID" \
+            --method DELETE
+          echo "Deleted orphan draft release $RELEASE_ID."
