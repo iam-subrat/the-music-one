@@ -37,10 +37,6 @@ function HomeContent() {
     }
   }, []);
 
-  useEffect(() => {
-    capture("page_viewed", { page: "home" });
-  }, []);
-
   async function runSearch(url) {
     capture("lookup_started");
     setStatus("loading");

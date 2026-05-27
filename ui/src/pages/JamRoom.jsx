@@ -47,10 +47,6 @@ export default function JamRoom() {
   }, [authLoading, user, navigate, code]);
 
   useEffect(() => {
-    capture('page_viewed', { page: 'jam' });
-  }, []);
-
-  useEffect(() => {
     if (!session?.id || !user?.id || didFireJoinRef.current) return;
     didFireJoinRef.current = true;
     joinedAtRef.current = Date.now();
