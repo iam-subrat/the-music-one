@@ -6,10 +6,17 @@ from app.models.queue_item import QueueItem
 from fastapi import HTTPException
 
 
-def _make_svc(queue_repo=None, vote_repo=None, song_svc=None):
+def _make_session(repeat_mode="none"):
+    session = MagicMock()
+    session.repeat_mode = repeat_mode
+    return session
+
+
+def _make_svc(queue_repo=None, vote_repo=None, song_svc=None, session_repo=None):
     store = MagicMock()
     store.queue = queue_repo or AsyncMock()
     store.skip_votes = vote_repo or AsyncMock()
+    store.sessions = session_repo or AsyncMock()
     return QueueService(store, song_svc or AsyncMock())
 
 
@@ -21,6 +28,30 @@ def _make_item(resolve_status="resolved", status="queued", source_url=None):
     item.status = status
     item.source_url = source_url or "https://open.spotify.com/track/abc"
     return item
+
+
+# ── add_by_search ─────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_add_by_search_resolves_via_song_service():
+    repo = AsyncMock()
+    song_svc = AsyncMock()
+    song_svc.search_by_name = AsyncMock(return_value={
+        "title": "Lose Yourself",
+        "artist": "Eminem",
+        "thumbnailUrl": "https://img.example.com/lose.jpg",
+        "platformLinks": {"youtube": "https://www.youtube.com/watch?v=_Yhyp-_hX2s"},
+    })
+    created = _make_item()
+    created.title = "Lose Yourself"
+    repo.create = AsyncMock(return_value=created)
+    svc = _make_svc(queue_repo=repo, song_svc=song_svc)
+
+    result = await svc.add_by_search(uuid4(), uuid4(), "Lose Yourself", "Eminem")
+
+    song_svc.search_by_name.assert_awaited_once_with("Lose Yourself", "Eminem")
+    repo.create.assert_awaited_once()
+    assert result.title == "Lose Yourself"
 
 
 # ── add_batch ─────────────────────────────────────────────────────────────────
@@ -104,17 +135,20 @@ async def test_play_next_skips_and_recurses_on_odesli_failure():
 
 
 @pytest.mark.asyncio
-async def test_play_next_returns_none_after_depth_limit():
+async def test_play_next_returns_none_when_all_items_fail_to_resolve():
     repo = AsyncMock()
     song_svc = AsyncMock()
     failing_item = _make_item(resolve_status="resolving")
-    repo.get_next_queued = AsyncMock(return_value=failing_item)
     song_svc.resolve_song_meta = AsyncMock(side_effect=Exception("fail"))
-    svc = _make_svc(queue_repo=repo, song_svc=song_svc)
+    repo.get_next_queued = AsyncMock(side_effect=[failing_item, failing_item, None])
+    session_repo = AsyncMock()
+    session_repo.get_by_id = AsyncMock(return_value=_make_session(repeat_mode="none"))
+    svc = _make_svc(queue_repo=repo, song_svc=song_svc, session_repo=session_repo)
 
-    result = await svc.play_next(uuid4(), uuid4(), depth=10)
+    result = await svc.play_next(uuid4(), uuid4())
 
     assert result is None
+    assert repo.mark_failed.call_count == 2
     repo.play_next.assert_not_called()
 
 
@@ -136,12 +170,35 @@ async def test_play_next_skips_resolve_for_resolved_item():
 
 
 @pytest.mark.asyncio
-async def test_play_next_returns_none_when_queue_empty():
+async def test_play_next_returns_none_when_queue_empty_no_repeat():
     repo = AsyncMock()
     repo.get_next_queued = AsyncMock(return_value=None)
-    svc = _make_svc(queue_repo=repo)
+    session_repo = AsyncMock()
+    session_repo.get_by_id = AsyncMock(return_value=_make_session(repeat_mode="none"))
+    svc = _make_svc(queue_repo=repo, session_repo=session_repo)
 
     result = await svc.play_next(uuid4(), uuid4())
 
     assert result is None
     repo.play_next.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_play_next_repeat_queue_delegates_to_db_when_no_queued():
+    repo = AsyncMock()
+    session_id = uuid4()
+    user_id = uuid4()
+    played_id = uuid4()
+
+    repo.get_next_queued = AsyncMock(return_value=None)
+    repo.play_next = AsyncMock(return_value=played_id)
+
+    session_repo = AsyncMock()
+    session_repo.get_by_id = AsyncMock(return_value=_make_session(repeat_mode="queue"))
+    svc = _make_svc(queue_repo=repo, session_repo=session_repo)
+
+    result = await svc.play_next(session_id, user_id)
+
+    session_repo.get_by_id.assert_awaited_once_with(session_id)
+    repo.play_next.assert_awaited_once_with(session_id, user_id, "played")
+    assert result == played_id

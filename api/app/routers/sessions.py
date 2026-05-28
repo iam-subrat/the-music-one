@@ -118,7 +118,12 @@ async def add_to_queue(
     user_id: UUID = Depends(get_current_user),
     svc=Depends(get_queue_service),
 ):
-    item = await svc.add(session_id, user_id, body.url)
+    if body.url:
+        item = await svc.add(session_id, user_id, body.url)
+    elif body.name:
+        item = await svc.add_by_search(session_id, user_id, body.name, body.artist or "")
+    else:
+        raise HTTPException(status_code=422, detail="Provide either a URL or a song name.")
     await bus.publish(str(session_id), "queue_changed", {})
     return item
 

@@ -31,6 +31,21 @@ class QueueService:
             resolve_status="resolved",
         )
 
+    async def add_by_search(
+        self, session_id: UUID, user_id: UUID, name: str, artist: str = ""
+    ) -> QueueItem:
+        meta = await self.song_svc.search_by_name(name, artist)
+        return await self.store.queue.create(
+            session_id=session_id,
+            added_by_user_id=user_id,
+            title=meta["title"],
+            artist=meta["artist"],
+            thumbnail_url=meta.get("thumbnailUrl"),
+            platform_links=meta.get("platformLinks", {}),
+            status="queued",
+            resolve_status="resolved",
+        )
+
     async def add_batch(
         self, session_id: UUID, user_id: UUID, tracks: list[dict]
     ) -> list[QueueItem]:
@@ -52,27 +67,27 @@ class QueueService:
                 )
         return added
 
-    async def play_next(
-        self, session_id: UUID, user_id: UUID, depth: int = 0
-    ) -> Optional[UUID]:
-        if depth >= 10:
-            return None
-
+    async def play_next(self, session_id: UUID, user_id: UUID) -> Optional[UUID]:
         next_item = await self.store.queue.get_next_queued(session_id)
+
         if not next_item:
-            return None
+            session = await self.store.sessions.get_by_id(session_id)
+            if not (session and session.repeat_mode == "queue"):
+                return None
+            return await self.store.queue.play_next(session_id, user_id, "played")
 
-        if next_item.resolve_status == "resolving":
-            item_id = next_item.id
-            source_url = next_item.source_url
+        while next_item:
+            if next_item.resolve_status != "resolving":
+                return await self.store.queue.play_next(session_id, user_id, "played")
             try:
-                meta = await self.song_svc.resolve_song_meta(source_url)
-                await self.store.queue.mark_resolved(item_id, meta, user_id)
+                meta = await self.song_svc.resolve_song_meta(next_item.source_url)
+                await self.store.queue.mark_resolved(next_item.id, meta, user_id)
+                return await self.store.queue.play_next(session_id, user_id, "played")
             except Exception:
-                await self.store.queue.mark_failed(item_id, user_id)
-                return await self.play_next(session_id, user_id, depth + 1)
+                await self.store.queue.mark_failed(next_item.id, user_id)
+                next_item = await self.store.queue.get_next_queued(session_id)
 
-        return await self.store.queue.play_next(session_id, user_id, "played")
+        return None
 
     async def force_skip(self, session_id: UUID, user_id: UUID) -> Optional[UUID]:
         return await self.store.queue.force_skip(session_id, user_id)

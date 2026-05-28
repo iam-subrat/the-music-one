@@ -16,7 +16,7 @@ async def patch_youtube_link(
     svc=Depends(get_queue_service),
 ):
     await svc.patch_youtube_link(item_id, body.youtube_url, user_id)
-    item = await svc.repo.get_by_id(item_id)
+    item = await svc.store.queue.get_by_id(item_id)
     if item:
         await bus.publish(str(item.session_id), "queue_changed", {})
     return {"ok": True}
@@ -30,7 +30,7 @@ async def cast_vote(
     svc=Depends(get_queue_service),
 ):
     skipped = await svc.cast_vote(item_id, user_id, body.threshold)
-    item = await svc.repo.get_by_id(item_id)
+    item = await svc.store.queue.get_by_id(item_id)
     if item:
         sid = str(item.session_id)
         await bus.publish(sid, "votes_changed", {"queue_item_id": str(item_id)})
@@ -46,7 +46,7 @@ async def remove_vote(
     svc=Depends(get_queue_service),
 ):
     await svc.remove_vote(item_id, user_id)
-    item = await svc.repo.get_by_id(item_id)
+    item = await svc.store.queue.get_by_id(item_id)
     if item:
         await bus.publish(
             str(item.session_id), "votes_changed", {"queue_item_id": str(item_id)}

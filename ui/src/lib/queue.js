@@ -12,6 +12,18 @@ export async function addToQueue(sessionId, url) {
   return res.json();
 }
 
+export async function searchAndAddToQueue(sessionId, name, artist) {
+  const res = await api(`/sessions/${sessionId}/queue`, {
+    method: 'POST',
+    body: JSON.stringify({ name, artist: artist || undefined }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || 'Could not find song.');
+  }
+  return res.json();
+}
+
 export async function getQueue(sessionId) {
   const res = await api(`/sessions/${sessionId}/queue`);
   return res.ok ? res.json() : [];

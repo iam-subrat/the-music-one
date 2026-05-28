@@ -95,6 +95,11 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
   if (!nowPlaying) {
     return (
       <div className={`${s.nowPlaying} ${s.nowPlayingIdle}`}>
+        {FLAGS.AUTO_PLAY_QUEUE && ytId && isDJ && (
+          <div style={{ display: 'none' }}>
+            <YouTubeAutoPlayer videoId={ytId} onEnded={handleEnded} repeat={repeatMode === 'song'} />
+          </div>
+        )}
         <div className={s.nowPlayingLabel}>Now Playing</div>
         <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
           {isDJ ? 'Click "Play Next" to start the queue.' : 'Waiting for the DJ to start…'}
