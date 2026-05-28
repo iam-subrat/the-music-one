@@ -55,6 +55,28 @@ class SongService:
             "platformLinks": platform_links,
         }
 
+    async def search_by_name(self, name: str, artist: str = "") -> dict:
+        """Search YouTube for a song by name + optional artist, then resolve via Odesli."""
+        query = f"{name} {artist}".strip() if artist else name
+        yt = await self.resolve_youtube(query)
+        if not yt.get("id"):
+            raise HTTPException(
+                status_code=404,
+                detail=f'No results found for "{query}". Try a different name or artist.',
+            )
+        youtube_url = f"https://www.youtube.com/watch?v={yt['id']}"
+        try:
+            meta = await self.resolve_song_meta(youtube_url)
+        except HTTPException:
+            # Odesli couldn't resolve it — fall back to YouTube-only metadata
+            meta = {
+                "title": yt.get("title") or name,
+                "artist": artist,
+                "thumbnailUrl": None,
+                "platformLinks": {"youtube": youtube_url},
+            }
+        return meta
+
     async def resolve_youtube(self, query: str) -> dict:
         if not settings.youtube_api_key:
             return {"id": None, "title": None}

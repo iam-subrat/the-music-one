@@ -180,8 +180,14 @@
 .queuePos { font-size: 0.75rem; color: var(--muted); flex-shrink: 0; }
 
 .addForm { display: flex; gap: 8px; }
+.searchForm { display: flex; flex-direction: column; gap: 8px; }
 .addInput { flex: 1; min-width: 0; padding: 11px 14px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
 .addInput:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+
+.searchModeToggle { display: flex; gap: 4px; margin-bottom: 6px; }
+.modeBtn { flex: 1; padding: 7px 12px; border-radius: var(--radius); border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: inherit; font-size: 0.8rem; cursor: pointer; transition: border-color 0.2s, color 0.2s, background 0.2s; }
+.modeBtn:hover { border-color: var(--accent); color: var(--accent); }
+.modeBtnActive { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 
 /* Sidebar */
 .sidebar { display: flex; flex-direction: column; gap: 16px; }

@@ -31,6 +31,21 @@ class QueueService:
             resolve_status="resolved",
         )
 
+    async def add_by_search(
+        self, session_id: UUID, user_id: UUID, name: str, artist: str = ""
+    ) -> QueueItem:
+        meta = await self.song_svc.search_by_name(name, artist)
+        return await self.store.queue.create(
+            session_id=session_id,
+            added_by_user_id=user_id,
+            title=meta["title"],
+            artist=meta["artist"],
+            thumbnail_url=meta.get("thumbnailUrl"),
+            platform_links=meta.get("platformLinks", {}),
+            status="queued",
+            resolve_status="resolved",
+        )
+
     async def add_batch(
         self, session_id: UUID, user_id: UUID, tracks: list[dict]
     ) -> list[QueueItem]:
