@@ -117,7 +117,7 @@ class QueueRepository(AbstractRepository):
             text("""
                 UPDATE queue_items
                 SET status = 'queued'
-                WHERE session_id = :session_id AND status IN ('played', 'skipped')
+                WHERE session_id = :session_id AND status = 'played'
             """),
             {"session_id": str(session_id)},
         )
