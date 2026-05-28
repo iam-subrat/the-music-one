@@ -16,6 +16,7 @@ export const FLAGS = {
   QUEUE_RULES:         JSON.parse(__FLAG_QUEUE_RULES__),
   EMBED_WIDGET:        JSON.parse(__FLAG_EMBED_WIDGET__),
   PLAYLIST_IMPORT:     JSON.parse(__FLAG_PLAYLIST_IMPORT__),
+  SONG_SEARCH:         JSON.parse(__FLAG_SONG_SEARCH__),
 };
 
 export async function loadFlags() {

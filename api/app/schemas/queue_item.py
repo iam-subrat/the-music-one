@@ -5,7 +5,9 @@ from pydantic import BaseModel
 
 
 class QueueItemCreate(BaseModel):
-    url: str
+    url: Optional[str] = None
+    name: Optional[str] = None
+    artist: Optional[str] = None
 
 
 class BatchTrackItem(BaseModel):

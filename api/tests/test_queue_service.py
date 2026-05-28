@@ -23,6 +23,30 @@ def _make_item(resolve_status="resolved", status="queued", source_url=None):
     return item
 
 
+# ── add_by_search ─────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_add_by_search_resolves_via_song_service():
+    repo = AsyncMock()
+    song_svc = AsyncMock()
+    song_svc.search_by_name = AsyncMock(return_value={
+        "title": "Lose Yourself",
+        "artist": "Eminem",
+        "thumbnailUrl": "https://img.example.com/lose.jpg",
+        "platformLinks": {"youtube": "https://www.youtube.com/watch?v=_Yhyp-_hX2s"},
+    })
+    created = _make_item()
+    created.title = "Lose Yourself"
+    repo.create = AsyncMock(return_value=created)
+    svc = _make_svc(queue_repo=repo, song_svc=song_svc)
+
+    result = await svc.add_by_search(uuid4(), uuid4(), "Lose Yourself", "Eminem")
+
+    song_svc.search_by_name.assert_awaited_once_with("Lose Yourself", "Eminem")
+    repo.create.assert_awaited_once()
+    assert result.title == "Lose Yourself"
+
+
 # ── add_batch ─────────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
