@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AuthBar from "../components/AuthBar";
 import NowPlaying from "../components/NowPlaying";
-import QueueList from "../components/QueueList";
+import QueueList, { getUpcoming } from "../components/QueueList";
 import QueueCard from "../components/QueueCard";
 import ParticipantList from "../components/ParticipantList";
 import InviteBadge from "../components/InviteBadge";
@@ -234,8 +234,8 @@ export default function JamRoom() {
                   marginTop: 2,
                 }}
               >
-                {queueItems.filter((i) => i.status === "queued").length} song(s)
-                in queue
+                {getUpcoming(queueItems, session.repeat_mode ?? "none").length}{" "}
+                song(s) {session.repeat_mode === "queue" ? "in rotation" : "in queue"}
               </p>
             </div>
             <div
@@ -293,6 +293,7 @@ export default function JamRoom() {
             />
             <QueueList
               items={queueItems}
+              repeatMode={session.repeat_mode ?? "none"}
               sessionId={session.id}
               userId={user?.id}
               profile={profile}
