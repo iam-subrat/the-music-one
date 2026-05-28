@@ -5,7 +5,7 @@ export function initAnalytics(apiKey) {
   posthog.init(apiKey, {
     api_host: 'https://eu.i.posthog.com',
     person_profiles: 'identified_only',
-    capture_pageview: false,
+    capture_pageview: true,
     capture_pageleave: true,
     disable_session_recording: true,
   });
