@@ -3,7 +3,24 @@ import json
 from collections import defaultdict
 from typing import Any
 from supabase.client import AsyncClient, acreate_client
+from realtime.types import ChannelStates
 from app.config import settings
+
+
+def _patch_realtime_reconnect(realtime_client) -> None:
+    """Guard asyncio.wait() against empty channel list — upstream bug in realtime<2.30."""
+    active_states = {ChannelStates.JOINED, ChannelStates.JOINING}
+
+    async def _reconnect() -> None:
+        realtime_client._ws_connection = None
+        to_rejoin = list(filter(lambda c: c.state in active_states, realtime_client.channels.values()))
+        for channel in to_rejoin:
+            channel.state = ChannelStates.ERRORED
+        await realtime_client.connect()
+        if realtime_client.is_connected and to_rejoin:
+            await asyncio.wait([asyncio.Task(c._rejoin()) for c in to_rejoin])
+
+    realtime_client._reconnect = _reconnect
 
 
 class EventBus:
@@ -16,6 +33,7 @@ class EventBus:
     async def _get_supabase(self) -> AsyncClient:
         if self._supabase is None:
             self._supabase = await acreate_client(settings.supabase_url, settings.supabase_anon_key)
+            _patch_realtime_reconnect(self._supabase.realtime)
         return self._supabase
 
     async def subscribe(self, session_id: str) -> asyncio.Queue:
