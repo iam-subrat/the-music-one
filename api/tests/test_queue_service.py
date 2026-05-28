@@ -181,19 +181,16 @@ async def test_play_next_returns_none_when_queue_empty_no_repeat():
 
     assert result is None
     repo.play_next.assert_not_called()
-    repo.reset_played_to_queued.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_play_next_repeat_queue_resets_and_returns_next():
+async def test_play_next_repeat_queue_delegates_to_db_when_no_queued():
     repo = AsyncMock()
     session_id = uuid4()
     user_id = uuid4()
-    first_item = _make_item(resolve_status="resolved")
     played_id = uuid4()
 
-    repo.get_next_queued = AsyncMock(side_effect=[None, first_item])
-    repo.reset_played_to_queued = AsyncMock()
+    repo.get_next_queued = AsyncMock(return_value=None)
     repo.play_next = AsyncMock(return_value=played_id)
 
     session_repo = AsyncMock()
@@ -203,22 +200,5 @@ async def test_play_next_repeat_queue_resets_and_returns_next():
     result = await svc.play_next(session_id, user_id)
 
     session_repo.get_by_id.assert_awaited_once_with(session_id)
-    repo.reset_played_to_queued.assert_awaited_once_with(session_id)
+    repo.play_next.assert_awaited_once_with(session_id, user_id, "played")
     assert result == played_id
-
-
-@pytest.mark.asyncio
-async def test_play_next_repeat_queue_no_infinite_loop_if_reset_yields_nothing():
-    repo = AsyncMock()
-    repo.get_next_queued = AsyncMock(return_value=None)
-    repo.reset_played_to_queued = AsyncMock()
-
-    session_repo = AsyncMock()
-    session_repo.get_by_id = AsyncMock(return_value=_make_session(repeat_mode="queue"))
-    svc = _make_svc(queue_repo=repo, session_repo=session_repo)
-
-    result = await svc.play_next(uuid4(), uuid4())
-
-    assert result is None
-    repo.reset_played_to_queued.assert_awaited_once()
-    repo.play_next.assert_not_called()

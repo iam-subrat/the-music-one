@@ -112,17 +112,6 @@ class QueueRepository(AbstractRepository):
         )
         await self.db.commit()
 
-    async def reset_played_to_queued(self, session_id: UUID) -> None:
-        await self.db.execute(
-            text("""
-                UPDATE queue_items
-                SET status = 'queued'
-                WHERE session_id = :session_id AND status = 'played'
-            """),
-            {"session_id": str(session_id)},
-        )
-        await self.db.commit()
-
     async def mark_failed(self, item_id: UUID, user_id: UUID) -> None:
         await self.db.rollback()
         await set_jwt_claims(self.db, user_id)

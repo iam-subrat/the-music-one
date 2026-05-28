@@ -74,8 +74,7 @@ class QueueService:
             session = await self.store.sessions.get_by_id(session_id)
             if not (session and session.repeat_mode == "queue"):
                 return None
-            await self.store.queue.reset_played_to_queued(session_id)
-            next_item = await self.store.queue.get_next_queued(session_id)
+            return await self.store.queue.play_next(session_id, user_id, "played")
 
         while next_item:
             if next_item.resolve_status != "resolving":
