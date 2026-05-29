@@ -1,22 +1,29 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../lib/api';
 import { openSSE } from '../lib/sse';
 
 export function useSkipVotes(queueItemId, userId, sessionId) {
   const [count, setCount] = useState(0);
   const [hasVoted, setHasVoted] = useState(false);
+  const activeIdRef = useRef(queueItemId);
+
+  useEffect(() => { activeIdRef.current = queueItemId; }, [queueItemId]);
 
   const fetchVotes = useCallback(async () => {
     if (!queueItemId) return;
-    const res = await api(`/items/${queueItemId}/votes`);
+    const targetId = queueItemId;
+    const res = await api(`/items/${targetId}/votes`);
     if (!res.ok) return;
     const { count: c, user_ids } = await res.json();
+    if (activeIdRef.current !== targetId) return;
     setCount(c ?? 0);
     setHasVoted(userId ? (user_ids ?? []).map(String).includes(String(userId)) : false);
   }, [queueItemId, userId]);
 
   useEffect(() => {
-    if (!queueItemId) { setCount(0); setHasVoted(false); return; }
+    setCount(0);
+    setHasVoted(false);
+    if (!queueItemId) return;
     fetchVotes();
   }, [fetchVotes]);
 
