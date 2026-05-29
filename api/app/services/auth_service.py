@@ -16,14 +16,13 @@ class AuthService:
         challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
         return verifier, challenge
 
-    def build_oauth_url(self, challenge: str, redirect_uri: str, state: str = "") -> str:
+    def build_oauth_url(self, challenge: str, redirect_uri: str) -> str:
         return (
             f"{self._supabase_url}/auth/v1/authorize"
             f"?provider=google"
             f"&code_challenge={challenge}"
             f"&code_challenge_method=S256"
             f"&redirect_to={redirect_uri}"
-            f"&state={state}"
         )
 
     async def exchange_code(self, code: str, verifier: str) -> dict:

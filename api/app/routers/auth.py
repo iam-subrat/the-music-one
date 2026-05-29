@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import secrets
 from uuid import UUID
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
@@ -20,21 +19,12 @@ _auth_svc = AuthService(
 @router.get("/google")
 async def login_google(request: Request):
     verifier, challenge = _auth_svc.generate_pkce_pair()
-    state = secrets.token_urlsafe(32)
     redirect_uri = str(request.url_for("auth_callback"))
-    oauth_url = _auth_svc.build_oauth_url(
-        challenge,
-        redirect_uri,
-        state=state,
-    )
+    oauth_url = _auth_svc.build_oauth_url(challenge, redirect_uri)
     response = RedirectResponse(url=oauth_url)
     response.set_cookie(
         "pkce_verifier", verifier,
         httponly=True, samesite="lax", secure=True, max_age=60,
-    )
-    response.set_cookie(
-        "state_token", state,
-        httponly=True, samesite="lax", secure=True, max_age=300,
     )
     return response
 
@@ -43,13 +33,9 @@ async def login_google(request: Request):
 async def auth_callback(
     code: str,
     response: Response,
-    state: str | None = None,
     pkce_verifier: str | None = Cookie(default=None),
-    state_token: str | None = Cookie(default=None),
     profile_svc=Depends(get_profile_service),
 ):
-    if not state_token or not state or state_token != state:
-        raise HTTPException(status_code=400, detail="Invalid state")
     if not pkce_verifier:
         raise HTTPException(status_code=400, detail="Missing PKCE verifier")
     try:
@@ -77,7 +63,6 @@ async def auth_callback(
     redirect.set_cookie("access_token", tokens["access_token"], max_age=60 * 60 * 24 * 7, **_cookie_kwargs)
     redirect.set_cookie("refresh_token", tokens["refresh_token"], max_age=60 * 60 * 24 * 30, **_cookie_kwargs)
     redirect.delete_cookie("pkce_verifier", samesite="lax", secure=True)
-    redirect.delete_cookie("state_token", samesite="lax", secure=True)
     return redirect
 
 
