@@ -23,6 +23,9 @@ export default function QueueList({ items, repeatMode, sessionId, userId, profil
         onPlatformDetected={onPlatformDetected}
         onAdded={onAdded}
       />
+      <p style={{ color: 'var(--muted)', fontSize: '0.8rem', marginBottom: 6 }}>
+        {items.length} song{items.length !== 1 ? 's' : ''} in queue
+      </p>
       <div className={s.queueList}>
         {upcoming.length === 0
           ? <p style={{ color: 'var(--muted)', fontSize: '0.85rem', padding: '8px 0' }}>Queue is empty. Add a song above!</p>

@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AuthBar from "../components/AuthBar";
 import NowPlaying from "../components/NowPlaying";
-import QueueList, { getUpcoming } from "../components/QueueList";
+import QueueList from "../components/QueueList";
 import QueueCard from "../components/QueueCard";
 import ParticipantList from "../components/ParticipantList";
 import InviteBadge from "../components/InviteBadge";
@@ -227,16 +227,6 @@ export default function JamRoom() {
               <h2 style={{ fontSize: "1.1rem", fontWeight: 700 }}>
                 Jam Session
               </h2>
-              <p
-                style={{
-                  color: "var(--muted)",
-                  fontSize: "0.85rem",
-                  marginTop: 2,
-                }}
-              >
-                {getUpcoming(queueItems, session.repeat_mode ?? "none").length}{" "}
-                song(s) in queue
-              </p>
             </div>
             <div
               style={{
