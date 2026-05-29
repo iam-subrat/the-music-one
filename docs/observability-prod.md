@@ -36,6 +36,19 @@
 
 ---
 
+## Structured metadata
+
+Promtail promotes `level` and `method` as indexed Loki labels. These fields are stored as structured metadata (queryable but not indexed):
+
+| Field | Example | Notes |
+|-------|---------|-------|
+| `path` | `/api/sessions/abc/join` | Request path |
+| `status_code` | `200`, `500` | HTTP response code |
+| `duration_ms` | `45` | Request duration |
+| `request_id` | UUID | Trace individual requests |
+
+---
+
 ## Grafana Proxy
 
 Query Loki via Grafana datasource proxy (UID: `P8E80F9AEF21F6940`):
@@ -57,12 +70,17 @@ curl -H "Authorization: Bearer <token>" \
 
 **Queue/skip vote issues:**
 ```logql
-{project="musicone-prod"} |= "queue" or "skip_vote"
+{project="musicone-prod"} |~ "queue|skip_vote"
 ```
 
-**API latency (by endpoint):**
+**API latency (ms) by endpoint:**
 ```logql
-{project="musicone-prod"} | json | method != "" | unwrap duration_ms
+{project="musicone-prod"} | json | method != "" | unwrap duration_ms [1m]
+```
+
+**Slow requests (>500ms):**
+```logql
+{project="musicone-prod"} | json | duration_ms > 500
 ```
 
 **Failed Supabase calls:**
@@ -72,7 +90,17 @@ curl -H "Authorization: Bearer <token>" \
 
 **Auth failures:**
 ```logql
-{project="musicone-prod"} |= "auth" |= "error" or "unauthorized"
+{project="musicone-prod"} |~ "auth|unauthorized" |= "error"
+```
+
+**5xx errors by path:**
+```logql
+{project="musicone-prod"} | json | status_code >= 500
+```
+
+**SSE stream errors:**
+```logql
+{project="musicone-prod"} |= "/events/" |= "error"
 ```
 
 ---
