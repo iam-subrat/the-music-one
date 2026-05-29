@@ -2,7 +2,7 @@ import random
 from datetime import datetime
 from typing import Optional
 from uuid import UUID, uuid4
-from sqlalchemy import select, update, delete, text
+from sqlalchemy import select, update, delete, text, func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from app.models.session import Session, SessionParticipant
 from app.models.profile import Profile
@@ -94,6 +94,13 @@ class SessionRepository(AbstractRepository):
             }
             for sp, p in result.all()
         ]
+
+    async def count_participants(self, session_id: UUID) -> int:
+        result = await self.db.execute(
+            select(func.count()).select_from(SessionParticipant)
+            .where(SessionParticipant.session_id == session_id)
+        )
+        return int(result.scalar() or 0)
 
     async def is_participant(self, session_id: UUID, user_id: UUID) -> bool:
         result = await self.db.execute(

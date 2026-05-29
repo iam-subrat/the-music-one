@@ -19,12 +19,12 @@ async def session_stream(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    if not await svc.store.sessions.is_participant(session_id, user_id):
-        await svc.join(session_id, user_id)
-        await bus.publish(str(session_id), "participants_changed", {})
-
     sid = str(session_id)
     q = await bus.subscribe(sid)
+
+    if not await svc.store.sessions.is_participant(session_id, user_id):
+        await svc.join(session_id, user_id)
+        await bus.publish(sid, "participants_changed", {})
 
     async def event_generator():
         try:
