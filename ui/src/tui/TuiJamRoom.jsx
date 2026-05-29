@@ -21,7 +21,8 @@ const HELP_LINES = [
   ['add "<name>" [artist]',   'queue by name search'],
   ['play | resume',           'DJ only — resume playback'],
   ['pause | p',               'DJ only — pause playback'],
-  ['seek <sec>',              'DJ only — jump to position (seconds)'],
+  ['seek <sec>|±<sec>',       'DJ only — jump to absolute or relative position'],
+  ['seekend <sec>',           'DJ only — jump to N seconds before end'],
   ['next',                    'DJ only — play next track'],
   ['skip',                    'cast skip vote (DJ → force skip)'],
   ['unvote',                  'remove your skip vote'],
@@ -202,13 +203,37 @@ export default function TuiJamRoom() {
         ytPlayerRef.current.play();
         append({ kind: 'ok', text: '▶ resumed' });
         break;
+      case 'seekend': {
+        if (!isDJ) { append({ kind: 'err', text: '✗ DJ only' }); break; }
+        if (!ytPlayerRef.current?.isReady?.()) { append({ kind: 'warn', text: '~ no player active' }); break; }
+        const n = parseFloat(arg);
+        if (!Number.isFinite(n) || n < 0) { append({ kind: 'warn', text: 'usage: seekend <sec>' }); break; }
+        const duration = ytPlayerRef.current.getDuration() ?? 0;
+        if (!duration) { append({ kind: 'warn', text: '~ duration not available yet' }); break; }
+        const target = Math.max(0, duration - n);
+        ytPlayerRef.current.seek(target);
+        append({ kind: 'ok', text: `⇥ seekend -${n}s → ${target.toFixed(1)}s / ${duration.toFixed(1)}s` });
+        break;
+      }
       case 'seek': {
         if (!isDJ) { append({ kind: 'err', text: '✗ DJ only' }); break; }
         if (!ytPlayerRef.current?.isReady?.()) { append({ kind: 'warn', text: '~ no player active' }); break; }
-        const sec = parseFloat(arg);
-        if (!Number.isFinite(sec) || sec < 0) { append({ kind: 'warn', text: 'usage: seek <sec>' }); break; }
-        ytPlayerRef.current.seek(sec);
-        append({ kind: 'ok', text: `⇥ seek=${sec}s` });
+        const trimmed = arg.trim();
+        const delta = parseFloat(trimmed);
+        if (!Number.isFinite(delta)) {
+          append({ kind: 'warn', text: 'usage: seek <sec> | seek -<sec> | seek +<sec>' });
+          break;
+        }
+        const isRelative = /^[+-]/.test(trimmed);
+        const current = ytPlayerRef.current.getTime() ?? 0;
+        const target = Math.max(0, isRelative ? current + delta : delta);
+        ytPlayerRef.current.seek(target);
+        append({
+          kind: 'ok',
+          text: isRelative
+            ? `⇥ seek ${delta >= 0 ? '+' : ''}${delta}s → ${target.toFixed(1)}s`
+            : `⇥ seek=${target}s`,
+        });
         break;
       }
       case 'skip':
@@ -367,7 +392,15 @@ export default function TuiJamRoom() {
           <YouTubeAutoPlayer
             ref={ytPlayerRef}
             videoId={ytId}
-            onEnded={async () => { try { await playNext(session.id); } catch {} }}
+            onEnded={async () => {
+              try {
+                const next = await playNext(session.id);
+                refreshQueue();
+                if (!next) append({ kind: 'warn', text: '~ queue empty' });
+              } catch (e) {
+                append({ kind: 'err', text: `✗ auto-advance failed: ${e.message}` });
+              }
+            }}
           />
         </div>
       )}

@@ -44,20 +44,38 @@ const YouTubeAutoPlayer = forwardRef(function YouTubeAutoPlayer({ videoId, onEnd
     play:     () => playerRef.current?.playVideo?.(),
     pause:    () => playerRef.current?.pauseVideo?.(),
     seek:     (sec) => playerRef.current?.seekTo?.(sec, true),
-    getTime:  () => playerRef.current?.getCurrentTime?.() ?? 0,
+    getTime:     () => playerRef.current?.getCurrentTime?.() ?? 0,
+    getDuration: () => playerRef.current?.getDuration?.() ?? 0,
     // 1 = playing, 2 = paused, 0 = ended, -1 = unstarted, 3 = buffering, 5 = cued
-    getState: () => playerRef.current?.getPlayerState?.() ?? -1,
-    isReady:  () => !!playerRef.current,
+    getState:    () => playerRef.current?.getPlayerState?.() ?? -1,
+    isReady:     () => !!playerRef.current,
   }), []);
+
+  // Tracks whether onEnded already fired for the current video, so the
+  // ENDED-state and the near-end-PAUSED safety net don't both run.
+  const endedFiredRef = useRef(false);
 
   // Song change: swap video in the existing player (keeps iOS media element "activated").
   // On first mount playerRef is null — initPlayer handles the initial videoId.
   useEffect(() => {
     videoIdRef.current = videoId;
+    endedFiredRef.current = false;
     if (playerRef.current) {
       playerRef.current.loadVideoById(videoId);
     }
   }, [videoId]);
+
+  function fireEnded() {
+    if (endedFiredRef.current) return;
+    endedFiredRef.current = true;
+    if (repeatRef.current) {
+      playerRef.current?.seekTo?.(0);
+      playerRef.current?.playVideo?.();
+      endedFiredRef.current = false; // repeat replays, allow next end to fire
+    } else {
+      onEndedRef.current?.();
+    }
+  }
 
   // Create the player exactly once per mount.
   useEffect(() => {
@@ -74,14 +92,7 @@ const YouTubeAutoPlayer = forwardRef(function YouTubeAutoPlayer({ videoId, onEnd
         playerVars: { autoplay: 1, rel: 0, modestbranding: 1 },
         events: {
           onStateChange: (e) => {
-            if (e.data === window.YT.PlayerState.ENDED) {
-              if (repeatRef.current) {
-                playerRef.current.seekTo(0);
-                playerRef.current.playVideo();
-              } else {
-                onEndedRef.current?.();
-              }
-            }
+            if (e.data === window.YT.PlayerState.ENDED) fireEnded();
           },
         },
       });
