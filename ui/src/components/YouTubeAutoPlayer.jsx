@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import s from '../styles/jam.module.css';
 
 // Module-level singletons: IFrame API loads once per page.
@@ -28,7 +28,7 @@ function loadApi() {
  *
  * Do NOT use key={videoId} on this component. Let the videoId prop change in place.
  */
-export default function YouTubeAutoPlayer({ videoId, onEnded, repeat }) {
+const YouTubeAutoPlayer = forwardRef(function YouTubeAutoPlayer({ videoId, onEnded, repeat }, ref) {
   const wrapperRef = useRef(null);
   const playerRef = useRef(null);
   const repeatRef = useRef(repeat);
@@ -39,6 +39,16 @@ export default function YouTubeAutoPlayer({ videoId, onEnded, repeat }) {
 
   useEffect(() => { repeatRef.current = repeat; }, [repeat]);
   useEffect(() => { onEndedRef.current = onEnded; }, [onEnded]);
+
+  useImperativeHandle(ref, () => ({
+    play:     () => playerRef.current?.playVideo?.(),
+    pause:    () => playerRef.current?.pauseVideo?.(),
+    seek:     (sec) => playerRef.current?.seekTo?.(sec, true),
+    getTime:  () => playerRef.current?.getCurrentTime?.() ?? 0,
+    // 1 = playing, 2 = paused, 0 = ended, -1 = unstarted, 3 = buffering, 5 = cued
+    getState: () => playerRef.current?.getPlayerState?.() ?? -1,
+    isReady:  () => !!playerRef.current,
+  }), []);
 
   // Song change: swap video in the existing player (keeps iOS media element "activated").
   // On first mount playerRef is null — initPlayer handles the initial videoId.
@@ -97,4 +107,6 @@ export default function YouTubeAutoPlayer({ videoId, onEnded, repeat }) {
   }, []);
 
   return <div ref={wrapperRef} className={s.ytEmbed} />;
-}
+});
+
+export default YouTubeAutoPlayer;

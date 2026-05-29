@@ -18,6 +18,9 @@ import s from './tui.module.css';
 const HELP_LINES = [
   ['add <url>',               'queue a song by streaming URL'],
   ['add "<name>" [artist]',   'queue by name search'],
+  ['play | resume',           'DJ only — resume playback'],
+  ['pause | p',               'DJ only — pause playback'],
+  ['seek <sec>',              'DJ only — jump to position (seconds)'],
   ['next',                    'DJ only — play next track'],
   ['skip',                    'cast skip vote (DJ → force skip)'],
   ['unvote',                  'remove your skip vote'],
@@ -52,6 +55,7 @@ export default function TuiJamRoom() {
   const didJoinRef = useRef(false);
   const sessionIdRef = useRef(null);
   const ytResolveKey = useRef(null);
+  const ytPlayerRef = useRef(null);
 
   const nowPlaying = queueItems.find(i => i.status === 'playing') ?? null;
   const isDJ = !!session && session.dj_user_id === user?.id;
@@ -185,6 +189,27 @@ export default function TuiJamRoom() {
         try { await playNext(session.id); append({ kind: 'ok', text: '✓ advanced queue' }); refreshQueue(); }
         catch (e) { append({ kind: 'err', text: `✗ ${e.message}` }); }
         break;
+      case 'pause': case 'p':
+        if (!isDJ) { append({ kind: 'err', text: '✗ DJ only' }); break; }
+        if (!ytPlayerRef.current?.isReady?.()) { append({ kind: 'warn', text: '~ no player active' }); break; }
+        ytPlayerRef.current.pause();
+        append({ kind: 'ok', text: '⏸ paused' });
+        break;
+      case 'play': case 'resume':
+        if (!isDJ) { append({ kind: 'err', text: '✗ DJ only' }); break; }
+        if (!ytPlayerRef.current?.isReady?.()) { append({ kind: 'warn', text: '~ no player active' }); break; }
+        ytPlayerRef.current.play();
+        append({ kind: 'ok', text: '▶ resumed' });
+        break;
+      case 'seek': {
+        if (!isDJ) { append({ kind: 'err', text: '✗ DJ only' }); break; }
+        if (!ytPlayerRef.current?.isReady?.()) { append({ kind: 'warn', text: '~ no player active' }); break; }
+        const sec = parseFloat(arg);
+        if (!Number.isFinite(sec) || sec < 0) { append({ kind: 'warn', text: 'usage: seek <sec>' }); break; }
+        ytPlayerRef.current.seek(sec);
+        append({ kind: 'ok', text: `⇥ seek=${sec}s` });
+        break;
+      }
       case 'skip':
         if (!nowPlaying) { append({ kind: 'warn', text: '~ nothing playing' }); break; }
         if (isDJ) {
@@ -339,6 +364,7 @@ export default function TuiJamRoom() {
       {ytId && isDJ && (
         <div style={{ position: 'fixed', width: 1, height: 1, opacity: 0, pointerEvents: 'none', overflow: 'hidden' }}>
           <YouTubeAutoPlayer
+            ref={ytPlayerRef}
             videoId={ytId}
             onEnded={async () => { try { await playNext(session.id); } catch {} }}
           />
