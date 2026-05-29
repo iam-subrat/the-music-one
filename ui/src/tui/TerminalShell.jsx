@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import TuiToggle from './TuiToggle';
 import s from './tui.module.css';
@@ -12,18 +12,26 @@ const BANNER = String.raw`
  ╚═╝     ╚═╝ ╚═════╝ ╚══════╝╚═╝ ╚═════╝     ╚═════╝ ╚═╝  ╚═══╝╚══════╝
 `;
 
-function useClock() {
+// Isolated to a leaf so the 1s tick doesn't re-render the whole shell.
+const Clock = memo(function Clock() {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
-  return now.toTimeString().slice(0, 8);
-}
+  return <span>{now.toTimeString().slice(0, 8)}</span>;
+});
 
-export default function TerminalShell({ title = 'musicone.sh', status, children, showBanner = false, tagline, onScreenClick }) {
-  const { user, profile, signInWithGoogle, signOut } = useAuth();
-  const clock = useClock();
+function ShellInner({
+  title = 'musicone.sh',
+  status,
+  children,
+  showBanner = false,
+  tagline,
+  onScreenClick,
+  auth,
+}) {
+  const { user, profile, signInWithGoogle, signOut } = auth;
 
   function handleScreenClick(e) {
     if (!onScreenClick) return;
@@ -45,7 +53,7 @@ export default function TerminalShell({ title = 'musicone.sh', status, children,
           <div className={s.titleText}>{title}</div>
           <div className={s.titleStatus}>
             {status ? <span><b>●</b> {status}</span> : null}
-            <span>{clock}</span>
+            <Clock />
           </div>
         </div>
 
@@ -76,4 +84,16 @@ export default function TerminalShell({ title = 'musicone.sh', status, children,
       <TuiToggle />
     </div>
   );
+}
+
+// Calls useAuth only when the page didn't already hoist it via the `auth` prop.
+function ShellWithOwnAuth(props) {
+  const auth = useAuth();
+  return <ShellInner {...props} auth={auth} />;
+}
+
+export default function TerminalShell({ auth, ...rest }) {
+  return auth
+    ? <ShellInner {...rest} auth={auth} />
+    : <ShellWithOwnAuth {...rest} />;
 }

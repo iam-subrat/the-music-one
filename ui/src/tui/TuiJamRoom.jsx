@@ -7,12 +7,12 @@ import { useQueue } from '../hooks/useQueue';
 import { useParticipants } from '../hooks/useParticipants';
 import { useSkipVotes } from '../hooks/useSkipVotes';
 import { joinSession, endSession, passDjToken, setRepeatMode } from '../lib/session';
-import { addToQueue, searchAndAddToQueue, playNext, forceSkip, castSkipVote, removeSkipVote } from '../lib/queue';
+import { addToQueue, searchAndAddToQueue, playNext, forceSkip, castSkipVote, removeSkipVote, patchYouTubeLink } from '../lib/queue';
 import { API_BASE, api } from '../lib/api';
 import { useAnalytics } from '../lib/analytics';
 import { FLAGS } from '../lib/flags';
 import YouTubeAutoPlayer from '../components/YouTubeAutoPlayer';
-import { extractYouTubeId, isYouTubeSearchUrl } from '../lib/platform';
+import { extractYouTubeId, isYouTubeSearchUrl, extractSearchQuery } from '../lib/platform';
 import s from './tui.module.css';
 
 const HELP_LINES = [
@@ -33,7 +33,8 @@ const HELP_LINES = [
 export default function TuiJamRoom() {
   const { code } = useParams();
   const navigate = useNavigate();
-  const { user, profile, loading: authLoading } = useAuth();
+  const auth = useAuth();
+  const { user, profile, loading: authLoading } = auth;
   const { session, loading: sessionLoading, setSession } = useSession(code);
   const { items: queueItems, refresh: refreshQueue, addItem } = useQueue(session?.id);
   const { participants, refresh: refreshParticipants } = useParticipants(session?.id);
@@ -44,11 +45,13 @@ export default function TuiJamRoom() {
   const [cmdHistory, setCmdHistory] = useState([]);
   const [histIdx, setHistIdx] = useState(-1);
   const [ytId, setYtId] = useState(null);
+  const [pendingConfirm, setPendingConfirm] = useState(null);
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const didJoinRef = useRef(false);
   const sessionIdRef = useRef(null);
+  const ytResolveKey = useRef(null);
 
   const nowPlaying = queueItems.find(i => i.status === 'playing') ?? null;
   const isDJ = !!session && session.dj_user_id === user?.id;
@@ -75,6 +78,8 @@ export default function TuiJamRoom() {
       );
       capture('jam_session_joined', { session_code: code, participant_count: participants.length + 1 });
     }).catch(err => append({ kind: 'err', text: `✗ join failed: ${err.message}` }));
+    // Run once per session+user pair; didJoinRef guards against re-fire.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id, user?.id]);
 
   useEffect(() => { sessionIdRef.current = session?.id ?? null; }, [session?.id]);
@@ -82,6 +87,8 @@ export default function TuiJamRoom() {
   useEffect(() => () => {
     if (sessionIdRef.current)
       navigator.sendBeacon(`${API_BASE}/api/sessions/${sessionIdRef.current}/leave`);
+    // Mount-time only: cleanup runs on unmount using the ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -97,12 +104,43 @@ export default function TuiJamRoom() {
 
   useEffect(() => {
     if (!FLAGS.AUTO_PLAY_QUEUE || !nowPlaying || !isDJ) { setYtId(null); return; }
-    const yt = nowPlaying.platform_links?.youtube || nowPlaying.platform_links?.youtubemusic;
-    const direct = extractYouTubeId(yt);
-    if (direct) { setYtId(direct); return; }
+
+    const key = nowPlaying.id;
+    ytResolveKey.current = key;
+    // Don't null ytId here — keeping player mounted preserves iOS autoplay unlock.
+
+    // 1. Direct YouTube video link
+    const ytUrl = nowPlaying.platform_links?.youtube || nowPlaying.platform_links?.youtubemusic;
+    const directId = extractYouTubeId(ytUrl);
+    if (directId) { setYtId(directId); return; }
+
+    // 2. YouTube search-results URL → resolve query via backend
+    if (ytUrl && isYouTubeSearchUrl(ytUrl)) {
+      const q = extractSearchQuery(ytUrl);
+      if (q) {
+        api(`/youtube/?q=${encodeURIComponent(q)}`)
+          .then(r => r.ok ? r.json() : { id: null })
+          .then(({ id }) => {
+            if (ytResolveKey.current !== key) return;
+            if (id) setYtId(id);
+          });
+        return;
+      }
+    }
+
+    // 3. Fallback: title + artist search; persist result so other clients benefit.
     api(`/youtube/?q=${encodeURIComponent(`${nowPlaying.title} ${nowPlaying.artist}`)}`)
       .then(r => r.ok ? r.json() : { id: null })
-      .then(({ id }) => { if (id) setYtId(id); });
+      .then(({ id }) => {
+        if (ytResolveKey.current !== key) return;
+        if (id) {
+          setYtId(id);
+          patchYouTubeLink(nowPlaying.id, `https://www.youtube.com/watch?v=${id}`);
+        }
+      });
+    // Re-resolve only when the song or DJ status changes; other nowPlaying
+    // fields are read at resolve time, not tracked.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nowPlaying?.id, isDJ]);
 
   useEffect(() => {
@@ -113,6 +151,16 @@ export default function TuiJamRoom() {
     const cmd = raw.trim();
     if (!cmd) return;
     const user_label = profile?.display_name?.toLowerCase().replace(/\s+/g, '') || 'user';
+
+    if (pendingConfirm) {
+      append({ kind: 'normal', text: `confirm (y/N)> ${cmd}` });
+      const pc = pendingConfirm;
+      setPendingConfirm(null);
+      if (/^(y|yes)$/i.test(cmd)) await pc.action();
+      else append({ kind: 'dim', text: '  cancelled.' });
+      return;
+    }
+
     append({ kind: 'normal', text: `${user_label}@jam:${code}$ ${cmd}` });
     setCmdHistory(h => [...h, cmd]);
     setHistIdx(-1);
@@ -187,12 +235,16 @@ export default function TuiJamRoom() {
         ); break;
       case 'end':
         if (!isHost) { append({ kind: 'err', text: '✗ host only' }); break; }
-        if (!confirm('End this jam for everyone?')) break;
-        try {
-          await endSession(session.id);
-          capture('jam_session_ended', { session_code: code });
-          navigate('/');
-        } catch (e) { append({ kind: 'err', text: `✗ ${e.message}` }); }
+        append({ kind: 'warn', text: '? end this jam for everyone? press `y` then enter to confirm' });
+        setPendingConfirm({
+          action: async () => {
+            try {
+              await endSession(session.id);
+              capture('jam_session_ended', { session_code: code });
+              navigate('/');
+            } catch (e) { append({ kind: 'err', text: `✗ ${e.message}` }); }
+          },
+        });
         break;
       case 'leave':
         navigate('/'); break;
@@ -236,14 +288,14 @@ export default function TuiJamRoom() {
 
   if (authLoading || sessionLoading) {
     return (
-      <TerminalShell title="musicone.sh ~ jam" status="connecting…">
+      <TerminalShell title="musicone.sh ~ jam" status="connecting…" auth={auth}>
         <div className={`${s.logLine} ${s.dim}`}><span className={s.spin}>◴</span> resolving session…</div>
       </TerminalShell>
     );
   }
   if (!session) {
     return (
-      <TerminalShell title="musicone.sh ~ jam" status="not found">
+      <TerminalShell title="musicone.sh ~ jam" status="not found" auth={auth}>
         <div className={`${s.logLine} ${s.err}`}>✗ session not found: {code}</div>
         <div className={s.hint}><a href="/" style={{ color: 'var(--tui-accent)' }}>cd ~</a> · go home</div>
       </TerminalShell>
@@ -252,7 +304,7 @@ export default function TuiJamRoom() {
   if (session.status === 'ended') {
     const played = queueItems.filter(i => ['played','playing','skipped'].includes(i.status));
     return (
-      <TerminalShell title="musicone.sh ~ jam" status="ended">
+      <TerminalShell title="musicone.sh ~ jam" status="ended" auth={auth}>
         <div className={`${s.logLine} ${s.warn}`}>~ session ended · {played.length} song{played.length !== 1 ? 's' : ''} played</div>
         <div className={s.divider}>──────── recap ────────</div>
         <table className={s.queueTable}>
@@ -282,6 +334,7 @@ export default function TuiJamRoom() {
       title={`musicone.sh ~ jam/${code}`}
       status={statusLine}
       onScreenClick={() => inputRef.current?.focus()}
+      auth={auth}
     >
       {ytId && isDJ && (
         <div style={{ position: 'fixed', width: 1, height: 1, opacity: 0, pointerEvents: 'none', overflow: 'hidden' }}>
@@ -368,7 +421,9 @@ export default function TuiJamRoom() {
 
       <form onSubmit={e => { e.preventDefault(); exec(input); setInput(''); }} className={s.prompt}>
         <span className={s.promptSymbol}>
-          {(profile?.display_name?.toLowerCase().replace(/\s+/g,'') || 'user')}@jam:{code}$
+          {pendingConfirm
+            ? 'confirm (y/N)>'
+            : `${profile?.display_name?.toLowerCase().replace(/\s+/g,'') || 'user'}@jam:${code}$`}
         </span>
         <input
           ref={inputRef}

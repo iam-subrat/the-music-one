@@ -29,7 +29,8 @@ export default function TuiHome() {
   const [cmdHistory, setCmdHistory] = useState([]);
   const [histIdx, setHistIdx] = useState(-1);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const auth = useAuth();
+  const { user } = auth;
   const { capture } = useAnalytics();
   const inputRef = useRef(null);
   const bottomRef = useRef(null);
@@ -41,6 +42,8 @@ export default function TuiHome() {
       append({ kind: 'dim', text: `↻ restoring last query — ${u}` });
       runLookup(u);
     }
+    // Intentional mount-only restore from URL query param.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -189,6 +192,7 @@ export default function TuiHome() {
       showBanner
       tagline={<>paste any streaming link · listen on every platform · <b>type `help` for commands</b></>}
       onScreenClick={() => inputRef.current?.focus()}
+      auth={auth}
     >
       <div className={s.log}>
         {log.map((line, i) => (

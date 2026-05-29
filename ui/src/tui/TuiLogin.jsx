@@ -5,7 +5,8 @@ import { useAuth } from '../hooks/useAuth';
 import s from './tui.module.css';
 
 export default function TuiLogin() {
-  const { user, loading, signInWithGoogle } = useAuth();
+  const auth = useAuth();
+  const { user, loading, signInWithGoogle } = auth;
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const next = params.get('next') || '/';
@@ -13,7 +14,7 @@ export default function TuiLogin() {
 
   useEffect(() => {
     if (!loading && user) navigate(next, { replace: true });
-  }, [user, loading]);
+  }, [user, loading, navigate, next]);
 
   useEffect(() => {
     const id = setInterval(() => setDots(d => d.length >= 3 ? '' : d + '.'), 450);
@@ -21,7 +22,7 @@ export default function TuiLogin() {
   }, []);
 
   return (
-    <TerminalShell title="musicone.sh ~ login" status="awaiting auth">
+    <TerminalShell title="musicone.sh ~ login" status="awaiting auth" auth={auth}>
       <div className={s.log}>
         <div className={`${s.logLine} ${s.info}`}>$ auth --provider google</div>
         <div className={`${s.logLine} ${s.dim}`}>  redirect target: <code style={{ color: 'var(--tui-amber)' }}>{next}</code></div>
