@@ -468,7 +468,20 @@ export default function TuiJamRoom() {
             })}
           </div>
           <div style={{ marginTop: 12, fontSize: 11.5, color: 'var(--tui-fg-dim)' }}>invite code:</div>
-          <div className={s.inviteCode}>{session.invite_code}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div className={s.inviteCode}>{session.invite_code}</div>
+            <button
+              type="button"
+              className={s.authBtn}
+              style={{ fontSize: 11, padding: '4px 10px' }}
+              onClick={() => navigator.clipboard.writeText(`${location.origin}/jam/${code}`).then(
+                () => append({ kind: 'ok',  text: '✓ invite link copied' }),
+                () => append({ kind: 'err', text: '✗ clipboard unavailable' }),
+              )}
+            >
+              [ copy link ]
+            </button>
+          </div>
         </div>
       </div>
 

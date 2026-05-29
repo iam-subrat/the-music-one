@@ -73,7 +73,7 @@ function ShellInner({
             ) : (
               <>
                 <span>session: <b>guest</b> — login enables jam sessions</span>
-                <button className={s.authBtn} onClick={signInWithGoogle}>[ login: google ]</button>
+                <button className={s.authBtn} onClick={() => signInWithGoogle()}>[ login: google ]</button>
               </>
             )}
           </div>
