@@ -235,7 +235,7 @@ export default function JamRoom() {
                 }}
               >
                 {getUpcoming(queueItems, session.repeat_mode ?? "none").length}{" "}
-                song(s) {session.repeat_mode === "queue" ? "in rotation" : "in queue"}
+                song(s) in queue
               </p>
             </div>
             <div
