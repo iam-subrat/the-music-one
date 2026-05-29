@@ -95,6 +95,15 @@ class SessionRepository(AbstractRepository):
             for sp, p in result.all()
         ]
 
+    async def is_participant(self, session_id: UUID, user_id: UUID) -> bool:
+        result = await self.db.execute(
+            select(SessionParticipant).where(
+                SessionParticipant.session_id == session_id,
+                SessionParticipant.user_id == user_id,
+            )
+        )
+        return result.scalar_one_or_none() is not None
+
     async def set_repeat_mode(self, session_id: UUID, mode: str, user_id: UUID) -> None:
         await set_jwt_claims(self.db, user_id)
         await self.db.execute(

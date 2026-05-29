@@ -1,5 +1,6 @@
+import logging
 from urllib.parse import quote
-from pydantic import SecretStr
+from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -44,6 +45,15 @@ class Settings(BaseSettings):
         v = self.cookie_samesite.strip().lower()
         return v if v in ("strict", "lax", "none") else "lax"
 
+    @model_validator(mode="after")
+    def _warn_samesite_none(self) -> "Settings":
+        if self.cookie_samesite_value == "none":
+            logging.getLogger("musicone.config").warning(
+                "COOKIE_SAMESITE=none weakens CSRF protection; "
+                "ensure your deployment uses a proper CSRF token."
+            )
+        return self
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     @property
@@ -57,6 +67,12 @@ class Settings(BaseSettings):
     @property
     def async_database_url(self) -> str:
         return _encode_db_url(self.database_url, "asyncpg")
+
+    @property
+    def migration_database_url(self) -> str:
+        # Transaction-mode pooler (port 6543) rejects DDL; rewrite to session mode (port 5432).
+        raw = self.database_url.replace(":6543/", ":5432/")
+        return _encode_db_url(raw, "psycopg2")
 
 
 settings = Settings()

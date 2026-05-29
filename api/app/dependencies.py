@@ -63,6 +63,7 @@ async def get_current_user(
 
 
 async def get_optional_user(request: Request) -> UUID | None:
+    _require_xrw(request)
     token = request.cookies.get("access_token")
     if not token:
         return None

@@ -91,6 +91,10 @@ async def heartbeat(
     user_id: UUID = Depends(get_current_user),
     svc=Depends(get_session_service),
 ):
+    try:
+        await svc.require_participant(session_id, user_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     await svc.touch(session_id)
     return {"ok": True}
 
