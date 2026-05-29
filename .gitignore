@@ -5,4 +5,9 @@ dist/
 .env
 .DS_Store
 *.log
+.claude.json
+.mcp.json
+.claude/
+.superpowers/
+docs/superpowers/
 # Never ignore package-lock.json — required by npm ci in CI
