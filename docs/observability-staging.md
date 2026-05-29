@@ -36,6 +36,25 @@
 
 ---
 
+## Structured metadata
+
+Promtail promotes `level` and `method` as indexed Loki labels. These fields are stored as structured metadata (queryable but not indexed):
+
+| Field | Example | Notes |
+|-------|---------|-------|
+| `path` | `/api/sessions/abc/join` | Request path |
+| `status_code` | `200`, `422` | HTTP response code |
+| `duration_ms` | `45` | Request duration |
+| `request_id` | UUID | Trace individual requests |
+
+Filter by metadata:
+```logql
+{project="musicone-staging"} | json | status_code >= 500
+{project="musicone-staging"} | json | path =~ "/sessions.*" | duration_ms > 500
+```
+
+---
+
 ## Grafana Proxy
 
 Query Loki via Grafana datasource proxy (UID: `P8E80F9AEF21F6940`):
@@ -57,15 +76,25 @@ curl -H "Authorization: Bearer <token>" \
 
 **Queue/skip vote issues:**
 ```logql
-{project="musicone-staging"} |= "queue" or "skip_vote"
+{project="musicone-staging"} |~ "queue|skip_vote"
 ```
 
-**API latency (by endpoint):**
+**API latency (ms) by endpoint:**
 ```logql
-{project="musicone-staging"} | json | method != "" | unwrap duration_ms
+{project="musicone-staging"} | json | method != "" | unwrap duration_ms [1m]
 ```
 
 **Failed Supabase calls:**
 ```logql
 {project="musicone-staging"} |= "supabase" |= "error"
+```
+
+**SSE stream errors:**
+```logql
+{project="musicone-staging"} |= "/events/" |= "error"
+```
+
+**Playlist import failures:**
+```logql
+{project="musicone-staging"} |= "playlists" |= "error"
 ```

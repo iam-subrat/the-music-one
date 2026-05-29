@@ -10,4 +10,5 @@ dist/
 .claude/
 .superpowers/
 docs/superpowers/
+SECURITY-FINDINGS.md
 # Never ignore package-lock.json — required by npm ci in CI

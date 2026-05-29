@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "docs:flags": "node ../scripts/gen-flags-doc.js"
   },
   "dependencies": {
     "posthog-js": "^1.376.0",

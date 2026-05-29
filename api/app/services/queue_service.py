@@ -19,6 +19,8 @@ class QueueService:
         return await self.store.queue.get_queue(session_id)
 
     async def add(self, session_id: UUID, user_id: UUID, url: str) -> QueueItem:
+        if not await self.store.sessions.is_participant(session_id, user_id):
+            raise PermissionError("Not a session participant")
         meta = await self.song_svc.resolve_song_meta(url)
         return await self.store.queue.create(
             session_id=session_id,
@@ -49,6 +51,8 @@ class QueueService:
     async def add_batch(
         self, session_id: UUID, user_id: UUID, tracks: list[dict]
     ) -> list[QueueItem]:
+        if not await self.store.sessions.is_participant(session_id, user_id):
+            raise PermissionError("Not a session participant")
         added: list[QueueItem] = []
         for track in tracks:
             try:
@@ -68,6 +72,8 @@ class QueueService:
         return added
 
     async def play_next(self, session_id: UUID, user_id: UUID) -> Optional[UUID]:
+        if not await self.store.sessions.is_participant(session_id, user_id):
+            raise PermissionError("Not a session participant")
         next_item = await self.store.queue.get_next_queued(session_id)
 
         if not next_item:
@@ -90,6 +96,8 @@ class QueueService:
         return None
 
     async def force_skip(self, session_id: UUID, user_id: UUID) -> Optional[UUID]:
+        if not await self.store.sessions.is_participant(session_id, user_id):
+            raise PermissionError("Not a session participant")
         return await self.store.queue.force_skip(session_id, user_id)
 
     async def patch_youtube_link(

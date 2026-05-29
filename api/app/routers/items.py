@@ -29,7 +29,7 @@ async def cast_vote(
     user_id: UUID = Depends(get_current_user),
     svc=Depends(get_queue_service),
 ):
-    skipped = await svc.cast_vote(item_id, user_id, body.threshold)
+    skipped = await svc.cast_vote(item_id, user_id)
     item = await svc.store.queue.get_by_id(item_id)
     if item:
         sid = str(item.session_id)

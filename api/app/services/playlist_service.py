@@ -13,6 +13,13 @@ _log = logging.getLogger(__name__)
 
 _spotify_token_lock = asyncio.Lock()
 
+_SPOTIFY_HOSTS = frozenset({"open.spotify.com", "spotify.com"})
+_YOUTUBE_HOSTS = frozenset({"www.youtube.com", "youtube.com", "m.youtube.com", "youtu.be"})
+
+
+def _sanitise_log_body(text: str, limit: int) -> str:
+    return text[:limit].replace("\n", " ").replace("\r", " ")
+
 
 class PlaylistTrack(BaseModel):
     title: str
@@ -37,7 +44,7 @@ def detect_playlist(url: str) -> Optional[tuple[str, str]]:
 
     host = parsed.hostname or ""
 
-    if "spotify.com" in host:
+    if host in _SPOTIFY_HOSTS or host.endswith(".spotify.com"):
         parts = parsed.path.split("/")
         try:
             idx = parts.index("playlist")
@@ -48,7 +55,7 @@ def detect_playlist(url: str) -> Optional[tuple[str, str]]:
             pass
         return None
 
-    if "youtube.com" in host or "youtu.be" in host:
+    if host in _YOUTUBE_HOSTS or host.endswith(".youtube.com"):
         params = parse_qs(parsed.query)
         list_id = params.get("list", [None])[0]
         if list_id:
@@ -77,7 +84,7 @@ class SpotifyPlaylistService:
                 )
                 _log.info("spotify token response status=%s", res.status_code)
                 if not res.is_success:
-                    _log.error("spotify token error status=%s body=%s", res.status_code, res.text[:300])
+                    _log.error("spotify token error status=%s body=%s", res.status_code, _sanitise_log_body(res.text, 300))
                     raise HTTPException(status_code=502, detail="Spotify auth failed.")
                 data = res.json()
             SpotifyPlaylistService._token = data["access_token"]
@@ -104,7 +111,7 @@ class SpotifyPlaylistService:
             _log.warning("spotify 401 on tracks fetch — token will be refreshed")
             return None
         if not tr_res.is_success:
-            _log.error("spotify tracks error status=%s body=%s", tr_res.status_code, tr_res.text[:500])
+            _log.error("spotify tracks error status=%s body=%s", tr_res.status_code, _sanitise_log_body(tr_res.text, 500))
             raise HTTPException(status_code=502, detail="Spotify unavailable.")
 
         tr_data = tr_res.json()
@@ -161,7 +168,7 @@ class YouTubePlaylistService:
             )
             _log.info("youtube playlist info status=%s", pl_res.status_code)
             if pl_res.status_code == 404 or not pl_res.is_success:
-                _log.warning("youtube playlist info failed status=%s body=%s", pl_res.status_code, pl_res.text[:300])
+                _log.warning("youtube playlist info failed status=%s body=%s", pl_res.status_code, _sanitise_log_body(pl_res.text, 300))
                 playlist_name = "YouTube Playlist"
             else:
                 pl_data = pl_res.json()
@@ -184,7 +191,7 @@ class YouTubePlaylistService:
                 _log.warning("youtube playlist not found playlist_id=%s", playlist_id)
                 raise HTTPException(status_code=404, detail="Playlist not found or private.")
             if not res.is_success:
-                _log.error("youtube playlistItems error status=%s body=%s", res.status_code, res.text[:500])
+                _log.error("youtube playlistItems error status=%s body=%s", res.status_code, _sanitise_log_body(res.text, 500))
                 raise HTTPException(status_code=502, detail="YouTube unavailable.")
             data = res.json()
 

@@ -9,15 +9,24 @@ from app.database import get_db
 _JWKS_CACHE: dict | None = None
 
 
-async def _public_key(kid: str):
+async def _refresh_jwks() -> None:
     global _JWKS_CACHE
+    async with httpx.AsyncClient() as client:
+        res = await client.get(
+            f"{settings.supabase_url}/auth/v1/.well-known/jwks.json"
+        )
+        _JWKS_CACHE = res.json()
+
+
+async def _public_key(kid: str):
     if _JWKS_CACHE is None:
-        async with httpx.AsyncClient() as client:
-            res = await client.get(
-                f"{settings.supabase_url}/auth/v1/.well-known/jwks.json"
-            )
-            _JWKS_CACHE = res.json()
-    for key in _JWKS_CACHE.get("keys", []):
+        await _refresh_jwks()
+    for key in (_JWKS_CACHE or {}).get("keys", []):
+        if key.get("kid") == kid:
+            return jwk.construct(key)
+    # kid not found — rotated key; refresh once and retry
+    await _refresh_jwks()
+    for key in (_JWKS_CACHE or {}).get("keys", []):
         if key.get("kid") == kid:
             return jwk.construct(key)
     raise ValueError(f"kid {kid!r} not in JWKS")
@@ -26,7 +35,7 @@ async def _public_key(kid: str):
 async def _decode(token: str):
     header = jwt.get_unverified_header(token)
     key = await _public_key(header["kid"])
-    return jwt.decode(token, key, algorithms=[header["alg"]], audience="authenticated")
+    return jwt.decode(token, key, algorithms=["ES256"], audience="authenticated")
 
 
 _CSRF_EXEMPT_SUFFIXES = ("/leave",)
@@ -63,6 +72,7 @@ async def get_current_user(
 
 
 async def get_optional_user(request: Request) -> UUID | None:
+    _require_xrw(request)
     token = request.cookies.get("access_token")
     if not token:
         return None

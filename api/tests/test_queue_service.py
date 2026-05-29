@@ -16,7 +16,11 @@ def _make_svc(queue_repo=None, vote_repo=None, song_svc=None, session_repo=None)
     store = MagicMock()
     store.queue = queue_repo or AsyncMock()
     store.skip_votes = vote_repo or AsyncMock()
-    store.sessions = session_repo or AsyncMock()
+    if session_repo is not None:
+        store.sessions = session_repo
+    else:
+        store.sessions = AsyncMock()
+        store.sessions.is_participant = AsyncMock(return_value=True)
     return QueueService(store, song_svc or AsyncMock())
 
 
@@ -143,6 +147,7 @@ async def test_play_next_returns_none_when_all_items_fail_to_resolve():
     repo.get_next_queued = AsyncMock(side_effect=[failing_item, failing_item, None])
     session_repo = AsyncMock()
     session_repo.get_by_id = AsyncMock(return_value=_make_session(repeat_mode="none"))
+    session_repo.is_participant = AsyncMock(return_value=True)
     svc = _make_svc(queue_repo=repo, song_svc=song_svc, session_repo=session_repo)
 
     result = await svc.play_next(uuid4(), uuid4())
@@ -175,6 +180,7 @@ async def test_play_next_returns_none_when_queue_empty_no_repeat():
     repo.get_next_queued = AsyncMock(return_value=None)
     session_repo = AsyncMock()
     session_repo.get_by_id = AsyncMock(return_value=_make_session(repeat_mode="none"))
+    session_repo.is_participant = AsyncMock(return_value=True)
     svc = _make_svc(queue_repo=repo, session_repo=session_repo)
 
     result = await svc.play_next(uuid4(), uuid4())
@@ -195,6 +201,7 @@ async def test_play_next_repeat_queue_delegates_to_db_when_no_queued():
 
     session_repo = AsyncMock()
     session_repo.get_by_id = AsyncMock(return_value=_make_session(repeat_mode="queue"))
+    session_repo.is_participant = AsyncMock(return_value=True)
     svc = _make_svc(queue_repo=repo, session_repo=session_repo)
 
     result = await svc.play_next(session_id, user_id)
