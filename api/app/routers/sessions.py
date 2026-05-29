@@ -82,6 +82,9 @@ async def pass_dj(
     svc=Depends(get_session_service),
 ):
     await svc.pass_dj(session_id, body.new_dj_user_id, user_id)
+    await bus.publish(
+        str(session_id), "session_updated", {"dj_user_id": str(body.new_dj_user_id)}
+    )
     return {"ok": True}
 
 

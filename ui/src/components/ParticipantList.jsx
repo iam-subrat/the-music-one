@@ -8,6 +8,8 @@ export default function ParticipantList({ participants, session, currentUserId }
   const toast = useToast();
   const { capture } = useAnalytics();
   const isHost = session.host_user_id === currentUserId;
+  const isDJ = session.dj_user_id === currentUserId;
+  const canPassDJ = isHost || isDJ;
 
   return (
     <div className={s.sidebarSection}>
@@ -19,7 +21,7 @@ export default function ParticipantList({ participants, session, currentUserId }
             : <div className={s.pAvatar} />}
           <span className={s.pName}>{p.display_name || 'Guest'}</span>
           {p.id === session.dj_user_id && <span className={s.pDj}>👑</span>}
-          {FLAGS.DJ_TOKEN && isHost && p.id !== currentUserId && p.id !== session.dj_user_id && (
+          {FLAGS.DJ_TOKEN && canPassDJ && p.id !== currentUserId && p.id !== session.dj_user_id && (
             <button
               className="btn btn-ghost"
               style={{ fontSize: '0.72rem', padding: '3px 8px' }}

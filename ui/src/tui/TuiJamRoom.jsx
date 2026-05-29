@@ -26,7 +26,8 @@ const HELP_LINES = [
   ['next',                    'DJ only — play next track'],
   ['skip',                    'cast skip vote (DJ → force skip)'],
   ['unvote',                  'remove your skip vote'],
-  ['dj <user-id|me>',         'host only — pass DJ token'],
+  ['who | participants',      'list participants with index/short-id'],
+  ['dj <me|@name|N|prefix>',  'host or DJ — pass DJ token (see `who`)'],
   ['repeat <none|song|queue>','DJ only — set repeat mode'],
   ['invite',                  'copy invite link to clipboard'],
   ['end',                     'host only — end session'],
@@ -34,6 +35,25 @@ const HELP_LINES = [
   ['clear',                   'clear terminal log'],
   ['help',                    'show this help'],
 ];
+
+function resolveDjTarget(arg, participants, currentUserId) {
+  if (arg === 'me') return currentUserId;
+  if (arg.startsWith('@')) {
+    const name = arg.slice(1).toLowerCase();
+    const hits = participants.filter(p => (p.display_name || '').toLowerCase().startsWith(name));
+    if (hits.length === 1) return hits[0].id;
+    throw new Error(hits.length ? 'ambiguous name' : 'no match');
+  }
+  if (/^\d+$/.test(arg)) {
+    const p = participants[parseInt(arg, 10) - 1];
+    if (!p) throw new Error('index out of range');
+    return p.id;
+  }
+  if (arg.length < 4) throw new Error('id prefix must be 4+ chars');
+  const hits = participants.filter(p => p.id.startsWith(arg));
+  if (hits.length === 1) return hits[0].id;
+  throw new Error(hits.length ? 'ambiguous id' : 'no match');
+}
 
 export default function TuiJamRoom() {
   const { code } = useParams();
@@ -255,11 +275,24 @@ export default function TuiJamRoom() {
         try { await removeSkipVote(nowPlaying.id); append({ kind: 'ok', text: '✓ vote removed' }); }
         catch (e) { append({ kind: 'err', text: `✗ ${e.message}` }); }
         break;
+      case 'who':
+      case 'participants': {
+        if (!participants.length) { append({ kind: 'dim', text: '(no participants)' }); break; }
+        participants.forEach((p, i) => {
+          const tags = [];
+          if (p.id === session.dj_user_id) tags.push('DJ');
+          if (p.id === session.host_user_id) tags.push('host');
+          if (p.id === user?.id) tags.push('you');
+          const suffix = tags.length ? `  (${tags.join(', ')})` : '';
+          append({ kind: 'dim', text: `  ${i+1}. ${p.id.slice(0,8)}  ${p.display_name || 'Guest'}${suffix}` });
+        });
+        break;
+      }
       case 'dj':
-        if (!isHost) { append({ kind: 'err', text: '✗ host only' }); break; }
-        if (!arg) { append({ kind: 'warn', text: 'usage: dj <user-id|me>' }); break; }
+        if (!isHost && !isDJ) { append({ kind: 'err', text: '✗ host or DJ only' }); break; }
+        if (!arg) { append({ kind: 'warn', text: 'usage: dj <me|@name|N|id-prefix>  (type `who` to list)' }); break; }
         try {
-          const target = arg === 'me' ? user.id : arg;
+          const target = resolveDjTarget(arg, participants, user.id);
           await passDjToken(session.id, target);
           append({ kind: 'ok', text: `✓ DJ passed to ${target.slice(0,8)}` });
         } catch (e) { append({ kind: 'err', text: `✗ ${e.message}` }); }
