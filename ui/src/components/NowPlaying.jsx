@@ -141,7 +141,13 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
           style={{ '--platform-color': prefMeta?.color }}
         >
           {prefMeta?.iconSvgUrl && (
-            <img src={prefMeta.iconSvgUrl} alt="" width={16} height={16} style={{ filter: 'brightness(0) invert(1)' }} />
+            <img
+              src={prefMeta.iconSvgUrl.replace(/\/[0-9A-Fa-f]{6}$/, '/ffffff')}
+              alt=""
+              width={16}
+              height={16}
+              onError={e => { e.currentTarget.style.display = 'none'; }}
+            />
           )}
           Open on {prefMeta?.name || pref.platform} ↗
         </a>

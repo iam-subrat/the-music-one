@@ -227,16 +227,6 @@ export default function JamRoom() {
               <h2 style={{ fontSize: "1.1rem", fontWeight: 700 }}>
                 Jam Session
               </h2>
-              <p
-                style={{
-                  color: "var(--muted)",
-                  fontSize: "0.85rem",
-                  marginTop: 2,
-                }}
-              >
-                {queueItems.filter((i) => i.status === "queued").length} song(s)
-                in queue
-              </p>
             </div>
             <div
               style={{
@@ -293,6 +283,7 @@ export default function JamRoom() {
             />
             <QueueList
               items={queueItems}
+              repeatMode={session.repeat_mode ?? "none"}
               sessionId={session.id}
               userId={user?.id}
               profile={profile}
