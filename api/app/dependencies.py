@@ -26,7 +26,7 @@ async def _public_key(kid: str):
 async def _decode(token: str):
     header = jwt.get_unverified_header(token)
     key = await _public_key(header["kid"])
-    return jwt.decode(token, key, algorithms=[header["alg"]], audience="authenticated")
+    return jwt.decode(token, key, algorithms=["RS256"], audience="authenticated")
 
 
 _CSRF_EXEMPT_SUFFIXES = ("/leave",)

@@ -55,7 +55,7 @@ class YouTubeLinkUpdate(BaseModel):
 
 
 class CastVoteRequest(BaseModel):
-    threshold: int = 3
+    pass
 
 
 class SkipVoteResponse(BaseModel):
