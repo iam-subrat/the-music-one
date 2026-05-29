@@ -12,6 +12,7 @@ import { API_BASE, api } from '../lib/api';
 import { useAnalytics } from '../lib/analytics';
 import { FLAGS } from '../lib/flags';
 import YouTubeAutoPlayer from '../components/YouTubeAutoPlayer';
+import { getUpcoming } from '../components/QueueList';
 import { extractYouTubeId, isYouTubeSearchUrl, extractSearchQuery } from '../lib/platform';
 import s from './tui.module.css';
 
@@ -351,7 +352,7 @@ export default function TuiJamRoom() {
     );
   }
 
-  const upcoming = queueItems.filter(i => i.status === 'queued');
+  const upcoming = getUpcoming(queueItems, session.repeat_mode ?? 'none');
   const statusLine = `${participants.length} online${isDJ ? ' · you are DJ' : ''}${isHost ? ' · host' : ''}`;
 
   return (
