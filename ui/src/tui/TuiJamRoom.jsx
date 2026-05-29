@@ -110,11 +110,13 @@ export default function TuiJamRoom() {
 
   useEffect(() => { sessionIdRef.current = session?.id ?? null; }, [session?.id]);
 
-  useEffect(() => () => {
-    if (sessionIdRef.current)
-      navigator.sendBeacon(`${API_BASE}/api/sessions/${sessionIdRef.current}/leave`);
-    // Mount-time only: cleanup runs on unmount using the ref.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const handlePageHide = () => {
+      if (sessionIdRef.current)
+        navigator.sendBeacon(`${API_BASE}/api/sessions/${sessionIdRef.current}/leave`);
+    };
+    window.addEventListener('pagehide', handlePageHide);
+    return () => window.removeEventListener('pagehide', handlePageHide);
   }, []);
 
   useEffect(() => {
@@ -331,6 +333,8 @@ export default function TuiJamRoom() {
         });
         break;
       case 'leave':
+        if (sessionIdRef.current)
+          navigator.sendBeacon(`${API_BASE}/api/sessions/${sessionIdRef.current}/leave`);
         navigate('/'); break;
       default:
         append({ kind: 'err', text: `unknown command: ${head}. try \`help\`.` });

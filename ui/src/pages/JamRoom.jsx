@@ -101,9 +101,6 @@ export default function JamRoom() {
           songs_heard: songsHeardRef.current,
           peak_participants: peakParticipantsRef.current,
         });
-        navigator.sendBeacon(
-          `${API_BASE}/api/sessions/${sessionIdRef.current}/leave`,
-        );
       }
     };
   }, []);
