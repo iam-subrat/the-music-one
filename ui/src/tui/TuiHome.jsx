@@ -61,8 +61,11 @@ export default function TuiHome() {
       if (!res.ok) throw new Error(`song lookup failed (HTTP ${res.status})`);
       const meta = await res.json();
       setSong(meta);
-      append({ kind: 'ok',  text: `✓ matched: ${meta.title} — ${meta.artist}` });
-      append({ kind: 'dim', text: `  ${Object.keys(meta.platformLinks ?? {}).length} direct link(s) resolved` });
+      append(
+        { kind: 'ok',  text: `✓ matched: ${meta.title} — ${meta.artist}` },
+        { kind: 'dim', text: `  ${Object.keys(meta.platformLinks ?? {}).length} direct link(s) resolved` },
+        { kind: 'songResult', song: meta },
+      );
       capture('lookup_succeeded', { platform_count: Object.keys(meta.platformLinks ?? {}).length });
       window.history.replaceState({}, '', `?url=${encodeURIComponent(url)}`);
     } catch (err) {
@@ -71,6 +74,42 @@ export default function TuiHome() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function renderSongResult(song) {
+    const q = `${song.title} ${song.artist}`;
+    return (
+      <>
+        <div className={s.divider}>──────────── result ────────────</div>
+        <div className={s.songMeta}>
+          {song.thumbnailUrl && <img src={song.thumbnailUrl} alt="" className={s.songArt} />}
+          <div>
+            <span className={s.field}><b>title  ·</b> {song.title}</span>
+            <span className={s.field}><b>artist ·</b> {song.artist}</span>
+            {song.album && <span className={s.field}><b>album  ·</b> {song.album}</span>}
+          </div>
+        </div>
+        <div className={s.divider}>──────────── platforms ─────────</div>
+        <div className={s.platforms}>
+          {Object.entries(PLATFORM_META).map(([key, p]) => {
+            const direct = song?.platformLinks?.[key];
+            const href = direct || p.searchUrl(q);
+            const isDirect = !!direct;
+            return (
+              <a key={key} href={href} target="_blank" rel="noopener noreferrer" className={s.platformRow}>
+                <span className={`${s.platformBullet} ${isDirect ? '' : s.search}`}>
+                  {isDirect ? '▶' : '?'}
+                </span>
+                <span className={s.platformName}>{p.name}</span>
+                <span className={`${s.platformTag} ${isDirect ? s.direct : s.search}`}>
+                  {isDirect ? 'open' : 'search'}
+                </span>
+              </a>
+            );
+          })}
+        </div>
+      </>
+    );
   }
 
   function execute(raw) {
@@ -143,18 +182,19 @@ export default function TuiHome() {
     }
   }
 
-  const q = song ? `${song.title} ${song.artist}` : '';
-
   return (
     <TerminalShell
       title="musicone.sh ~ home"
       status={busy ? 'querying…' : (song ? 'idle · 1 result' : 'idle')}
       showBanner
       tagline={<>paste any streaming link · listen on every platform · <b>type `help` for commands</b></>}
+      onScreenClick={() => inputRef.current?.focus()}
     >
       <div className={s.log}>
         {log.map((line, i) => (
-          <div key={i} className={`${s.logLine} ${s[line.kind] || ''}`}>{line.text}</div>
+          line.kind === 'songResult'
+            ? <div key={i}>{renderSongResult(line.song)}</div>
+            : <div key={i} className={`${s.logLine} ${s[line.kind] || ''}`}>{line.text}</div>
         ))}
       </div>
 
@@ -162,40 +202,6 @@ export default function TuiHome() {
         <div className={`${s.logLine} ${s.dim}`}>
           <span className={s.spin}>◴</span> resolving platforms…
         </div>
-      )}
-
-      {song && (
-        <>
-          <div className={s.divider}>──────────── result ────────────</div>
-          <div className={s.songMeta}>
-            {song.thumbnailUrl && <img src={song.thumbnailUrl} alt="" className={s.songArt} />}
-            <div>
-              <span className={s.field}><b>title  ·</b> {song.title}</span>
-              <span className={s.field}><b>artist ·</b> {song.artist}</span>
-              {song.album && <span className={s.field}><b>album  ·</b> {song.album}</span>}
-            </div>
-          </div>
-
-          <div className={s.divider}>──────────── platforms ─────────</div>
-          <div className={s.platforms}>
-            {Object.entries(PLATFORM_META).map(([key, p]) => {
-              const direct = song?.platformLinks?.[key];
-              const href = direct || p.searchUrl(q);
-              const isDirect = !!direct;
-              return (
-                <a key={key} href={href} target="_blank" rel="noopener noreferrer" className={s.platformRow}>
-                  <span className={`${s.platformBullet} ${isDirect ? '' : s.search}`}>
-                    {isDirect ? '▶' : '?'}
-                  </span>
-                  <span className={s.platformName}>{p.name}</span>
-                  <span className={`${s.platformTag} ${isDirect ? s.direct : s.search}`}>
-                    {isDirect ? 'open' : 'search'}
-                  </span>
-                </a>
-              );
-            })}
-          </div>
-        </>
       )}
 
       <div className={s.divider}>────────────────────────────────</div>

@@ -24,13 +24,25 @@ export function useAuth() {
             });
             capture('user_signed_in', { auth_provider: 'google' });
             _identifiedUserId = data.id;
+            try {
+              const returnTo = sessionStorage.getItem('musicone:post-login');
+              if (returnTo) {
+                sessionStorage.removeItem('musicone:post-login');
+                if (returnTo !== window.location.href) {
+                  window.location.replace(returnTo);
+                }
+              }
+            } catch {}
           }
         }
       })
       .finally(() => setLoading(false));
   }, []);
 
-  function signInWithGoogle() {
+  function signInWithGoogle(returnTo) {
+    if (returnTo) {
+      try { sessionStorage.setItem('musicone:post-login', returnTo); } catch {}
+    }
     window.location.href = `${API_BASE}/api/auth/google`;
   }
 

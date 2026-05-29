@@ -21,9 +21,16 @@ function useClock() {
   return now.toTimeString().slice(0, 8);
 }
 
-export default function TerminalShell({ title = 'musicone.sh', status, children, showBanner = false, tagline }) {
+export default function TerminalShell({ title = 'musicone.sh', status, children, showBanner = false, tagline, onScreenClick }) {
   const { user, profile, signInWithGoogle, signOut } = useAuth();
   const clock = useClock();
+
+  function handleScreenClick(e) {
+    if (!onScreenClick) return;
+    if (e.target.closest('a, button, input, textarea, [role="button"]')) return;
+    if (window.getSelection?.()?.toString()) return; // preserve text selection
+    onScreenClick();
+  }
 
   return (
     <div className={s.shell}>
@@ -42,7 +49,7 @@ export default function TerminalShell({ title = 'musicone.sh', status, children,
           </div>
         </div>
 
-        <div className={s.screen}>
+        <div className={s.screen} onClick={handleScreenClick}>
           {showBanner && <pre className={s.banner}>{BANNER}</pre>}
           {tagline && <div className={s.tagline}>{tagline}</div>}
 

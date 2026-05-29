@@ -22,7 +22,7 @@ const HELP_LINES = [
   ['skip',                    'cast skip vote (DJ → force skip)'],
   ['unvote',                  'remove your skip vote'],
   ['dj <user-id|me>',         'host only — pass DJ token'],
-  ['repeat <none|one|all>',   'DJ only — set repeat mode'],
+  ['repeat <none|song|queue>','DJ only — set repeat mode'],
   ['invite',                  'copy invite link to clipboard'],
   ['end',                     'host only — end session'],
   ['leave',                   'leave the session'],
@@ -46,6 +46,7 @@ export default function TuiJamRoom() {
   const [ytId, setYtId] = useState(null);
 
   const bottomRef = useRef(null);
+  const inputRef = useRef(null);
   const didJoinRef = useRef(false);
   const sessionIdRef = useRef(null);
 
@@ -164,15 +165,21 @@ export default function TuiJamRoom() {
           append({ kind: 'ok', text: `✓ DJ passed to ${target.slice(0,8)}` });
         } catch (e) { append({ kind: 'err', text: `✗ ${e.message}` }); }
         break;
-      case 'repeat':
+      case 'repeat': {
         if (!isDJ) { append({ kind: 'err', text: '✗ DJ only' }); break; }
-        if (!['none','one','all'].includes(arg)) { append({ kind: 'warn', text: 'usage: repeat <none|one|all>' }); break; }
+        const REPEAT_ALIASES = { one: 'song', all: 'queue', off: 'none' };
+        const mode = REPEAT_ALIASES[arg] ?? arg;
+        if (!['none','song','queue'].includes(mode)) {
+          append({ kind: 'warn', text: 'usage: repeat <none|song|queue>' });
+          break;
+        }
         try {
-          await setRepeatMode(session.id, arg);
-          setSession(prev => ({ ...prev, repeat_mode: arg }));
-          append({ kind: 'ok', text: `✓ repeat=${arg}` });
+          await setRepeatMode(session.id, mode);
+          setSession(prev => ({ ...prev, repeat_mode: mode }));
+          append({ kind: 'ok', text: `✓ repeat=${mode}` });
         } catch (e) { append({ kind: 'err', text: `✗ ${e.message}` }); }
         break;
+      }
       case 'invite':
         navigator.clipboard.writeText(`${location.origin}/jam/${code}`).then(
           () => append({ kind: 'ok',  text: '✓ invite link copied' }),
@@ -271,7 +278,11 @@ export default function TuiJamRoom() {
   const statusLine = `${participants.length} online${isDJ ? ' · you are DJ' : ''}${isHost ? ' · host' : ''}`;
 
   return (
-    <TerminalShell title={`musicone.sh ~ jam/${code}`} status={statusLine}>
+    <TerminalShell
+      title={`musicone.sh ~ jam/${code}`}
+      status={statusLine}
+      onScreenClick={() => inputRef.current?.focus()}
+    >
       {ytId && isDJ && (
         <div style={{ position: 'fixed', width: 1, height: 1, opacity: 0, pointerEvents: 'none', overflow: 'hidden' }}>
           <YouTubeAutoPlayer
@@ -360,6 +371,7 @@ export default function TuiJamRoom() {
           {(profile?.display_name?.toLowerCase().replace(/\s+/g,'') || 'user')}@jam:{code}$
         </span>
         <input
+          ref={inputRef}
           autoFocus
           className={s.promptInput}
           value={input}
