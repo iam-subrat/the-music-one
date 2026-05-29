@@ -27,8 +27,8 @@ async def test_decode_always_uses_rs256_not_header_alg(monkeypatch):
     """jwt.decode must be called with pinned ['RS256'], never the header's alg value.
 
     Current bug: algorithms=[header["alg"]] lets an attacker supply alg=HS256
-    and sign with the public RSA key (which is public), bypassing auth.
-    Fix: hardcode algorithms=["RS256"].
+    and sign with the public EC key (which is public), bypassing auth.
+    Fix: hardcode algorithms=["ES256"] (Supabase uses ECDSA P-256 for this project).
     """
     import app.dependencies as deps
 
@@ -52,8 +52,8 @@ async def test_decode_always_uses_rs256_not_header_alg(monkeypatch):
             pass
 
     assert len(captured) == 1, "jwt.decode was not called"
-    assert captured[0] == ["RS256"], (
-        f"Expected algorithms=['RS256'], got {captured[0]}. "
+    assert captured[0] == ["ES256"], (
+        f"Expected algorithms=['ES256'], got {captured[0]}. "
         "Server must not trust the unverified header's alg field."
     )
 
