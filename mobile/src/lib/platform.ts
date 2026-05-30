@@ -70,7 +70,7 @@ export const PLATFORM_META: Record<string, PlatformMeta> = {
     color: '#2BC5B4',
     iconSvgUrl: null,
     iconUrl: 'https://www.google.com/s2/favicons?domain=jiosaavn.com&sz=64',
-    searchUrl: (q) => `https://www.jiosaavn.com/search/${encodeURIComponent(q)}`,
+    searchUrl: (q) => `https://www.jiosaavn.com/search/${encodeURIComponent(q)}/songs`,
   },
   gaana: {
     name: 'Gaana',
