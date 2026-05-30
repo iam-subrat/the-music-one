@@ -92,7 +92,7 @@ function HomeContent() {
       <header className={s.hero}>
         <h1 className={s.heroTitle}>MusicOne</h1>
         <p className={s.heroSub}>
-          Paste any streaming link — listen on every platform
+          Paste any streaming link — listen on any platform
         </p>
       </header>
 
