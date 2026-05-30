@@ -20,7 +20,7 @@ export function useGoogleSignIn() {
       usePKCE: true,
       scopes: ['openid', 'email', 'profile'],
     },
-    { authorizationEndpoint: `${API_BASE}/api/auth/google` }
+    { authorizationEndpoint: `${API_BASE}/api/auth/mobile/authorize` }
   );
 
   const signIn = useCallback(async () => {

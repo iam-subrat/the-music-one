@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from app.config import settings
 from app.dependencies import get_profile_service
@@ -35,6 +36,13 @@ class MobileRefreshRequest(BaseModel):
 class MobileRefreshResponse(BaseModel):
     access_token: str
     refresh_token: str
+
+
+@router.get("/authorize")
+async def mobile_authorize(code_challenge: str, redirect_uri: str):
+    """PKCE passthrough: client sends its own challenge, we redirect to Supabase OAuth."""
+    url = _auth_svc.build_oauth_url(code_challenge, redirect_uri)
+    return RedirectResponse(url=url)
 
 
 @router.post("/exchange", response_model=MobileTokenResponse)
