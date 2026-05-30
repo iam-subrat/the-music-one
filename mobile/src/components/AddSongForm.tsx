@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { addToQueue, searchAndAddToQueue, QueueItem } from '../lib/queue';
+import { detectPlaylist, fetchPlaylistPreview, addPlaylistBatch } from '../lib/playlist';
 import { colors, spacing, typography, radius } from '../constants/theme';
 
 interface Props {
@@ -37,6 +38,33 @@ export default function AddSongForm({ sessionId, onAdded }: Props) {
       } else {
         const trimmed = url.trim();
         if (!trimmed) return;
+
+        if (detectPlaylist(trimmed)) {
+          const preview = await fetchPlaylistPreview(trimmed);
+          await new Promise<void>((resolve) => {
+            Alert.alert(
+              `Import "${preview.name}"`,
+              `Add ${preview.tracks.length} tracks from this playlist?`,
+              [
+                { text: 'Cancel', style: 'cancel', onPress: () => resolve() },
+                {
+                  text: 'Add all',
+                  onPress: async () => {
+                    try {
+                      await addPlaylistBatch(sessionId, preview.tracks);
+                      setUrl('');
+                    } catch (err) {
+                      Alert.alert('Error', err instanceof Error ? err.message : 'Import failed');
+                    }
+                    resolve();
+                  },
+                },
+              ],
+            );
+          });
+          return;
+        }
+
         item = await addToQueue(sessionId, trimmed);
         setUrl('');
       }

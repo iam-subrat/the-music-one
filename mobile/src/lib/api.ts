@@ -9,21 +9,31 @@ const BASE_HEADERS = {
   'X-Requested-With': 'XMLHttpRequest',
 } as const;
 
+let inFlightRefresh: Promise<boolean> | null = null;
+
 async function tryRefresh(): Promise<boolean> {
-  const refreshToken = await getRefreshToken();
-  if (!refreshToken) return false;
+  if (inFlightRefresh) return inFlightRefresh;
+  inFlightRefresh = (async () => {
+    const refreshToken = await getRefreshToken();
+    if (!refreshToken) return false;
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/mobile/refresh`, {
+        method: 'POST',
+        headers: BASE_HEADERS,
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      await storeTokens(data.access_token, data.refresh_token);
+      return true;
+    } catch {
+      return false;
+    }
+  })();
   try {
-    const res = await fetch(`${API_BASE}/api/auth/mobile/refresh`, {
-      method: 'POST',
-      headers: BASE_HEADERS,
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
-    if (!res.ok) return false;
-    const data = await res.json();
-    await storeTokens(data.access_token, data.refresh_token);
-    return true;
-  } catch {
-    return false;
+    return await inFlightRefresh;
+  } finally {
+    inFlightRefresh = null;
   }
 }
 

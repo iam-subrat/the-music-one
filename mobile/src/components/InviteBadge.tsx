@@ -3,25 +3,28 @@ import { View, Text, Pressable, StyleSheet, Share, Alert } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, radius, typography } from '../constants/theme';
+import { WEB_BASE } from '../constants/config';
 
 interface Props {
   code: string;
 }
 
 export default function InviteBadge({ code }: Props) {
+  const url = `${WEB_BASE}/jam/${code}`;
+
   async function handleCopy() {
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await Clipboard.setStringAsync(`Join my jam session with code: ${code}`);
-    Alert.alert('Copied!', 'Invite code copied to clipboard');
+    await Clipboard.setStringAsync(url);
+    Alert.alert('Copied!', 'Invite link copied to clipboard');
   }
 
   async function handleShare() {
-    await Share.share({ message: `Join my MusicOne jam session! Code: ${code}` });
+    await Share.share({ message: `Join my MusicOne jam session: ${url}` });
   }
 
   return (
     <View style={styles.badge}>
-      <Text style={styles.label}>Code: </Text>
+      <Text style={styles.label}>Invite: </Text>
       <Text style={styles.code}>{code}</Text>
       <Pressable style={styles.btn} onPress={handleCopy}>
         <Text style={styles.btnText}>Copy</Text>

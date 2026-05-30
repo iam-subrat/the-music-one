@@ -13,6 +13,7 @@
     "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.13",
     "expo-crypto": "^15.0.9",
+    "expo-dev-client": "~6.0.21",
     "expo-haptics": "~15.0.8",
     "expo-image": "~3.0.11",
     "expo-linking": "~8.0.12",
@@ -31,7 +32,8 @@
   },
   "devDependencies": {
     "@types/react": "~19.0.0",
-    "typescript": "~5.3.3"
+    "dotenv": "^17.4.2",
+    "typescript": "~5.9.3"
   },
   "scripts": {
     "start": "expo start",

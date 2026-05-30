@@ -17,6 +17,8 @@ interface Props {
 
 export default function ParticipantsList({ participants, session, currentUserId }: Props) {
   const isHost = session.host_user_id === currentUserId;
+  const isDJ = session.dj_user_id === currentUserId;
+  const canPassDJ = isHost || isDJ;
 
   async function handlePassDJ(userId: string, name: string | null) {
     Alert.alert('Pass DJ', `Make ${name ?? 'this user'} the DJ?`, [
@@ -38,7 +40,7 @@ export default function ParticipantsList({ participants, session, currentUserId 
     <View style={styles.container}>
       <Text style={styles.label}>Listeners ({participants.length})</Text>
       {participants.map((p) => {
-        const isDJ = session.dj_user_id === p.user_id;
+        const isParticipantDJ = session.dj_user_id === p.user_id;
         const isSelf = p.user_id === currentUserId;
         const initial = (p.display_name ?? '?')[0].toUpperCase();
         return (
@@ -54,8 +56,8 @@ export default function ParticipantsList({ participants, session, currentUserId 
             <Text style={styles.name}>
               {p.display_name ?? 'Anonymous'}{isSelf ? ' (you)' : ''}
             </Text>
-            {isDJ && <Text style={styles.djBadge}>DJ 🎧</Text>}
-            {isHost && !isDJ && !isSelf && (
+            {isParticipantDJ && <Text style={styles.djBadge}>DJ 🎧</Text>}
+            {canPassDJ && !isParticipantDJ && !isSelf && (
               <Pressable
                 style={styles.passDjBtn}
                 onPress={() => handlePassDJ(p.user_id, p.display_name)}

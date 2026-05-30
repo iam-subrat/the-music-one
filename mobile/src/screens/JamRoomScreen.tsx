@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   BackHandler,
+  AppState,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -72,6 +73,17 @@ export default function JamRoomScreen({ route, navigation }: Props) {
     }, 30_000);
     return () => clearInterval(id);
   }, [session?.id]);
+
+  // Leave session when app goes background (best-effort; won't fire on hard kill)
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background' && sessionIdRef.current) {
+        leaveSession(sessionIdRef.current).catch(() => {});
+        joinedRef.current = false;
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   const handleEndSession = useCallback(async () => {
     Alert.alert('End Session', 'End this jam for everyone?', [
@@ -187,6 +199,7 @@ export default function JamRoomScreen({ route, navigation }: Props) {
         <QueueList
           items={queueItems}
           sessionId={session.id}
+          repeatMode={(session.repeat_mode ?? 'none') as 'none' | 'song' | 'queue'}
           onAdded={(item) => { addItem(item); refreshQueue(); }}
         />
 
