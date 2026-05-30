@@ -1,9 +1,10 @@
-import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
 import { useCallback } from 'react';
-import { API_BASE } from '../constants/config';
+import { supabase } from '../lib/supabase';
 import { storeTokens } from '../lib/auth';
 import { useAuth as useAuthContext } from '../contexts/AuthContext';
+import { API_BASE } from '../constants/config';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -11,38 +12,47 @@ export function useGoogleSignIn() {
   const { setUser, setProfile } = useAuthContext();
 
   const redirectUri = AuthSession.makeRedirectUri({ scheme: 'musicone' });
-
-  const [request, , promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: 'google', // Supabase handles the actual clientId
-      redirectUri,
-      responseType: AuthSession.ResponseType.Code,
-      usePKCE: true,
-      scopes: ['openid', 'email', 'profile'],
-    },
-    { authorizationEndpoint: `${API_BASE}/api/auth/mobile/authorize` }
-  );
+  console.log('[auth] redirectUri =', redirectUri);
 
   const signIn = useCallback(async () => {
-    const result = await promptAsync();
-    if (result.type !== 'success') return;
-
-    const res = await fetch(`${API_BASE}/api/auth/mobile/exchange`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-      body: JSON.stringify({
-        code: result.params.code,
-        code_verifier: request?.codeVerifier ?? '',
-        redirect_uri: redirectUri,
-      }),
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUri,
+        skipBrowserRedirect: true,
+      },
     });
 
-    if (!res.ok) throw new Error('Sign in failed');
-    const data = await res.json();
-    await storeTokens(data.access_token, data.refresh_token);
-    setUser({ id: data.user.id });
-    setProfile(data.user);
-  }, [promptAsync, request, redirectUri, setUser, setProfile]);
+    if (error || !data.url) throw new Error(error?.message ?? 'OAuth init failed');
 
-  return { signIn, ready: !!request };
+    console.log('[auth] opening URL:', data.url);
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
+    console.log('[auth] browser result:', JSON.stringify(result));
+
+    if (result.type !== 'success') return;
+
+    const { data: sessionData, error: exchangeError } =
+      await supabase.auth.exchangeCodeForSession(result.url);
+
+    if (exchangeError || !sessionData.session) {
+      throw new Error(exchangeError?.message ?? 'Code exchange failed');
+    }
+
+    const { access_token, refresh_token, user } = sessionData.session;
+    await storeTokens(access_token, refresh_token);
+
+    // Fetch full profile from backend
+    const res = await fetch(`${API_BASE}/api/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    });
+    const profile = res.ok ? await res.json() : null;
+
+    setUser({ id: user.id });
+    setProfile(profile ?? { id: user.id, email: user.email });
+  }, [redirectUri, setUser, setProfile]);
+
+  return { signIn, ready: true };
 }

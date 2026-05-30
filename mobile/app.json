@@ -29,8 +29,6 @@
       "expo-web-browser",
       "expo-secure-store"
     ],
-    "extra": {
-      "apiUrl": "http://192.168.31.57:8000"
-    }
+    "extra": {}
   }
 }
