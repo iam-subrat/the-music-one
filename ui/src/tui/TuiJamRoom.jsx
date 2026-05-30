@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import TerminalShell from './TerminalShell';
+import TuiPlaylistPicker from './TuiPlaylistPicker';
 import { useAuth } from '../hooks/useAuth';
 import { useSession } from '../hooks/useSession';
 import { useQueue } from '../hooks/useQueue';
@@ -8,6 +9,7 @@ import { useParticipants } from '../hooks/useParticipants';
 import { useSkipVotes } from '../hooks/useSkipVotes';
 import { joinSession, endSession, passDjToken, setRepeatMode } from '../lib/session';
 import { addToQueue, searchAndAddToQueue, playNext, forceSkip, castSkipVote, removeSkipVote, patchYouTubeLink } from '../lib/queue';
+import { detectPlaylist, fetchPlaylistPreview, addPlaylistBatch } from '../lib/playlist';
 import { API_BASE, api } from '../lib/api';
 import { useAnalytics } from '../lib/analytics';
 import { FLAGS } from '../lib/flags';
@@ -17,7 +19,7 @@ import { extractYouTubeId, isYouTubeSearchUrl, extractSearchQuery } from '../lib
 import s from './tui.module.css';
 
 const HELP_LINES = [
-  ['add <url>',               'queue a song by streaming URL'],
+  ['add <url>',               'queue a song or playlist (yt/yt-music/spotify) by URL'],
   ['add "<name>" [artist]',   'queue by name search'],
   ['play | resume',           'DJ only — resume playback'],
   ['pause | p',               'DJ only — pause playback'],
@@ -71,6 +73,7 @@ export default function TuiJamRoom() {
   const [histIdx, setHistIdx] = useState(-1);
   const [ytId, setYtId] = useState(null);
   const [pendingConfirm, setPendingConfirm] = useState(null);
+  const [playlistPicker, setPlaylistPicker] = useState(null);
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -343,6 +346,17 @@ export default function TuiJamRoom() {
 
   async function doAdd(arg) {
     try {
+      if (/^https?:\/\//i.test(arg) && FLAGS.PLAYLIST_IMPORT && detectPlaylist(arg)) {
+        append({ kind: 'info', text: '~ fetching playlist…' });
+        const preview = await fetchPlaylistPreview(arg);
+        if (!preview.tracks?.length) {
+          append({ kind: 'warn', text: '~ playlist empty' });
+          return;
+        }
+        inputRef.current?.blur();
+        setPlaylistPicker({ name: preview.name, tracks: preview.tracks });
+        return;
+      }
       let item;
       if (/^https?:\/\//i.test(arg)) {
         item = await addToQueue(session.id, arg);
@@ -357,6 +371,7 @@ export default function TuiJamRoom() {
   }
 
   function onKey(e) {
+    if (playlistPicker) { e.preventDefault(); return; }
     if (e.key === 'Enter') { e.preventDefault(); exec(input); setInput(''); }
     else if (e.key === 'ArrowUp') {
       e.preventDefault();
@@ -554,6 +569,30 @@ export default function TuiJamRoom() {
       </div>
 
       <div ref={bottomRef} />
+
+      {playlistPicker && (
+        <TuiPlaylistPicker
+          name={playlistPicker.name}
+          tracks={playlistPicker.tracks}
+          onCancel={() => {
+            setPlaylistPicker(null);
+            append({ kind: 'dim', text: '  playlist cancelled.' });
+            inputRef.current?.focus();
+          }}
+          onConfirm={async (picks) => {
+            const picker = playlistPicker;
+            setPlaylistPicker(null);
+            inputRef.current?.focus();
+            try {
+              const { added } = await addPlaylistBatch(session.id, picks);
+              append({ kind: 'ok', text: `✓ queued ${added.length}/${picker.tracks.length} from "${picker.name}"` });
+              refreshQueue();
+            } catch (e) {
+              append({ kind: 'err', text: `✗ ${e.message}` });
+            }
+          }}
+        />
+      )}
     </TerminalShell>
   );
 }
