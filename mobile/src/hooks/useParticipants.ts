@@ -4,7 +4,7 @@ import { api } from '../lib/api';
 import { openSSE } from '../lib/sse';
 
 export interface Participant {
-  user_id: string;
+  id: string;
   display_name: string | null;
   avatar_url: string | null;
 }

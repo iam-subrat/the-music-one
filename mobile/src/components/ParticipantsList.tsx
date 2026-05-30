@@ -4,7 +4,7 @@ import { colors, spacing, radius, typography } from '../constants/theme';
 import { passDjToken, SessionData } from '../lib/session';
 
 interface Participant {
-  user_id: string;
+  id: string;
   display_name: string | null;
   avatar_url: string | null;
 }
@@ -40,11 +40,11 @@ export default function ParticipantsList({ participants, session, currentUserId 
     <View style={styles.container}>
       <Text style={styles.label}>Listeners ({participants.length})</Text>
       {participants.map((p) => {
-        const isParticipantDJ = session.dj_user_id === p.user_id;
-        const isSelf = p.user_id === currentUserId;
+        const isParticipantDJ = session.dj_user_id === p.id;
+        const isSelf = p.id === currentUserId;
         const initial = (p.display_name ?? '?')[0].toUpperCase();
         return (
-          <View key={p.user_id} style={styles.row}>
+          <View key={p.id} style={styles.row}>
             {p.avatar_url
               ? <Image source={{ uri: p.avatar_url }} style={styles.avatar} />
               : (
@@ -60,7 +60,7 @@ export default function ParticipantsList({ participants, session, currentUserId 
             {canPassDJ && !isParticipantDJ && !isSelf && (
               <Pressable
                 style={styles.passDjBtn}
-                onPress={() => handlePassDJ(p.user_id, p.display_name)}
+                onPress={() => handlePassDJ(p.id, p.display_name)}
               >
                 <Text style={styles.passDjText}>Make DJ</Text>
               </Pressable>
