@@ -14,6 +14,7 @@ import { API_BASE, api } from '../lib/api';
 import { useAnalytics } from '../lib/analytics';
 import { FLAGS } from '../lib/flags';
 import YouTubeAutoPlayer from '../components/YouTubeAutoPlayer';
+import { useMediaSession } from '../hooks/useMediaSession';
 import { getUpcoming } from '../components/QueueList';
 import { extractYouTubeId, isYouTubeSearchUrl, extractSearchQuery } from '../lib/platform';
 import s from './tui.module.css';
@@ -89,6 +90,27 @@ export default function TuiJamRoom() {
   const skipThreshold = Math.floor(participants.length / 2) + 1;
 
   function append(...lines) { setLog(prev => [...prev, ...lines]); }
+
+  useMediaSession({
+    enabled:  !!(FLAGS.AUTO_PLAY_QUEUE && isDJ && ytId && nowPlaying),
+    playerRef: ytPlayerRef,
+    metadata: nowPlaying ? {
+      title:    nowPlaying.title,
+      artist:   nowPlaying.artist,
+      artwork:  nowPlaying.thumbnail_url,
+    } : null,
+    onNext: async () => {
+      if (!session?.id) return;
+      try {
+        const next = await playNext(session.id);
+        refreshQueue();
+        if (!next) append({ kind: 'warn', text: '~ queue empty' });
+      } catch (e) {
+        append({ kind: 'err', text: `✗ media-key next failed: ${e.message}` });
+      }
+    },
+    onPrev: () => ytPlayerRef.current?.seek?.(0),
+  });
 
   useEffect(() => {
     if (!authLoading && !user) navigate(`/login?next=/jam/${code}`);

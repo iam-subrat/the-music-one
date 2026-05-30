@@ -10,6 +10,7 @@ import { useToast } from './Toast';
 import PlatformLinks from './PlatformLinks';
 import YouTubeAutoPlayer from './YouTubeAutoPlayer';
 import { useAnalytics } from '../lib/analytics';
+import { useMediaSession } from '../hooks/useMediaSession';
 
 export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatform, participantCount, userId, onQueueChange, repeatMode, onRepeatModeChange }) {
   const toast = useToast();
@@ -22,6 +23,19 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
   const [ytId, setYtId] = useState(null);
   const [ytResolvedTitle, setYtResolvedTitle] = useState(null);
   const resolveKey = useRef(null);
+  const ytPlayerRef = useRef(null);
+
+  useMediaSession({
+    enabled:  !!(FLAGS.AUTO_PLAY_QUEUE && isDJ && ytId && nowPlaying),
+    playerRef: ytPlayerRef,
+    metadata: nowPlaying ? {
+      title:    nowPlaying.title,
+      artist:   nowPlaying.artist,
+      artwork:  nowPlaying.thumbnail_url,
+    } : null,
+    onNext: () => { handleEnded(); },
+    onPrev: () => ytPlayerRef.current?.seek?.(0),
+  });
 
   useEffect(() => {
     if (!FLAGS.AUTO_PLAY_QUEUE || !nowPlaying || !isDJ) { setYtId(null); setYtResolvedTitle(null); return; }
@@ -97,7 +111,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
       <div className={`${s.nowPlaying} ${s.nowPlayingIdle}`}>
         {FLAGS.AUTO_PLAY_QUEUE && ytId && isDJ && (
           <div style={{ display: 'none' }}>
-            <YouTubeAutoPlayer videoId={ytId} onEnded={handleEnded} repeat={repeatMode === 'song'} />
+            <YouTubeAutoPlayer ref={ytPlayerRef} videoId={ytId} onEnded={handleEnded} repeat={repeatMode === 'song'} />
           </div>
         )}
         <div className={s.nowPlayingLabel}>Now Playing</div>
@@ -169,7 +183,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
               ▶ Playing via YouTube: {ytResolvedTitle}
             </div>
           )}
-          <YouTubeAutoPlayer videoId={ytId} onEnded={handleEnded} repeat={repeatMode === 'song'} />
+          <YouTubeAutoPlayer ref={ytPlayerRef} videoId={ytId} onEnded={handleEnded} repeat={repeatMode === 'song'} />
         </>
       )}
 
