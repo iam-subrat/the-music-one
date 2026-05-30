@@ -4,6 +4,7 @@
     "slug": "musicone",
     "scheme": "musicone",
     "version": "1.0.0",
+    "sdkVersion": "54.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -29,6 +30,9 @@
       "expo-secure-store",
       "expo-image",
       "expo-status-bar"
-    ]
+    ],
+    "extra": {
+      "apiUrl": "http://192.168.31.57:8000"
+    }
   }
 }
