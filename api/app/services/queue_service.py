@@ -10,6 +10,10 @@ from app.services.song_service import SongService
 SKIP_THRESHOLD = 3
 
 
+def _majority(n: int) -> int:
+    return max(1, n // 2 + 1)
+
+
 class QueueService:
     def __init__(self, store: Store, song_svc: SongService) -> None:
         self.store = store
@@ -105,9 +109,12 @@ class QueueService:
     ) -> None:
         await self.store.queue.patch_youtube_link(item_id, youtube_url, user_id)
 
-    async def cast_vote(
-        self, queue_item_id: UUID, user_id: UUID, threshold: int = SKIP_THRESHOLD
-    ) -> bool:
+    async def cast_vote(self, queue_item_id: UUID, user_id: UUID) -> bool:
+        item = await self.store.queue.get_by_id(queue_item_id)
+        if not item:
+            raise PermissionError("Queue item not found")
+        n = await self.store.sessions.count_participants(item.session_id)
+        threshold = _majority(n)
         return await self.store.skip_votes.cast_vote(queue_item_id, user_id, threshold)
 
     async def remove_vote(self, queue_item_id: UUID, user_id: UUID) -> None:

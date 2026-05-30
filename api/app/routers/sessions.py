@@ -44,7 +44,18 @@ async def leave_session(
     svc=Depends(get_session_service),
 ):
     await svc.leave(session_id, user_id)
-    await bus.publish(str(session_id), "participants_changed", {})
+    sid = str(session_id)
+    await bus.publish(sid, "participants_changed", {})
+    session = await svc.get_by_id(session_id)
+    if session:
+        await bus.publish(
+            sid,
+            "session_updated",
+            {
+                "dj_user_id": str(session.dj_user_id) if session.dj_user_id else None,
+                "host_user_id": str(session.host_user_id) if session.host_user_id else None,
+            },
+        )
     return {"ok": True}
 
 
@@ -82,6 +93,9 @@ async def pass_dj(
     svc=Depends(get_session_service),
 ):
     await svc.pass_dj(session_id, body.new_dj_user_id, user_id)
+    await bus.publish(
+        str(session_id), "session_updated", {"dj_user_id": str(body.new_dj_user_id)}
+    )
     return {"ok": True}
 
 

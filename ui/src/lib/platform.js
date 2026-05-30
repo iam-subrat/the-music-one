@@ -22,7 +22,7 @@ export const PLATFORM_META = {
   tidal:        { name: 'Tidal',         color: '#00FFFF', iconSvgUrl: 'https://cdn.simpleicons.org/tidal/00FFFF',        searchUrl: q => `https://tidal.com/search?q=${encodeURIComponent(q)}` },
   deezer:       { name: 'Deezer',        color: '#FEAA2D', iconSvgUrl: 'https://cdn.simpleicons.org/deezer/FEAA2D',       searchUrl: q => `https://www.deezer.com/search/${encodeURIComponent(q)}` },
   soundcloud:   { name: 'SoundCloud',    color: '#FF5500', iconSvgUrl: 'https://cdn.simpleicons.org/soundcloud/FF5500',   searchUrl: q => `https://soundcloud.com/search?q=${encodeURIComponent(q)}` },
-  jiosaavn:     { name: 'JioSaavn',      color: '#2BC5B4', iconSvgUrl: null, iconUrl: 'https://www.google.com/s2/favicons?domain=jiosaavn.com&sz=64',      searchUrl: q => `https://www.jiosaavn.com/search/${encodeURIComponent(q)}` },
+  jiosaavn:     { name: 'JioSaavn',      color: '#2BC5B4', iconSvgUrl: null, iconUrl: 'https://www.google.com/s2/favicons?domain=jiosaavn.com&sz=64',      searchUrl: q => `https://www.jiosaavn.com/search/${encodeURIComponent(q)}/songs` },
   gaana:        { name: 'Gaana',         color: '#E72C30', iconSvgUrl: null, iconUrl: 'https://www.google.com/s2/favicons?domain=gaana.com&sz=64',         searchUrl: q => `https://gaana.com/search/${encodeURIComponent(q)}` },
   amazonmusic:  { name: 'Amazon Music',  color: '#00A8E1', iconSvgUrl: 'https://cdn.simpleicons.org/amazonmusic/00A8E1',  searchUrl: q => `https://music.amazon.in/search/${encodeURIComponent(q)}` },
 };

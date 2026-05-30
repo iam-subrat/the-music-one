@@ -24,13 +24,31 @@ export function useAuth() {
             });
             capture('user_signed_in', { auth_provider: 'google' });
             _identifiedUserId = data.id;
+            try {
+              const returnTo = sessionStorage.getItem('musicone:post-login');
+              if (returnTo) {
+                sessionStorage.removeItem('musicone:post-login');
+                // Accept only same-origin paths. Anything that isn't a clean
+                // "/path" or "<origin>/path" is treated as junk (e.g. an
+                // event object accidentally stringified to "[object Object]").
+                const origin = window.location.origin;
+                const isPath   = /^\/[^/]/.test(returnTo) || returnTo === '/';
+                const isOurUrl = returnTo.startsWith(origin + '/') || returnTo === origin;
+                if ((isPath || isOurUrl) && returnTo !== window.location.href) {
+                  window.location.replace(returnTo);
+                }
+              }
+            } catch {}
           }
         }
       })
       .finally(() => setLoading(false));
   }, []);
 
-  function signInWithGoogle() {
+  function signInWithGoogle(returnTo) {
+    if (typeof returnTo === 'string' && returnTo) {
+      try { sessionStorage.setItem('musicone:post-login', returnTo); } catch {}
+    }
     window.location.href = `${API_BASE}/api/auth/google`;
   }
 

@@ -17,7 +17,7 @@ export function detectPlaylist(url) {
       return null;
     }
 
-    if (host === 'youtube.com' || host === 'youtu.be') {
+    if (host === 'youtube.com' || host === 'youtu.be' || host === 'music.youtube.com') {
       const listId = parsed.searchParams.get('list');
       if (listId) return { platform: 'youtube', id: listId };
       return null;

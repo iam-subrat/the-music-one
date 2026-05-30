@@ -101,9 +101,6 @@ export default function JamRoom() {
           songs_heard: songsHeardRef.current,
           peak_participants: peakParticipantsRef.current,
         });
-        navigator.sendBeacon(
-          `${API_BASE}/api/sessions/${sessionIdRef.current}/leave`,
-        );
       }
     };
   }, []);
@@ -214,6 +211,7 @@ export default function JamRoom() {
   }
 
   const nowPlaying = queueItems.find((i) => i.status === "playing") ?? null;
+  console.log('[JamRoom] render', { queueCount: queueItems.length, nowPlayingId: nowPlaying?.id, title: nowPlaying?.title });
   const isDJ = session.dj_user_id === user?.id;
   const isHost = session.host_user_id === user?.id;
 
