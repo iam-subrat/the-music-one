@@ -488,3 +488,128 @@
 
 .spin { display: inline-block; animation: spin 1s steps(8) infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Mobile ──────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .shell {
+    padding: 10px 8px 80px;
+  }
+  .crt {
+    border-radius: 12px;
+  }
+
+  .titlebar {
+    gap: 8px;
+    padding: 8px 10px;
+    font-size: 11px;
+    flex-wrap: wrap;
+  }
+  .titleText {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+  }
+  .titleStatus {
+    gap: 8px;
+    font-size: 10px;
+  }
+  /* Drop the live clock on phones — saves a re-render and a row of chars. */
+  .titleStatus span:last-child {
+    display: none;
+  }
+
+  .screen {
+    padding: 12px 12px 18px;
+    font-size: 13px;
+  }
+
+  .banner {
+    font-size: 8px;
+    line-height: 1.1;
+    margin-bottom: 10px;
+  }
+  .tagline {
+    font-size: 12px;
+    margin-bottom: 14px;
+  }
+
+  .authLine {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .authBtn {
+    align-self: stretch;
+    text-align: center;
+  }
+
+  .platforms {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .songMeta {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .songArt {
+    width: 100%;
+    height: auto;
+    max-height: 180px;
+  }
+
+  .nowPlayingBlock {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .nowPlayingBlock img {
+    width: 100%;
+    height: auto;
+    max-height: 160px;
+    object-fit: cover;
+  }
+
+  .panel {
+    padding: 12px 10px 10px;
+  }
+
+  .queueTable {
+    font-size: 12px;
+  }
+  .queueTable th, .queueTable td {
+    padding: 2px 4px;
+  }
+  .queueTable td.idx { width: 24px; }
+  .queueTable td.status { width: 56px; font-size: 10px; }
+
+  .inviteCode {
+    font-size: 18px;
+    letter-spacing: 0.3em;
+  }
+
+  /* Stack prompt: symbol on its own row, input below full-width. */
+  .prompt {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+  .promptSymbol {
+    font-size: 12px;
+    word-break: break-all;
+  }
+  .promptInput {
+    width: 100%;
+    font-size: 16px; /* ≥16px prevents iOS Safari zoom on focus */
+    padding: 6px 0;
+  }
+  /* Decorative blink cursor — native input caret is sufficient on mobile. */
+  .cursor {
+    display: none;
+  }
+
+  .hint {
+    font-size: 11px;
+  }
+}
