@@ -102,19 +102,33 @@ jobs:
           echo "last_tag=$LAST_TAG" >> "$GITHUB_OUTPUT"
 
           # Resolve PR labels. Works for both merge-commit and squash-merge styles:
-          #   1. Try /commits/{sha}/pulls (works for merge-commit style)
-          #   2. Fall back to parsing (#NNN) from the commit subject (squash-merge style)
+          #   1. Try /commits/{sha}/pulls with retry (commit→PR index lags on fresh merges)
+          #   2. Fall back to parsing PR number from the commit subject:
+          #        - "Merge pull request #NNN from ..." (merge-commit)
+          #        - "Title (#NNN)"                     (squash-merge)
           SHA="${{ github.sha }}"
-          PR_LABELS=$(gh api "repos/${{ github.repository }}/commits/${SHA}/pulls" \
-            --jq '.[0].labels[].name' 2>/dev/null || true)
+          PR_LABELS=""
+          for i in 1 2 3 4 5; do
+            COUNT=$(gh api "repos/${{ github.repository }}/commits/${SHA}/pulls" --jq 'length' 2>/dev/null || echo 0)
+            if [ "$COUNT" -gt 0 ]; then
+              PR_LABELS=$(gh api "repos/${{ github.repository }}/commits/${SHA}/pulls" --jq '.[0].labels[].name')
+              break
+            fi
+            sleep 5
+          done
 
           if [ -z "$PR_LABELS" ]; then
-            PR_NUM=$(git log -1 --pretty=%s "$SHA" | grep -oE '\(#[0-9]+\)' | head -1 | tr -d '()#')
+            SUBJECT=$(git log -1 --pretty=%s "$SHA")
+            PR_NUM=$(echo "$SUBJECT" | grep -oE 'Merge pull request #[0-9]+' | grep -oE '[0-9]+' | head -1)
+            if [ -z "$PR_NUM" ]; then
+              PR_NUM=$(echo "$SUBJECT" | grep -oE '\(#[0-9]+\)' | head -1 | tr -d '()#')
+            fi
             if [ -n "$PR_NUM" ]; then
-              PR_LABELS=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUM}" \
-                --jq '.labels[].name' 2>/dev/null || true)
+              PR_LABELS=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUM}" --jq '.labels[].name')
             fi
           fi
+
+          echo "Resolved PR labels: ${PR_LABELS:-<none>}"
 
           BUMP="patch"
           if echo "$PR_LABELS" | grep -q "^major$"; then
