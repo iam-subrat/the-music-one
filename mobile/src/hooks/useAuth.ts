@@ -31,8 +31,15 @@ export function useGoogleSignIn() {
 
     if (result.type !== 'success') return;
 
+    // iOS deep-link sometimes appends an encoded `#` to the code value.
+    // Strip it before exchanging, else Supabase rejects with "invalid flow state".
+    const qs = result.url.split('?')[1] ?? '';
+    const codeMatch = /[?&]code=([^&#]+)/.exec('?' + qs);
+    const code = decodeURIComponent(codeMatch?.[1] ?? '').replace(/#+$/, '');
+    if (!code) throw new Error('No code in callback URL');
+
     const { data: sessionData, error: exchangeError } =
-      await supabase.auth.exchangeCodeForSession(result.url);
+      await supabase.auth.exchangeCodeForSession(code);
 
     if (exchangeError || !sessionData.session) {
       throw new Error(exchangeError?.message ?? 'Code exchange failed');
