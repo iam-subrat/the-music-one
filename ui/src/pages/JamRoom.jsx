@@ -13,6 +13,7 @@ import { useParticipants } from "../hooks/useParticipants";
 import { joinSession, endSession } from "../lib/session";
 import { useAnalytics } from "../lib/analytics";
 import { API_BASE } from "../lib/api";
+import { getClientId } from "../lib/clientId";
 import { ToastProvider } from "../components/Toast";
 import s from "../styles/jam.module.css";
 
@@ -78,7 +79,7 @@ export default function JamRoom() {
     const handlePageHide = () => {
       if (sessionIdRef.current) {
         navigator.sendBeacon(
-          `${API_BASE}/api/sessions/${sessionIdRef.current}/leave`,
+          `${API_BASE}/api/sessions/${sessionIdRef.current}/leave?client_id=${encodeURIComponent(getClientId())}`,
         );
       }
     };
@@ -112,7 +113,8 @@ export default function JamRoom() {
       fetch(`${API_BASE}/api/sessions/${session.id}/heartbeat`, {
         method: "POST",
         credentials: "include",
-        headers: { "X-Requested-With": "XMLHttpRequest" },
+        headers: { "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/json" },
+        body: JSON.stringify({ client_id: getClientId() }),
       }).catch(() => {});
     }, 30_000);
     return () => clearInterval(interval);
