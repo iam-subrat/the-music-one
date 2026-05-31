@@ -2,6 +2,7 @@ import base64
 import hashlib
 import os
 from typing import Tuple
+from urllib.parse import quote
 import httpx
 
 
@@ -22,7 +23,7 @@ class AuthService:
             f"?provider=google"
             f"&code_challenge={challenge}"
             f"&code_challenge_method=S256"
-            f"&redirect_to={redirect_uri}"
+            f"&redirect_to={quote(redirect_uri, safe='')}"
         )
 
     async def exchange_code(self, code: str, verifier: str) -> dict:

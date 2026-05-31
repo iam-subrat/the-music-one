@@ -38,7 +38,7 @@ async def _decode(token: str):
     return jwt.decode(token, key, algorithms=["ES256"], audience="authenticated")
 
 
-_CSRF_EXEMPT_SUFFIXES = ("/leave",)
+_CSRF_EXEMPT_SUFFIXES = ("/leave", "/mobile/exchange", "/mobile/refresh")
 
 
 def _require_xrw(request: Request) -> None:
@@ -55,7 +55,11 @@ async def get_current_user(
     request: Request,
     _csrf: None = Depends(_require_xrw),
 ) -> UUID:
-    token = request.cookies.get("access_token")
+    token = (
+        request.cookies.get("access_token")
+        or request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+        or None
+    )
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
@@ -73,7 +77,11 @@ async def get_current_user(
 
 async def get_optional_user(request: Request) -> UUID | None:
     _require_xrw(request)
-    token = request.cookies.get("access_token")
+    token = (
+        request.cookies.get("access_token")
+        or request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
+        or None
+    )
     if not token:
         return None
     try:
