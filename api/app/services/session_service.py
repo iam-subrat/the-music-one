@@ -20,11 +20,14 @@ class SessionService:
     async def get_by_id(self, session_id: UUID) -> Optional[Session]:
         return await self.store.sessions.get_by_id(session_id)
 
-    async def join(self, session_id: UUID, user_id: UUID) -> None:
-        await self.store.sessions.join(session_id, user_id)
+    async def join(self, session_id: UUID, user_id: UUID, client_id: str = "legacy") -> None:
+        await self.store.sessions.join(session_id, user_id, client_id=client_id)
 
-    async def leave(self, session_id: UUID, user_id: UUID) -> None:
-        await self.store.sessions.leave(session_id, user_id)
+    async def leave(self, session_id: UUID, user_id: UUID, client_id: str = "legacy") -> None:
+        await self.store.sessions.leave(session_id, user_id, client_id=client_id)
+
+    async def touch_client(self, session_id: UUID, user_id: UUID, client_id: str = "legacy") -> None:
+        await self.store.sessions.touch_client(session_id, user_id, client_id=client_id)
 
     async def end(self, session_id: UUID, user_id: UUID) -> None:
         session = await self.store.sessions.get_by_id(session_id)

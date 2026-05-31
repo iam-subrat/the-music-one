@@ -1,7 +1,7 @@
 from uuid import UUID
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.schemas.profile import ProfileResponse
 
 
@@ -26,3 +26,15 @@ class RepeatModeUpdate(BaseModel):
 
 class DjPassRequest(BaseModel):
     new_dj_user_id: UUID
+
+
+class JoinRequest(BaseModel):
+    client_id: str = Field(default="legacy", max_length=64)
+
+
+class LeaveRequest(BaseModel):
+    client_id: str = Field(default="legacy", max_length=64)
+
+
+class HeartbeatRequest(BaseModel):
+    client_id: str = Field(default="legacy", max_length=64)

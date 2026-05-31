@@ -29,3 +29,97 @@ async def test_get_session_by_code_returns_none_for_unknown():
 
     result = await repo.get_by_code("XXXXXX")
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_join_passes_client_id_to_insert():
+    db = AsyncMock()
+    repo = SessionRepository(db)
+    session_id = uuid4()
+    user_id = uuid4()
+
+    await repo.join(session_id, user_id, client_id="client-abc")
+
+    db.execute.assert_awaited()
+    db.commit.assert_awaited()
+    stmt = db.execute.await_args.args[0]
+    compiled = stmt.compile(compile_kwargs={"literal_binds": True})
+    assert "'client-abc'" in str(compiled)
+
+
+@pytest.mark.asyncio
+async def test_leave_deletes_only_specified_client():
+    db = AsyncMock()
+    repo = SessionRepository(db)
+    session_id = uuid4()
+    user_id = uuid4()
+
+    await repo.leave(session_id, user_id, client_id="client-xyz")
+
+    db.execute.assert_awaited()
+    stmt = db.execute.await_args.args[0]
+    compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+    assert "'client-xyz'" in compiled
+    assert "client_id" in compiled
+
+
+@pytest.mark.asyncio
+async def test_touch_client_updates_last_seen():
+    db = AsyncMock()
+    repo = SessionRepository(db)
+    session_id = uuid4()
+    user_id = uuid4()
+
+    await repo.touch_client(session_id, user_id, client_id="client-1")
+
+    db.execute.assert_awaited()
+    db.commit.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_get_participants_groups_by_user_with_client_count():
+    db = AsyncMock()
+    repo = SessionRepository(db)
+    session_id = uuid4()
+    uid_a = uuid4()
+
+    row_mock = MagicMock()
+    row_mock.id = uid_a
+    row_mock.display_name = "Alice"
+    row_mock.avatar_url = None
+    row_mock.client_count = 2
+    row_mock.last_seen = None
+
+    result_mock = MagicMock()
+    result_mock.all.return_value = [row_mock]
+    db.execute = AsyncMock(return_value=result_mock)
+
+    rows = await repo.get_participants(session_id)
+    assert len(rows) == 1
+    assert rows[0]["id"] == uid_a
+    assert rows[0]["client_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_join_endpoint_accepts_client_id(client, monkeypatch):
+    from app.dependencies import get_current_user, get_session_service
+    from app.main import app
+    captured = {}
+
+    fake_svc = AsyncMock()
+    async def fake_join(session_id, user_id, client_id="legacy"):
+        captured["client_id"] = client_id
+        captured["session_id"] = str(session_id)
+        captured["user_id"] = str(user_id)
+    fake_svc.join = fake_join
+
+    sid = uuid4()
+    uid = uuid4()
+    app.dependency_overrides[get_current_user] = lambda: uid
+    app.dependency_overrides[get_session_service] = lambda: fake_svc
+    try:
+        res = await client.post(f"/api/sessions/{sid}/join", json={"client_id": "tab-42"})
+        assert res.status_code == 200
+        assert captured["client_id"] == "tab-42"
+    finally:
+        app.dependency_overrides.clear()

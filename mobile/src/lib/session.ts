@@ -1,4 +1,5 @@
 import { api } from './api';
+import { getClientId } from './clientId';
 
 export interface SessionData {
   id: string;
@@ -21,11 +22,19 @@ export async function getSessionByCode(code: string): Promise<SessionData | null
 }
 
 export async function joinSession(sessionId: string): Promise<void> {
-  await api(`/sessions/${sessionId}/join`, { method: 'POST' });
+  const client_id = await getClientId();
+  await api(`/sessions/${sessionId}/join`, {
+    method: 'POST',
+    body: JSON.stringify({ client_id }),
+  });
 }
 
 export async function leaveSession(sessionId: string): Promise<void> {
-  await api(`/sessions/${sessionId}/leave`, { method: 'DELETE' });
+  const client_id = await getClientId();
+  await api(`/sessions/${sessionId}/leave`, {
+    method: 'DELETE',
+    body: JSON.stringify({ client_id }),
+  });
 }
 
 export async function endSession(sessionId: string): Promise<void> {

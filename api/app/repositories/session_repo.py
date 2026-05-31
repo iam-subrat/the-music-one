@@ -53,20 +53,34 @@ class SessionRepository(AbstractRepository):
         )
         await self.db.commit()
 
-    async def join(self, session_id: UUID, user_id: UUID) -> None:
+    async def join(self, session_id: UUID, user_id: UUID, client_id: str = "legacy") -> None:
         stmt = (
             pg_insert(SessionParticipant)
-            .values(session_id=session_id, user_id=user_id)
-            .on_conflict_do_nothing()
+            .values(session_id=session_id, user_id=user_id, client_id=client_id)
+            .on_conflict_do_update(
+                index_elements=["session_id", "user_id", "client_id"],
+                set_={"last_seen_at": datetime.utcnow()},
+            )
         )
         await self.db.execute(stmt)
         await self.db.commit()
 
-    async def leave(self, session_id: UUID, user_id: UUID) -> None:
+    async def leave(self, session_id: UUID, user_id: UUID, client_id: str = "legacy") -> None:
         await self.db.execute(
             delete(SessionParticipant)
             .where(SessionParticipant.session_id == session_id)
             .where(SessionParticipant.user_id == user_id)
+            .where(SessionParticipant.client_id == client_id)
+        )
+        await self.db.commit()
+
+    async def touch_client(self, session_id: UUID, user_id: UUID, client_id: str = "legacy") -> None:
+        await self.db.execute(
+            update(SessionParticipant)
+            .where(SessionParticipant.session_id == session_id)
+            .where(SessionParticipant.user_id == user_id)
+            .where(SessionParticipant.client_id == client_id)
+            .values(last_seen_at=datetime.utcnow())
         )
         await self.db.commit()
 
@@ -79,20 +93,28 @@ class SessionRepository(AbstractRepository):
         await self.db.commit()
 
     async def get_participants(self, session_id: UUID) -> list:
+        from sqlalchemy import func
         result = await self.db.execute(
-            select(SessionParticipant, Profile)
-            .join(Profile, Profile.id == SessionParticipant.user_id)
+            select(
+                Profile.id,
+                Profile.display_name,
+                Profile.avatar_url,
+                func.count(SessionParticipant.client_id).label("client_count"),
+                func.max(SessionParticipant.last_seen_at).label("last_seen"),
+            )
+            .join(SessionParticipant, SessionParticipant.user_id == Profile.id)
             .where(SessionParticipant.session_id == session_id)
+            .group_by(Profile.id, Profile.display_name, Profile.avatar_url)
         )
         return [
             {
-                "id": p.id,
-                "display_name": p.display_name,
-                "avatar_url": p.avatar_url,
-                "preferred_platform": p.preferred_platform,
-                "joined_at": sp.joined_at,
+                "id": row.id,
+                "display_name": row.display_name,
+                "avatar_url": row.avatar_url,
+                "client_count": row.client_count,
+                "last_seen": row.last_seen.isoformat() if row.last_seen else None,
             }
-            for sp, p in result.all()
+            for row in result.all()
         ]
 
     async def count_participants(self, session_id: UUID) -> int:

@@ -11,6 +11,7 @@ import { joinSession, endSession, passDjToken, setRepeatMode } from '../lib/sess
 import { addToQueue, searchAndAddToQueue, playNext, forceSkip, castSkipVote, removeSkipVote, patchYouTubeLink } from '../lib/queue';
 import { detectPlaylist, fetchPlaylistPreview, addPlaylistBatch } from '../lib/playlist';
 import { API_BASE, api } from '../lib/api';
+import { getClientId } from '../lib/clientId';
 import { useAnalytics } from '../lib/analytics';
 import { FLAGS } from '../lib/flags';
 import YouTubeAutoPlayer from '../components/YouTubeAutoPlayer';
@@ -135,10 +136,18 @@ export default function TuiJamRoom() {
 
   useEffect(() => { sessionIdRef.current = session?.id ?? null; }, [session?.id]);
 
+  // Self-heal: rejoin if our participant row was evicted while we're still mounted.
+  useEffect(() => {
+    if (!session?.id || !user?.id || !didJoinRef.current) return;
+    if (session.status === 'ended') return;
+    const stillIn = participants.some((p) => p.id === user.id);
+    if (!stillIn) joinSession(session.id).catch(() => {});
+  }, [participants, session?.id, session?.status, user?.id]);
+
   useEffect(() => {
     const handlePageHide = () => {
       if (sessionIdRef.current)
-        navigator.sendBeacon(`${API_BASE}/api/sessions/${sessionIdRef.current}/leave`);
+        navigator.sendBeacon(`${API_BASE}/api/sessions/${sessionIdRef.current}/leave?client_id=${encodeURIComponent(getClientId())}`);
     };
     window.addEventListener('pagehide', handlePageHide);
     return () => window.removeEventListener('pagehide', handlePageHide);
@@ -149,7 +158,8 @@ export default function TuiJamRoom() {
     const id = setInterval(() => {
       fetch(`${API_BASE}/api/sessions/${session.id}/heartbeat`, {
         method: 'POST', credentials: 'include',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: getClientId() }),
       }).catch(() => {});
     }, 30_000);
     return () => clearInterval(id);
@@ -359,7 +369,7 @@ export default function TuiJamRoom() {
         break;
       case 'leave':
         if (sessionIdRef.current)
-          navigator.sendBeacon(`${API_BASE}/api/sessions/${sessionIdRef.current}/leave`);
+          navigator.sendBeacon(`${API_BASE}/api/sessions/${sessionIdRef.current}/leave?client_id=${encodeURIComponent(getClientId())}`);
         navigate('/'); break;
       default:
         append({ kind: 'err', text: `unknown command: ${head}. try \`help\`.` });

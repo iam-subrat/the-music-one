@@ -1,4 +1,5 @@
 import { api } from './api';
+import { getClientId } from './clientId';
 
 export async function createSession() {
   const res = await api('/sessions/', { method: 'POST' });
@@ -12,11 +13,17 @@ export async function getSessionByCode(code) {
 }
 
 export async function joinSession(sessionId) {
-  await api(`/sessions/${sessionId}/join`, { method: 'POST' });
+  await api(`/sessions/${sessionId}/join`, {
+    method: 'POST',
+    body: JSON.stringify({ client_id: getClientId() }),
+  });
 }
 
 export async function leaveSession(sessionId) {
-  await api(`/sessions/${sessionId}/leave`, { method: 'DELETE' });
+  await api(`/sessions/${sessionId}/leave`, {
+    method: 'DELETE',
+    body: JSON.stringify({ client_id: getClientId() }),
+  });
 }
 
 export async function endSession(sessionId) {
