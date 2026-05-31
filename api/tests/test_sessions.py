@@ -74,3 +74,27 @@ async def test_touch_client_updates_last_seen():
 
     db.execute.assert_awaited()
     db.commit.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_get_participants_groups_by_user_with_client_count():
+    db = AsyncMock()
+    repo = SessionRepository(db)
+    session_id = uuid4()
+    uid_a = uuid4()
+
+    row_mock = MagicMock()
+    row_mock.id = uid_a
+    row_mock.display_name = "Alice"
+    row_mock.avatar_url = None
+    row_mock.client_count = 2
+    row_mock.last_seen = None
+
+    result_mock = MagicMock()
+    result_mock.all.return_value = [row_mock]
+    db.execute = AsyncMock(return_value=result_mock)
+
+    rows = await repo.get_participants(session_id)
+    assert len(rows) == 1
+    assert rows[0]["id"] == uid_a
+    assert rows[0]["client_count"] == 2
