@@ -15,9 +15,8 @@
     "android": {
       "package": "com.musicone.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
+        "backgroundColor": "#0a0a0a",
+        "foregroundImage": "./assets/icon.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
@@ -27,7 +26,15 @@
     },
     "plugins": [
       "expo-web-browser",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "backgroundColor": "#0a0a0a",
+          "imageWidth": 200
+        }
+      ]
     ],
     "extra": {}
   }
