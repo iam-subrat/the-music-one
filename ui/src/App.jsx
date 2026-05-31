@@ -12,6 +12,7 @@ import TuiToggle from './tui/TuiToggle';
 import TuiHome from './tui/TuiHome';
 import TuiJamRoom from './tui/TuiJamRoom';
 import TuiLogin from './tui/TuiLogin';
+import Footer from './components/Footer';
 
 function JamNew() {
   const { user, loading } = useAuth();
@@ -41,6 +42,7 @@ export default function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       {!tuiMode && <TuiToggle />}
+      {!tuiMode && <Footer />}
     </>
   );
 }

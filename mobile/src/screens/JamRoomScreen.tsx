@@ -27,6 +27,7 @@ import QueueList from '../components/QueueList';
 import ParticipantsList from '../components/ParticipantsList';
 import QueueCard from '../components/QueueCard';
 import NowPlaying from '../components/NowPlaying';
+import OdesliAttribution from '../components/OdesliAttribution';
 
 type Props = NativeStackScreenProps<JamStackParamList, 'JamRoom'>;
 
@@ -211,6 +212,8 @@ export default function JamRoomScreen({ route, navigation }: Props) {
             currentUserId={user.id}
           />
         )}
+
+        <OdesliAttribution />
       </ScrollView>
     </SafeAreaView>
   );

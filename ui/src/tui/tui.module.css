@@ -612,4 +612,29 @@
   .hint {
     font-size: 11px;
   }
+
+  .attribution {
+    font-size: 10px;
+  }
+}
+
+.attribution {
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--tui-fg-mute);
+  color: var(--tui-fg-mute);
+  font-size: 11px;
+  text-align: center;
+  font-family: inherit;
+}
+
+.attribution a {
+  color: var(--tui-accent);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--tui-accent);
+}
+
+.attribution a:hover {
+  color: var(--tui-amber);
+  border-bottom-color: var(--tui-amber);
 }

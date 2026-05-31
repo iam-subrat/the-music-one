@@ -79,6 +79,14 @@ function ShellInner({
           </div>
 
           {children}
+
+          <div className={s.attribution}>
+            {/* song matching powered by */}
+            <span>{'// song matching powered by '}</span>
+            <a href="https://odesli.co/" target="_blank" rel="noopener noreferrer">
+              songlink/odesli
+            </a>
+          </div>
         </div>
       </div>
       <TuiToggle />

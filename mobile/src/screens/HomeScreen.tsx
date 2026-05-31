@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/api';
 import { colors, spacing, typography, radius } from '../constants/theme';
 import PlatformLinksGrid from '../components/PlatformLinksGrid';
+import OdesliAttribution from '../components/OdesliAttribution';
 
 interface SongMeta {
   title: string;
@@ -133,6 +134,7 @@ export default function HomeScreen() {
             <PlatformLinksGrid platformLinks={song.platformLinks} searchQuery={searchQuery} />
           </>
         )}
+        <OdesliAttribution />
       </ScrollView>
     </SafeAreaView>
   );
