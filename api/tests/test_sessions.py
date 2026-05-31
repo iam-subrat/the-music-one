@@ -29,3 +29,48 @@ async def test_get_session_by_code_returns_none_for_unknown():
 
     result = await repo.get_by_code("XXXXXX")
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_join_passes_client_id_to_insert():
+    db = AsyncMock()
+    repo = SessionRepository(db)
+    session_id = uuid4()
+    user_id = uuid4()
+
+    await repo.join(session_id, user_id, client_id="client-abc")
+
+    db.execute.assert_awaited()
+    db.commit.assert_awaited()
+    stmt = db.execute.await_args.args[0]
+    compiled = stmt.compile(compile_kwargs={"literal_binds": True})
+    assert "'client-abc'" in str(compiled)
+
+
+@pytest.mark.asyncio
+async def test_leave_deletes_only_specified_client():
+    db = AsyncMock()
+    repo = SessionRepository(db)
+    session_id = uuid4()
+    user_id = uuid4()
+
+    await repo.leave(session_id, user_id, client_id="client-xyz")
+
+    db.execute.assert_awaited()
+    stmt = db.execute.await_args.args[0]
+    compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+    assert "'client-xyz'" in compiled
+    assert "client_id" in compiled
+
+
+@pytest.mark.asyncio
+async def test_touch_client_updates_last_seen():
+    db = AsyncMock()
+    repo = SessionRepository(db)
+    session_id = uuid4()
+    user_id = uuid4()
+
+    await repo.touch_client(session_id, user_id, client_id="client-1")
+
+    db.execute.assert_awaited()
+    db.commit.assert_awaited()

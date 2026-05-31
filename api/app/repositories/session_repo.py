@@ -53,20 +53,34 @@ class SessionRepository(AbstractRepository):
         )
         await self.db.commit()
 
-    async def join(self, session_id: UUID, user_id: UUID) -> None:
+    async def join(self, session_id: UUID, user_id: UUID, client_id: str = "legacy") -> None:
         stmt = (
             pg_insert(SessionParticipant)
-            .values(session_id=session_id, user_id=user_id)
-            .on_conflict_do_nothing()
+            .values(session_id=session_id, user_id=user_id, client_id=client_id)
+            .on_conflict_do_update(
+                index_elements=["session_id", "user_id", "client_id"],
+                set_={"last_seen_at": datetime.utcnow()},
+            )
         )
         await self.db.execute(stmt)
         await self.db.commit()
 
-    async def leave(self, session_id: UUID, user_id: UUID) -> None:
+    async def leave(self, session_id: UUID, user_id: UUID, client_id: str = "legacy") -> None:
         await self.db.execute(
             delete(SessionParticipant)
             .where(SessionParticipant.session_id == session_id)
             .where(SessionParticipant.user_id == user_id)
+            .where(SessionParticipant.client_id == client_id)
+        )
+        await self.db.commit()
+
+    async def touch_client(self, session_id: UUID, user_id: UUID, client_id: str = "legacy") -> None:
+        await self.db.execute(
+            update(SessionParticipant)
+            .where(SessionParticipant.session_id == session_id)
+            .where(SessionParticipant.user_id == user_id)
+            .where(SessionParticipant.client_id == client_id)
+            .values(last_seen_at=datetime.utcnow())
         )
         await self.db.commit()
 
