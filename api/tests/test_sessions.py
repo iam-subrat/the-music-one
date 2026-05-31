@@ -98,3 +98,28 @@ async def test_get_participants_groups_by_user_with_client_count():
     assert len(rows) == 1
     assert rows[0]["id"] == uid_a
     assert rows[0]["client_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_join_endpoint_accepts_client_id(client, monkeypatch):
+    from app.dependencies import get_current_user, get_session_service
+    from app.main import app
+    captured = {}
+
+    fake_svc = AsyncMock()
+    async def fake_join(session_id, user_id, client_id="legacy"):
+        captured["client_id"] = client_id
+        captured["session_id"] = str(session_id)
+        captured["user_id"] = str(user_id)
+    fake_svc.join = fake_join
+
+    sid = uuid4()
+    uid = uuid4()
+    app.dependency_overrides[get_current_user] = lambda: uid
+    app.dependency_overrides[get_session_service] = lambda: fake_svc
+    try:
+        res = await client.post(f"/api/sessions/{sid}/join", json={"client_id": "tab-42"})
+        assert res.status_code == 200
+        assert captured["client_id"] == "tab-42"
+    finally:
+        app.dependency_overrides.clear()

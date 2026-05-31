@@ -2,7 +2,10 @@ from __future__ import annotations
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.dependencies import get_current_user, get_session_service, get_queue_service
-from app.schemas.session import SessionResponse, RepeatModeUpdate, DjPassRequest
+from app.schemas.session import (
+    SessionResponse, RepeatModeUpdate, DjPassRequest,
+    JoinRequest, LeaveRequest, HeartbeatRequest,
+)
 from app.schemas.queue_item import QueueItemCreate, QueueItemResponse, BatchQueueRequest
 from app.services.event_bus import bus
 
@@ -28,10 +31,12 @@ async def get_session(code: str, svc=Depends(get_session_service)):
 @router.post("/{session_id}/join")
 async def join_session(
     session_id: UUID,
+    body: JoinRequest | None = None,
     user_id: UUID = Depends(get_current_user),
     svc=Depends(get_session_service),
 ):
-    await svc.join(session_id, user_id)
+    client_id = body.client_id if body else "legacy"
+    await svc.join(session_id, user_id, client_id=client_id)
     await bus.publish(str(session_id), "participants_changed", {})
     return {"ok": True}
 
@@ -40,10 +45,13 @@ async def join_session(
 @router.post("/{session_id}/leave")
 async def leave_session(
     session_id: UUID,
+    body: LeaveRequest | None = None,
+    client_id: str = "legacy",
     user_id: UUID = Depends(get_current_user),
     svc=Depends(get_session_service),
 ):
-    await svc.leave(session_id, user_id)
+    cid = (body.client_id if body else None) or client_id
+    await svc.leave(session_id, user_id, client_id=cid)
     sid = str(session_id)
     await bus.publish(sid, "participants_changed", {})
     session = await svc.get_by_id(session_id)
@@ -102,6 +110,7 @@ async def pass_dj(
 @router.post("/{session_id}/heartbeat")
 async def heartbeat(
     session_id: UUID,
+    body: HeartbeatRequest | None = None,
     user_id: UUID = Depends(get_current_user),
     svc=Depends(get_session_service),
 ):
@@ -109,6 +118,8 @@ async def heartbeat(
         await svc.require_participant(session_id, user_id)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
+    client_id = body.client_id if body else "legacy"
+    await svc.touch_client(session_id, user_id, client_id=client_id)
     await svc.touch(session_id)
     return {"ok": True}
 
