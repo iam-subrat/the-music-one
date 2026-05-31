@@ -86,6 +86,7 @@ export default function TuiJamRoom() {
   const nowPlaying = queueItems.find(i => i.status === 'playing') ?? null;
   const isDJ = !!session && session.dj_user_id === user?.id;
   const isHost = !!session && session.host_user_id === user?.id;
+  const isParticipant = !!user?.id && participants.some((p) => p.id === user.id);
   const { count: skipVotes, hasVoted } = useSkipVotes(nowPlaying?.id, user?.id, session?.id);
   const skipThreshold = Math.floor(participants.length / 2) + 1;
 
@@ -461,12 +462,13 @@ export default function TuiJamRoom() {
       onScreenClick={() => inputRef.current?.focus()}
       auth={auth}
     >
-      {ytId && isDJ && (
+      {ytId && isDJ && isParticipant && (
         <div style={{ position: 'fixed', width: 1, height: 1, opacity: 0, pointerEvents: 'none', overflow: 'hidden' }}>
           <YouTubeAutoPlayer
             ref={ytPlayerRef}
             videoId={ytId}
             onEnded={async () => {
+              if (!isParticipant) return;
               try {
                 const next = await playNext(session.id);
                 refreshQueue();

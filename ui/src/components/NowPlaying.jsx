@@ -12,7 +12,7 @@ import YouTubeAutoPlayer from './YouTubeAutoPlayer';
 import { useAnalytics } from '../lib/analytics';
 import { useMediaSession } from '../hooks/useMediaSession';
 
-export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatform, participantCount, userId, onQueueChange, repeatMode, onRepeatModeChange }) {
+export default function NowPlaying({ nowPlaying, sessionId, isDJ, isParticipant = true, preferredPlatform, participantCount, userId, onQueueChange, repeatMode, onRepeatModeChange }) {
   const toast = useToast();
   const { count: skipVotes, hasVoted } = useSkipVotes(nowPlaying?.id, userId, sessionId);
   const skipThreshold = Math.floor(participantCount / 2) + 1;
@@ -96,7 +96,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
   }, [ytId]);
 
   async function handleEnded() {
-    if (!isDJ) return;
+    if (!isDJ || !isParticipant) return;
     try {
       const next = await playNext(sessionId);
       onQueueChange?.();
@@ -109,7 +109,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
   if (!nowPlaying) {
     return (
       <div className={`${s.nowPlaying} ${s.nowPlayingIdle}`}>
-        {FLAGS.AUTO_PLAY_QUEUE && ytId && isDJ && (
+        {FLAGS.AUTO_PLAY_QUEUE && ytId && isDJ && isParticipant && (
           <div style={{ display: 'none' }}>
             <YouTubeAutoPlayer ref={ytPlayerRef} videoId={ytId} onEnded={handleEnded} repeat={repeatMode === 'song'} />
           </div>
@@ -118,7 +118,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
         <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
           {isDJ ? 'Click "Play Next" to start the queue.' : 'Waiting for the DJ to start…'}
         </p>
-        {isDJ && (
+        {isDJ && isParticipant && (
           <button className="btn" onClick={() => playNext(sessionId).then(n => { onQueueChange?.(); if (!n) toast('Queue is empty!'); })}>
             Play Next ▶
           </button>
@@ -176,7 +176,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
         />
       </div>
 
-      {FLAGS.AUTO_PLAY_QUEUE && ytId && isDJ && (
+      {FLAGS.AUTO_PLAY_QUEUE && ytId && isDJ && isParticipant && (
         <>
           {ytResolvedTitle && (
             <div style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>
@@ -197,7 +197,7 @@ export default function NowPlaying({ nowPlaying, sessionId, isDJ, preferredPlatf
       )}
 
       <div className={s.djControls}>
-        {isDJ && (
+        {isDJ && isParticipant && (
           <button className="btn" onClick={() => playNext(sessionId).then(n => { onQueueChange?.(); if (!n) toast('Queue is empty!'); })}>
             Next ▶
           </button>
