@@ -21,6 +21,7 @@ import { useParticipants } from '../hooks/useParticipants';
 import { joinSession, leaveSession, endSession } from '../lib/session';
 import { API_BASE } from '../constants/config';
 import { getAccessToken } from '../lib/auth';
+import { getClientId } from '../lib/clientId';
 import { colors, spacing, typography, radius } from '../constants/theme';
 import InviteBadge from '../components/InviteBadge';
 import QueueList from '../components/QueueList';
@@ -62,24 +63,30 @@ export default function JamRoomScreen({ route, navigation }: Props) {
   useEffect(() => {
     if (!session?.id) return;
     const id = setInterval(async () => {
-      const token = await getAccessToken();
+      const [token, client_id] = await Promise.all([getAccessToken(), getClientId()]);
       fetch(`${API_BASE}/api/sessions/${session.id}/heartbeat`, {
         method: 'POST',
         headers: {
           'X-Requested-With': 'XMLHttpRequest',
+          'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
+        body: JSON.stringify({ client_id }),
       }).catch(() => {});
     }, 30_000);
     return () => clearInterval(id);
   }, [session?.id]);
 
-  // Leave session when app goes background (best-effort; won't fire on hard kill)
+  // Leave on background, rejoin on foreground (per-client granularity)
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'background' && sessionIdRef.current) {
+      if (!sessionIdRef.current) return;
+      if (state === 'background') {
         leaveSession(sessionIdRef.current).catch(() => {});
         joinedRef.current = false;
+      } else if (state === 'active' && !joinedRef.current) {
+        joinedRef.current = true;
+        joinSession(sessionIdRef.current).catch(() => {});
       }
     });
     return () => sub.remove();
