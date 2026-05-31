@@ -10,7 +10,7 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.musicone.app"
+      "bundleIdentifier": "com.subrat.musicone"
     },
     "android": {
       "package": "com.musicone.app",
