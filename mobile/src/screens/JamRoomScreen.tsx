@@ -77,6 +77,14 @@ export default function JamRoomScreen({ route, navigation }: Props) {
     return () => clearInterval(id);
   }, [session?.id]);
 
+  // Self-heal: rejoin if our row is evicted while screen is still mounted.
+  useEffect(() => {
+    if (!session?.id || !user?.id || !joinedRef.current) return;
+    if (session.status === 'ended') return;
+    const stillIn = participants.some((p) => p.id === user.id);
+    if (!stillIn) joinSession(session.id).catch(() => {});
+  }, [participants, session?.id, session?.status, user?.id]);
+
   // Leave on background, rejoin on foreground (per-client granularity)
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {

@@ -148,6 +148,17 @@ export default function JamRoom() {
     }
   }, [participants.length]);
 
+  // Self-heal: if our row disappeared but we're still mounted in an active session, rejoin.
+  useEffect(() => {
+    if (!session?.id || !user?.id) return;
+    if (session.status === "ended") return;
+    if (!didFireJoinRef.current) return;
+    const stillIn = participants.some((p) => p.id === user.id);
+    if (!stillIn) {
+      joinSession(session.id).catch(() => {});
+    }
+  }, [participants, session?.id, session?.status, user?.id]);
+
   if (authLoading || sessionLoading) {
     return (
       <div className="page" style={{ justifyContent: "center" }}>

@@ -136,6 +136,14 @@ export default function TuiJamRoom() {
 
   useEffect(() => { sessionIdRef.current = session?.id ?? null; }, [session?.id]);
 
+  // Self-heal: rejoin if our participant row was evicted while we're still mounted.
+  useEffect(() => {
+    if (!session?.id || !user?.id || !didJoinRef.current) return;
+    if (session.status === 'ended') return;
+    const stillIn = participants.some((p) => p.id === user.id);
+    if (!stillIn) joinSession(session.id).catch(() => {});
+  }, [participants, session?.id, session?.status, user?.id]);
+
   useEffect(() => {
     const handlePageHide = () => {
       if (sessionIdRef.current)
