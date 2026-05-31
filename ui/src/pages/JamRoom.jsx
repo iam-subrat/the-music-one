@@ -214,6 +214,7 @@ export default function JamRoom() {
   console.log('[JamRoom] render', { queueCount: queueItems.length, nowPlayingId: nowPlaying?.id, title: nowPlaying?.title });
   const isDJ = session.dj_user_id === user?.id;
   const isHost = session.host_user_id === user?.id;
+  const isParticipant = !!user?.id && participants.some((p) => p.id === user.id);
 
   return (
     <ToastProvider>
@@ -270,6 +271,7 @@ export default function JamRoom() {
               nowPlaying={nowPlaying}
               sessionId={session.id}
               isDJ={isDJ}
+              isParticipant={isParticipant}
               preferredPlatform={profile?.preferred_platform}
               participantCount={participants.length}
               userId={user?.id}
