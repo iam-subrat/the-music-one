@@ -1,198 +1,336 @@
 # MusicOne
 
-React 18 SPA: paste a music streaming URL → get search links for all platforms. Includes real-time group listening rooms (Jam Sessions).
+Paste a music URL → get links for all 9 platforms (Spotify, Apple Music, YouTube Music, Amazon Music, Tidal, Deezer, SoundCloud, JioSaavn, Gaana). Real-time group listening rooms (Jam Sessions) with skip voting and DJ mode.
 
-**Platforms:** Spotify · Apple Music · YouTube Music · Amazon Music · Tidal · Deezer · SoundCloud · JioSaavn · Gaana
+## Surfaces
 
----
-
-## Quick start
-
-```bash
-# UI
-cd ui
-npm install && npm run dev   # http://localhost:5173
-
-# API
-cd api
-uv sync && uv run uvicorn app.main:app --reload  # http://localhost:8000
-```
-
-**UI Commands:**
-```bash
-npm run dev      # Dev server (Vite HMR)
-npm run build    # Production build → dist/
-npm run preview  # Serve dist/ locally
-```
+| Surface | Tech | Entry point |
+|---------|------|------------|
+| **Web UI** | React 18 + Vite SPA | `ui/src/App.jsx` → `/jam/:code` |
+| **TUI** | Terminal UI (same routes) | `ui/src/tui/` → toggled in Web UI |
+| **Mobile** | Expo SDK 56 React Native | `mobile/` → iOS-first |
+| **API** | FastAPI + Supabase Postgres | `api/app/main.py` |
 
 ---
 
-## Table of contents
-
-1. [Features](#features)
-2. [Tech stack](#tech-stack)
-3. [Local setup](#local-setup)
-4. [Queue & Jam mechanics](#queue--jam-mechanics)
-5. [Database](#database)
-6. [Deployment](#deployment)
-7. [Docs](#docs)
-
----
-
-## Features
-
-**Home** (`/`) — URL lookup via Odesli API → multi-platform links.
-
-**Jam Sessions** (`/jam/:code`) — Real-time group listening. Queue management (skip voting), DJ role, YouTube auto-play.
-
-**Playlist import** — Paste a Spotify or YouTube playlist URL to preview and batch-add songs.
-
-**Platform auto-detect** — Detects user's preferred streaming platform from their profile; opens links directly.
-
----
-
-## Tech stack
-
-```
-ui/      React 18 + Vite SPA (GitHub Pages / Cloudflare Pages)
-api/     FastAPI + Alembic migrations (Supabase Postgres)
-```
-
-**Auth:** Supabase (Google OAuth, PKCE flow). Cookie-based session (RS256 JWT).
-
-**Realtime:** Supabase Realtime subscriptions on `sessions`, `queue_items`, `skip_votes`, `session_participants`. SSE stream at `/api/events/{session_id}/stream` for server-pushed events.
-
-**Feature flags:** Compile-time injected via Vite `define` block (`FLAG_*` env vars). Runtime overrides via Supabase `feature_flags` table, served at `GET /api/flags/` — no redeploy needed. See **[docs/feature-flags.md](docs/feature-flags.md)** (auto-generated from `ui/vite.config.js`).
-
-**Observability:** Loki + Promtail + Grafana (self-hosted via Docker Compose). See [observability docs](#docs).
-
-**Analytics:** PostHog (optional, via `VITE_POSTHOG_KEY`).
-
----
-
-## Local setup
+## Getting started
 
 ### Prerequisites
 
-Copy `.env.local.example` → `.env.local` (UI) and `.env.example` → `.env` (API). Fill in Supabase credentials.
+- Node 18+, `npm`, `uv` (Python package manager)
+- Supabase project credentials
 
-### API
+### Setup
+
+**1. Environment files**
+
+```bash
+# UI
+cp ui/.env.local.example ui/.env.local
+
+# API
+cp api/.env.example api/.env
+
+# Mobile (optional)
+cp mobile/.env.example mobile/.env
+```
+
+Fill in Supabase `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+
+**2. API**
 
 ```bash
 cd api
 uv sync
-uv run alembic upgrade head       # Run migrations
+uv run alembic upgrade head
 uv run uvicorn app.main:app --reload
-# http://localhost:8000
 ```
 
-### UI
+Runs on `http://localhost:8000`. Docs at `/docs` (Swagger).
+
+**3. Web UI**
 
 ```bash
 cd ui
 npm install
 npm run dev
-# http://localhost:5173
-# /api proxied to localhost:8000 (vite.config.js)
+```
+
+Runs on `http://localhost:5173`. API proxied via `vite.config.js`.
+
+**4. Mobile (optional)**
+
+```bash
+cd mobile
+npm install
+expo start
+expo run:ios  # iOS simulator
 ```
 
 ---
 
-## Queue & Jam mechanics
+## Architecture
 
-**Queue lifecycle:** `queued → playing → played | skipped`
+### Data flow
 
-**Key DB functions** — invoked server-side by the FastAPI backend (never called directly from client JS):
+```
+Supabase Auth (Google OAuth) → useAuth hook (user + profile)
+  ↓
+JamRoom components
+  ├─ useSession(code)        → Realtime subscription
+  ├─ useQueue(session.id)     → Realtime subscription
+  ├─ useParticipants(id)      → Realtime subscription
+  └─ useSkipVotes(itemId)     → Realtime subscription
+  ↓
+FastAPI backend (via RPC or HTTP)
+  └─ play_next() / cast_skip_vote() / pass_dj_token()
+```
 
-| Function | Called by | Purpose |
-|----------|-----------|---------|
-| `play_next(session_id)` | `POST /api/sessions/{id}/heartbeat`, queue service | Atomically advance queue |
-| `cast_skip_vote(queue_item_id, user_id, threshold)` | `POST /api/items/{id}/votes` | Vote to skip; auto-advances when ≥threshold votes cast |
-| `pass_dj_token(session_id, new_dj_user_id)` | `POST /api/sessions/{id}/dj` | Transfer DJ role (host only) |
+- **Web UI + TUI:** Supabase Realtime for state sync
+- **Mobile:** SSE (Server-Sent Events) via `react-native-sse`
 
-**Skip threshold:** Server-side constant (`SKIP_THRESHOLD = 3`). Not controlled by clients.
+### Key concepts
 
-**Auto-play:** DJ only. `YouTubeAutoPlayer` embeds YouTube IFrame API; fires `onEnded` → `POST /api/sessions/{id}/heartbeat` → `play_next`.
+**Queue:** `queued → playing → played | skipped`. Position managed by DB (`GENERATED ALWAYS AS IDENTITY`). Never UPDATE from client.
+
+**DJ role:** Only DJ can play songs. Host auto-promoted if DJ disconnects (`on_participant_leave` trigger).
+
+**Skip voting:** Client calls `POST /api/items/{id}/votes`. Server atomically counts votes via `cast_skip_vote()`. Auto-advances when ≥ threshold.
+
+**YouTube auto-play:** DJ only. `YouTubeAutoPlayer` embeds IFrame API, fires `onEnded` → heartbeat → `play_next()`.
 
 ---
 
-## API reference
+## Codebase layout
 
-All routes prefixed by `ROOT_PATH` (e.g. `/api`). Interactive docs auto-generated by FastAPI — available at `{API_URL}/docs` (Swagger) or `{API_URL}/redoc` when the API is running.
+### Web UI (`ui/`)
+
+```
+ui/src/
+  ├─ pages/           Route handlers (Home, JamRoom, etc.)
+  ├─ components/      Shared React components
+  ├─ hooks/           Custom hooks (useSession, useQueue, etc.)
+  ├─ lib/             Utilities (youtube.js, flags.js, etc.)
+  ├─ tui/             Terminal UI (TerminalShell, TuiJamRoom, etc.)
+  ├─ styles/          CSS modules
+  └─ App.jsx          Router + layout
+
+npm run dev           Dev server (Vite HMR)
+npm run build        Production build → dist/
+npm run preview      Serve dist/ locally
+```
+
+### TUI (`ui/src/tui/`)
+
+Terminal-style interface running in same React app. Toggled via `TuiToggle` button; preference saved in localStorage.
+
+| File | Purpose |
+|------|---------|
+| `TuiContext.jsx` | `useTui()` hook — manages `tuiMode` state |
+| `TerminalShell.jsx` | Core terminal emulator — input, history, log rendering |
+| `TuiHome.jsx` | Home screen in TUI mode |
+| `TuiLogin.jsx` | Login screen in TUI mode |
+| `TuiJamRoom.jsx` | Full jam room — same hooks as web UI |
+| `TuiPlaylistPicker.jsx` | Playlist import in TUI mode |
+
+**TUI commands:** `add <url>`, `add "<name>" [artist]`, `play/resume`, `pause`, `seek`, `next`, `skip`, `who`, `dj <me|@name>`, `repeat`, `invite`, `end`, `leave`, `help`.
+
+### Mobile (`mobile/`)
+
+```
+mobile/src/
+  ├─ lib/              Utils (api.ts, sse.ts, auth.ts)
+  ├─ hooks/            Custom hooks (useSession, useQueue, etc.)
+  ├─ components/       React Native components
+  ├─ screens/          Navigation screens
+  └─ navigation/       React Navigation setup
+
+npm run dev           Expo dev server
+expo run:ios          Build + run on iOS simulator
+expo run:android      Build + run on Android emulator
+```
+
+**Auth:** Expo's `expo-auth-session` (Google OAuth) → JWT stored in `expo-secure-store`. Token refresh via `/api/auth/mobile/refresh`.
+
+**Realtime:** SSE (not Supabase Realtime). Hooks re-fetch on SSE reconnect and `AppState → 'active'`.
+
+### API (`api/`)
+
+```
+api/
+  ├─ app/
+  │  ├─ main.py               ASGI app + routers
+  │  ├─ routes/               Endpoint handlers
+  │  └─ models/               Pydantic/SQLAlchemy models
+  ├─ migrations/
+  │  └─ versions/             Alembic migration files
+  ├─ alembic.ini              Alembic config
+  └─ pyproject.toml           Dependencies (uv)
+
+uv run uvicorn app.main:app --reload   Dev server
+uv run alembic upgrade head             Run migrations
+uv run alembic revision --autogenerate -m "msg"   Create migration
+```
+
+**Realtime:** Postgres with `pg_cron` and triggers. Supabase handles replication to clients.
+
+**DB functions** (server-side only):
+- `play_next(session_id)` — atomically advance queue
+- `cast_skip_vote(queue_item_id, user_id, threshold)` — vote to skip
+- `pass_dj_token(session_id, new_dj_user_id)` — transfer DJ role
+
+---
+
+## Tech stack
+
+| Layer | Stack |
+|-------|-------|
+| **Auth** | Supabase (Google OAuth, PKCE flow), JWT (RS256) |
+| **State** | Supabase Realtime (Web/TUI), SSE (Mobile) |
+| **UI** | React 18 (Web), React Native (Mobile) |
+| **Build** | Vite (Web), Expo (Mobile) |
+| **API** | FastAPI + Uvicorn |
+| **Database** | Supabase Postgres + Alembic migrations |
+| **Observability** | Loki + Grafana |
+| **Analytics** | PostHog (optional) |
+
+**Feature flags:** Compile-time via Vite `define` block (`FLAG_*` env vars). Runtime overrides via Supabase `feature_flags` table — toggle without redeploy.
 
 ---
 
 ## Database
 
-Migrations in `api/migrations/versions/` (Alembic).
+Migrations live in `api/migrations/versions/` (Alembic). Apply before development:
 
 ```bash
 cd api
-
-# Apply pending migrations
 uv run alembic upgrade head
-
-# Create migration after model changes
-uv run alembic revision --autogenerate -m "description"
-
-# Check current state
-uv run alembic current
 ```
 
-**Key points:**
+**Create migration after schema changes:**
+
+```bash
+uv run alembic revision --autogenerate -m "description"
+uv run alembic upgrade head
+```
+
+**Key DB features:**
 - `queue_items.position` uses `GENERATED ALWAYS AS IDENTITY` + `UNIQUE(session_id, position)` → no race conditions
-- `on_participant_leave` trigger auto-promotes host as DJ when DJ disconnects
-- `expire-stale-sessions` pg_cron job marks sessions `ended` after 24h
-- Migration 001 is idempotent — safe to run against existing databases
+- `on_participant_leave` trigger auto-promotes host as DJ
+- `expire-stale-sessions` pg_cron job ends sessions after 24h
+- Realtime enabled on: `sessions`, `session_participants`, `queue_items`, `skip_votes`
+
+---
+
+## Feature flags
+
+Declared in `ui/vite.config.js`. Set at build time via `FLAG_*` env vars:
+
+```bash
+FLAG_JAM_SESSION=true npm run build
+```
+
+Runtime overrides via Supabase `feature_flags` table. Check `GET /api/flags/` endpoint.
+
+See **[docs/feature-flags.md](docs/feature-flags.md)** (auto-generated).
 
 ---
 
 ## Deployment
 
-| Env | Branch | DB | UI |
-|-----|--------|----|----|
-| Staging | `staging` | Supabase stg | Cloudflare Pages |
-| Production | `main` | Supabase prod | GitHub Pages |
+| Env | Branch | DB | UI | Mobile |
+|-----|--------|-----|----|----|
+| Staging | `staging` | Supabase stg | Cloudflare Pages | EAS build (dev) |
+| Prod | `main` | Supabase prod | GitHub Pages | EAS build (prod) |
 
-Push to branch → GitHub Actions: `migrate` job (Alembic) → `deploy` job (build + Pages/Cloudflare).
+**Process:** Push to branch → GitHub Actions runs migrations → builds + deploys.
 
-### GitHub environment configuration
+### GitHub secrets
 
-**Secrets** (Settings → Environments → [environment] → Secrets):
+| Secret | Purpose |
+|--------|---------|
+| `DATABASE_URL` | Postgres async URL (migrations) |
+| `SUPABASE_URL`, `SUPABASE_ANON_KEY` | Supabase credentials |
+| `YOUTUBE_API_KEY` | YouTube Data API v3 |
+| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | Spotify API |
+| `ODESLI_API_KEY` | Song lookup (optional) |
+| `VITE_API_URL` | Public API base URL |
+| `VITE_POSTHOG_KEY` | Analytics (optional) |
+| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | Staging deploy |
 
-| Name | Env | Purpose |
-|------|-----|---------|
-| `DATABASE_URL` | Both | Postgres async URL for migrations |
-| `SUPABASE_URL` | Both | Supabase project URL |
-| `SUPABASE_ANON_KEY` | Both | Supabase anon key |
-| `VITE_API_URL` | Both | Public API base URL (Vite build) |
-| `VITE_POSTHOG_KEY` | Both | PostHog analytics key _(optional)_ |
-| `YOUTUBE_API_KEY` | Both | YouTube Data API v3 ([setup](https://console.cloud.google.com)) |
-| `ODESLI_API_KEY` | Both | Song lookup _(optional — rate limit)_ |
-| `SPOTIFY_CLIENT_ID` | Both | Spotify API credentials |
-| `SPOTIFY_CLIENT_SECRET` | Both | Spotify API credentials |
-| `CLOUDFLARE_API_TOKEN` | Staging | Cloudflare Pages deploy token |
-| `CLOUDFLARE_ACCOUNT_ID` | Staging | Cloudflare account ID |
-| `CNAME_DOMAIN` | Production | Custom domain for GitHub Pages |
+### GitHub variables
 
-**Variables** (Settings → Environments → [environment] → Variables):
+| Variable | Purpose |
+|----------|---------|
+| `VITE_APP_ENV` | `staging` or `production` |
+| `ALLOWED_ORIGINS` | CORS origins (comma-separated) |
+| `FRONTEND_URL` | Frontend base URL |
+| `ROOT_PATH` | API root path prefix |
+| `COOKIE_DOMAIN` | Cookie scope |
+| `COOKIE_SAMESITE` | Cookie SameSite policy |
 
-| Name | Env | Purpose |
-|------|-----|---------|
-| `VITE_APP_ENV` | Both | App environment (`staging` or `production`) |
-| `ALLOWED_ORIGINS` | Both | CORS allowed origins (comma-separated) |
-| `FRONTEND_URL` | Both | Frontend base URL |
-| `ROOT_PATH` | Both | API root path prefix |
-| `COOKIE_DOMAIN` | Both | Cookie domain scope |
-| `COOKIE_SAMESITE` | Both | Cookie SameSite policy |
-| `CLOUDFLARE_PROJECT_NAME` | Staging | Cloudflare Pages project name |
-| `CNAME_DOMAIN` | Production | Custom domain (GitHub Pages) |
+---
+
+## API reference
+
+Interactive docs auto-generated by FastAPI: `{API_URL}/docs` (Swagger) or `{API_URL}/redoc`.
+
+**Key endpoints:**
+- `POST /api/sessions/` — create jam room
+- `POST /api/sessions/{id}/items` — add song to queue
+- `POST /api/items/{id}/votes` — vote to skip
+- `POST /api/sessions/{id}/dj` — transfer DJ role
+- `GET /api/search?q=...` — search via Odesli
+
+Full routes in `api/app/routes/`.
+
+---
+
+## Observability
+
+**Staging:** [Grafana staging](https://grafana.themusic.one/) (Loki logs)  
+**Prod:** Same Grafana with prod datasource
+
+Logs labeled by `project` (musicone-staging/musicone-prod), `level`, `method`.
+
+Query examples:
+```logql
+{project="musicone-prod"}
+{project="musicone-prod", level="error"}
+```
+
+See **[docs/observability-staging.md](docs/observability-staging.md)** and **[docs/observability-prod.md](docs/observability-prod.md)**.
+
+---
+
+## Common tasks
+
+**Test a feature locally:**
+```bash
+cd ui && npm run dev &
+cd api && uv run uvicorn app.main:app --reload &
+# Visit http://localhost:5173
+```
+
+**Add a database field:**
+1. Update SQLAlchemy model in `api/app/models/`
+2. Run `uv run alembic revision --autogenerate -m "add_field"`
+3. Review and run `uv run alembic upgrade head`
+
+**Toggle a feature without deploy:**
+1. Add flag to Supabase `feature_flags` table
+2. Check flag in code via `FLAGS.YOUR_FLAG`
+
+**Deploy a change:**
+1. Commit to `staging` branch
+2. Verify in staging environment
+3. Create PR to `main`
+4. Merge → auto-deploys to production
 
 ---
 
 ## Docs
 
-- **[docs/feature-flags.md](docs/feature-flags.md)** — Feature flag reference _(auto-generated; do not edit)_
-- **[docs/observability-staging.md](docs/observability-staging.md)** — Grafana + Loki for staging
-- **[docs/observability-prod.md](docs/observability-prod.md)** — Grafana + Loki for production
-- **[docs/spa-routing.md](docs/spa-routing.md)** — GitHub Pages SPA routing via 404.html
+- **[docs/feature-flags.md](docs/feature-flags.md)** — Feature flag reference (auto-generated)
+- **[docs/spa-routing.md](docs/spa-routing.md)** — GitHub Pages SPA routing
+- **[CLAUDE.md](CLAUDE.md)** — Claude Code project config
