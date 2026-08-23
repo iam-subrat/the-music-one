@@ -14,6 +14,12 @@ curl -SL "https://github.com/docker/compose/releases/latest/download/docker-comp
   -o /usr/local/lib/docker/cli-plugins/docker-compose
 chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
+# docker buildx plugin
+BUILDX_VERSION=$(curl -sf https://api.github.com/repos/docker/buildx/releases/latest | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
+curl -SL "https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-arm64" \
+  -o /usr/local/lib/docker/cli-plugins/docker-buildx
+chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
+
 # ── Caddy (static binary — AL2023 has no package repo for Caddy) ──────────────
 ARCH=$(uname -m)
 CADDY_VERSION=$(curl -sf https://api.github.com/repos/caddyserver/caddy/releases/latest \
