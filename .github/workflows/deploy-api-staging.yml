@@ -77,4 +77,4 @@ jobs:
       - name: Health check
         run: |
           sleep 15
-          curl -f https://api-staging.themusic.one/api/health || exit 1
+          curl -f https://api-staging.themusic.one/musicone-staging/api/health || exit 1

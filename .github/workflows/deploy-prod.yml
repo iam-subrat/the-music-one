@@ -343,7 +343,7 @@ jobs:
       - name: Health check (poll)
         run: |
           for i in $(seq 1 30); do
-            if curl -fsS https://api.themusic.one/api/health; then
+            if curl -fsS https://api.themusic.one/musicone/api/health; then
               echo "API healthy after ${i} attempt(s)."
               exit 0
             fi
