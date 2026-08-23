@@ -311,7 +311,19 @@ jobs:
           script: |
             cd /opt/musicone
             git pull
-            COMPOSE_PROJECT_NAME=musicone-prod \
+            export COMPOSE_PROJECT_NAME=musicone-prod
+            export DATABASE_URL="$DATABASE_URL"
+            export SUPABASE_URL="$SUPABASE_URL"
+            export SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
+            export YOUTUBE_API_KEY="$YOUTUBE_API_KEY"
+            export ODESLI_API_KEY="$ODESLI_API_KEY"
+            export SPOTIFY_CLIENT_ID="$SPOTIFY_CLIENT_ID"
+            export SPOTIFY_CLIENT_SECRET="$SPOTIFY_CLIENT_SECRET"
+            export ALLOWED_ORIGINS="$ALLOWED_ORIGINS"
+            export FRONTEND_URL="$FRONTEND_URL"
+            export ROOT_PATH="$ROOT_PATH"
+            export COOKIE_DOMAIN="$COOKIE_DOMAIN"
+            export COOKIE_SAMESITE="$COOKIE_SAMESITE"
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build api
             docker image prune -f --filter "until=24h"
         env:
