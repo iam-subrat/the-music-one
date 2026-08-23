@@ -1,0 +1,148 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "IAMInstanceRoleSetup",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:AttachRolePolicy",
+        "iam:CreateInstanceProfile",
+        "iam:AddRoleToInstanceProfile",
+        "iam:GetRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::730335485157:role/musicone-ec2-instance-role",
+        "arn:aws:iam::730335485157:instance-profile/musicone-ec2-profile"
+      ]
+    },
+    {
+      "Sid": "EC2Describe",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeInstances",
+        "ec2:DescribeInstanceStatus",
+        "ec2:DescribeImages",
+        "ec2:DescribeKeyPairs",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeAddresses",
+        "ec2:DescribeTags",
+        "ec2:CreateDefaultVpc",
+        "ec2:CreateKeyPair"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "EC2InstanceActions",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:StartInstances",
+        "ec2:StopInstances",
+        "ec2:RebootInstances",
+        "ec2:TerminateInstances"
+      ],
+      "Resource": "arn:aws:ec2:*:730335485157:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/Project": "musicone"
+        }
+      }
+    },
+    {
+      "Sid": "EC2RunInstances",
+      "Effect": "Allow",
+      "Action": "ec2:RunInstances",
+      "Resource": [
+        "arn:aws:ec2:*:730335485157:instance/*",
+        "arn:aws:ec2:*:730335485157:security-group/*",
+        "arn:aws:ec2:*::image/ami-*",
+        "arn:aws:ec2:*:*:subnet/*",
+        "arn:aws:ec2:*:730335485157:network-interface/*",
+        "arn:aws:ec2:*:730335485157:volume/*",
+        "arn:aws:ec2:*:730335485157:key-pair/*"
+      ]
+    },
+    {
+      "Sid": "EC2SecurityGroup",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateSecurityGroup",
+        "ec2:DeleteSecurityGroup",
+        "ec2:AuthorizeSecurityGroupIngress",
+        "ec2:RevokeSecurityGroupIngress",
+        "ec2:AuthorizeSecurityGroupEgress",
+        "ec2:RevokeSecurityGroupEgress"
+      ],
+      "Resource": [
+        "arn:aws:ec2:*:730335485157:security-group/*",
+        "arn:aws:ec2:*:730335485157:vpc/*"
+      ]
+    },
+    {
+      "Sid": "EC2ElasticIP",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AllocateAddress",
+        "ec2:AssociateAddress",
+        "ec2:DisassociateAddress",
+        "ec2:ReleaseAddress"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "EC2Tagging",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateTags",
+        "ec2:DeleteTags"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "IAMPassRoleToEC2",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::730335485157:role/musicone-ec2-instance-role",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "ec2.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "IAMGetInstanceProfile",
+      "Effect": "Allow",
+      "Action": "iam:GetInstanceProfile",
+      "Resource": "arn:aws:iam::730335485157:instance-profile/musicone-ec2-profile"
+    },
+    {
+      "Sid": "SSMSessionOnInstance",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:StartSession",
+        "ssm:TerminateSession"
+      ],
+      "Resource": [
+        "arn:aws:ec2:*:730335485157:instance/*",
+        "arn:aws:ssm:*:730335485157:session/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "ssm:resourceTag/Project": "musicone"
+        }
+      }
+    },
+    {
+      "Sid": "SSMDescribe",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:DescribeSessions",
+        "ssm:DescribeInstanceInformation",
+        "ssm:GetConnectionStatus"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+# /etc/caddy/Caddyfile
+# Caddy auto-provisions Let's Encrypt TLS for all hostnames below.
+# Requires ports 80 + 443 open in the EC2 security group.
+
+# ── Production API ────────────────────────────────────────────────────────────
+api.themusic.one {
+    reverse_proxy localhost:8000 {
+        # SSE: flush immediately, don't buffer
+        flush_interval -1
+        transport http {
+            # Keep SSE connections alive up to 10 min idle
+            response_header_timeout 0
+            dial_timeout 10s
+        }
+    }
+}
+
+# ── Staging API ───────────────────────────────────────────────────────────────
+api-staging.themusic.one {
+    reverse_proxy localhost:8001 {
+        flush_interval -1
+        transport http {
+            response_header_timeout 0
+            dial_timeout 10s
+        }
+    }
+}
+
+# ── Grafana ───────────────────────────────────────────────────────────────────
+grafana.themusic.one {
+    reverse_proxy localhost:3000
+}
