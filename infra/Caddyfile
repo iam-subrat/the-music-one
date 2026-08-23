@@ -4,25 +4,45 @@
 
 # ── Production API ────────────────────────────────────────────────────────────
 api.themusic.one {
-    reverse_proxy localhost:8000 {
-        # SSE: flush immediately, don't buffer
-        flush_interval -1
-        transport http {
-            # Keep SSE connections alive up to 10 min idle
-            response_header_timeout 0
-            dial_timeout 10s
+    handle /musicone/* {
+        uri strip_prefix /musicone
+        reverse_proxy localhost:8000 {
+            # SSE: flush immediately, don't buffer
+            flush_interval -1
+            transport http {
+                # Keep SSE connections alive up to 10 min idle
+                response_header_timeout 0
+                dial_timeout 10s
+            }
         }
+    }
+
+    # Add new apps here, e.g.:
+    # handle /new-app/* {
+    #     uri strip_prefix /new-app
+    #     reverse_proxy localhost:8002
+    # }
+
+    handle {
+        respond 404
     }
 }
 
 # ── Staging API ───────────────────────────────────────────────────────────────
 api-staging.themusic.one {
-    reverse_proxy localhost:8001 {
-        flush_interval -1
-        transport http {
-            response_header_timeout 0
-            dial_timeout 10s
+    handle /musicone-staging/* {
+        uri strip_prefix /musicone-staging
+        reverse_proxy localhost:8001 {
+            flush_interval -1
+            transport http {
+                response_header_timeout 0
+                dial_timeout 10s
+            }
         }
+    }
+
+    handle {
+        respond 404
     }
 }
 
