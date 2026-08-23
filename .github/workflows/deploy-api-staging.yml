@@ -32,13 +32,23 @@ jobs:
   deploy:
     name: Deploy → Staging
     needs: migrate
-    runs-on: [self-hosted, musicone-staging]
+    runs-on: ubuntu-latest
     environment: staging
-    env:
-      COMPOSE_PROJECT_NAME: musicone-staging
     steps:
       - uses: actions/checkout@v4
       - name: Build & deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: DATABASE_URL,SUPABASE_URL,SUPABASE_ANON_KEY,YOUTUBE_API_KEY,ODESLI_API_KEY,ALLOWED_ORIGINS,FRONTEND_URL,ROOT_PATH,COOKIE_DOMAIN,COOKIE_SAMESITE,SPOTIFY_CLIENT_ID,SPOTIFY_CLIENT_SECRET
+          script: |
+            cd /opt/musicone
+            git pull
+            COMPOSE_PROJECT_NAME=musicone-staging \
+            docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build api
+            docker image prune -f
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -52,10 +62,7 @@ jobs:
           COOKIE_SAMESITE: ${{ vars.COOKIE_SAMESITE }}
           SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
           SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
-        run: |
-          docker-compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build api
-          docker image prune -f
       - name: Health check
         run: |
           sleep 15
-          curl -f http://127.0.0.1:8001/api/health || exit 1
+          curl -f https://api-staging.themusic.one/api/health || exit 1

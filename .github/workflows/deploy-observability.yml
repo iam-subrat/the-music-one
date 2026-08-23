@@ -12,18 +12,25 @@ on:
 jobs:
   deploy:
     name: Deploy → Loki + Promtail + Grafana
-    runs-on: [self-hosted, musicone-prod]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Deploy observability stack
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: GRAFANA_PASSWORD,GF_SERVER_ROOT_URL
+          script: |
+            cd /opt/musicone
+            git pull
+            docker compose -f docker-compose.yml up -d loki promtail grafana
+            docker image prune -f
         env:
           GRAFANA_PASSWORD: ${{ secrets.GRAFANA_PASSWORD }}
           GF_SERVER_ROOT_URL: ${{ vars.GRAFANA_ROOT_URL }}
-        run: |
-          docker-compose -f docker-compose.yml up -d loki promtail grafana
-          docker image prune -f
       - name: Health check
         run: |
           sleep 10
-          curl -f http://127.0.0.1:3100/ready || exit 1
-          curl -f http://127.0.0.1:3000/api/health || exit 1
+          curl -f https://grafana.themusic.one/api/health || exit 1

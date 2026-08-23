@@ -296,14 +296,24 @@ jobs:
   deploy-api:
     needs: [detect, migrate]
     if: needs.detect.outputs.api == 'true' && needs.migrate.result == 'success'
-    runs-on: [self-hosted, musicone-prod]
+    runs-on: ubuntu-latest
     environment: production
-    env:
-      COMPOSE_PROJECT_NAME: musicone-prod
     steps:
       - uses: actions/checkout@v4
 
       - name: Build & deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: DATABASE_URL,SUPABASE_URL,SUPABASE_ANON_KEY,YOUTUBE_API_KEY,ODESLI_API_KEY,SPOTIFY_CLIENT_ID,SPOTIFY_CLIENT_SECRET,ALLOWED_ORIGINS,FRONTEND_URL,ROOT_PATH,COOKIE_DOMAIN,COOKIE_SAMESITE
+          script: |
+            cd /opt/musicone
+            git pull
+            COMPOSE_PROJECT_NAME=musicone-prod \
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build api
+            docker image prune -f --filter "until=24h"
         env:
           DATABASE_URL:          ${{ secrets.DATABASE_URL }}
           SUPABASE_URL:          ${{ secrets.SUPABASE_URL }}
@@ -317,14 +327,11 @@ jobs:
           ROOT_PATH:             ${{ vars.ROOT_PATH }}
           COOKIE_DOMAIN:         ${{ vars.COOKIE_DOMAIN }}
           COOKIE_SAMESITE:       ${{ vars.COOKIE_SAMESITE }}
-        run: |
-          docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build api
-          docker image prune -f --filter "until=24h"
 
       - name: Health check (poll)
         run: |
           for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8000/api/health; then
+            if curl -fsS https://api.themusic.one/api/health; then
               echo "API healthy after ${i} attempt(s)."
               exit 0
             fi
