@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.logging_config import configure_logging
-from app.middleware import LoggingMiddleware
+from app.middleware import LoggingMiddleware, RateLimitMiddleware, RateLimiter
 from app.services.event_bus import bus
 from app.routers import auth, sessions, items, profiles, songs, youtube, flags, events, playlists, mobile_auth
 
@@ -18,9 +18,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="MusicOne API", root_path=settings.root_path, lifespan=lifespan)
 
+rate_limiter = RateLimiter(
+    default_limit=settings.rate_limit_default_per_minute,
+    strict_limit=settings.rate_limit_strict_per_minute,
+)
+
 # LoggingMiddleware must be added before CORSMiddleware so it captures
 # the actual response status (including CORS preflight 200s).
 app.add_middleware(LoggingMiddleware)
+app.add_middleware(
+    RateLimitMiddleware,
+    limiter=rate_limiter,
+    enabled=settings.rate_limit_enabled,
+)
 
 app.add_middleware(
     CORSMiddleware,
