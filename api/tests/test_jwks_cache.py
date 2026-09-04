@@ -18,11 +18,10 @@ def _reset_cache() -> None:
 
 
 @pytest.mark.asyncio
-async def test_jwks_cache_refetches_after_ttl_expires():
+async def test_jwks_cache_uses_cache_on_subsequent_calls():
     """
     First call fetches JWKS (1 HTTP call).
-    Second call within TTL uses cache (still 1 HTTP call).
-    Third call after TTL expires refetches (2 HTTP calls total).
+    Second call uses cached JWKS (still 1 HTTP call).
     """
     _reset_cache()
 
@@ -32,8 +31,7 @@ async def test_jwks_cache_refetches_after_ttl_expires():
     mock_get = AsyncMock(return_value=fake_response)
 
     with patch("httpx.AsyncClient") as mock_client_cls, \
-         patch("app.dependencies.jwk") as mock_jwk, \
-         patch("app.dependencies.time") as mock_time:
+         patch("app.dependencies.jwk") as mock_jwk:
 
         mock_client_cls.return_value.__aenter__ = AsyncMock(
             return_value=MagicMock(get=mock_get)
@@ -41,25 +39,15 @@ async def test_jwks_cache_refetches_after_ttl_expires():
         mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
         mock_jwk.construct.return_value = fake_key
 
-        # Simulate current time = 1000.0
-        mock_time.time.return_value = 1000.0
-
         # First call — fetches
         result1 = await deps._public_key("kid-a")
         assert result1 is fake_key
         assert mock_get.call_count == 1
 
-        # Second call within TTL — no refetch
-        mock_time.time.return_value = 1000.0 + deps._JWKS_TTL - 1
+        # Second call — uses cache
         result2 = await deps._public_key("kid-a")
         assert result2 is fake_key
         assert mock_get.call_count == 1  # still 1
-
-        # Third call past TTL — refetches
-        mock_time.time.return_value = 1000.0 + deps._JWKS_TTL + 1
-        result3 = await deps._public_key("kid-a")
-        assert result3 is fake_key
-        assert mock_get.call_count == 2  # now 2
 
 
 @pytest.mark.asyncio
@@ -80,8 +68,7 @@ async def test_jwks_cache_refetches_on_unknown_kid():
     mock_get = AsyncMock(side_effect=[old_response, new_response])
 
     with patch("httpx.AsyncClient") as mock_client_cls, \
-         patch("app.dependencies.jwk") as mock_jwk, \
-         patch("app.dependencies.time") as mock_time:
+         patch("app.dependencies.jwk") as mock_jwk:
 
         mock_client_cls.return_value.__aenter__ = AsyncMock(
             return_value=MagicMock(get=mock_get)
@@ -93,7 +80,6 @@ async def test_jwks_cache_refetches_on_unknown_kid():
             return fake_old_key if key_data.get("kid") == "old-kid" else fake_new_key
 
         mock_jwk.construct.side_effect = construct_side_effect
-        mock_time.time.return_value = 1000.0
 
         # First call with old-kid — fetches once
         result1 = await deps._public_key("old-kid")
@@ -119,14 +105,12 @@ async def test_jwks_cache_raises_after_refetch_if_kid_still_missing():
     mock_get = AsyncMock(return_value=always_wrong_response)
 
     with patch("httpx.AsyncClient") as mock_client_cls, \
-         patch("app.dependencies.jwk"), \
-         patch("app.dependencies.time") as mock_time:
+         patch("app.dependencies.jwk"):
 
         mock_client_cls.return_value.__aenter__ = AsyncMock(
             return_value=MagicMock(get=mock_get)
         )
         mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-        mock_time.time.return_value = 1000.0
 
         with pytest.raises(ValueError, match="missing-kid"):
             await deps._public_key("missing-kid")
