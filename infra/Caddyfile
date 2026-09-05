@@ -17,19 +17,6 @@ api.themusic.one {
         }
     }
 
-    # Add new apps here, e.g.:
-    # handle /new-app/* {
-    #     uri strip_prefix /new-app
-    #     reverse_proxy localhost:8002
-    # }
-
-    handle {
-        respond 404
-    }
-}
-
-# ── Staging API ───────────────────────────────────────────────────────────────
-api-staging.themusic.one {
     handle /musicone-staging/* {
         uri strip_prefix /musicone-staging
         reverse_proxy localhost:8001 {
@@ -40,6 +27,12 @@ api-staging.themusic.one {
             }
         }
     }
+
+    # Add new apps here, e.g.:
+    # handle /new-app/* {
+    #     uri strip_prefix /new-app
+    #     reverse_proxy localhost:8002
+    # }
 
     handle {
         respond 404
