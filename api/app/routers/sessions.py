@@ -179,3 +179,25 @@ async def force_skip(
     next_id = await svc.force_skip(session_id, user_id)
     await bus.publish(str(session_id), "queue_changed", {})
     return {"next_item_id": str(next_id) if next_id else None}
+
+
+@router.post("/{session_id}/queue/previous")
+async def play_previous(
+    session_id: UUID,
+    user_id: UUID = Depends(get_current_user),
+    svc=Depends(get_queue_service),
+):
+    next_id = await svc.play_previous(session_id, user_id)
+    await bus.publish(str(session_id), "queue_changed", {})
+    return {"next_item_id": str(next_id) if next_id else None}
+
+@router.post("/{session_id}/queue/items/{item_id}/play")
+async def play_specific(
+    session_id: UUID,
+    item_id: UUID,
+    user_id: UUID = Depends(get_current_user),
+    svc=Depends(get_queue_service),
+):
+    next_id = await svc.play_specific(session_id, user_id, item_id)
+    await bus.publish(str(session_id), "queue_changed", {})
+    return {"next_item_id": str(next_id) if next_id else None}

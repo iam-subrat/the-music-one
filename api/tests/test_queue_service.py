@@ -36,16 +36,19 @@ def _make_item(resolve_status="resolved", status="queued", source_url=None):
 
 # ── add_by_search ─────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_add_by_search_resolves_via_song_service():
     repo = AsyncMock()
     song_svc = AsyncMock()
-    song_svc.search_by_name = AsyncMock(return_value={
-        "title": "Lose Yourself",
-        "artist": "Eminem",
-        "thumbnailUrl": "https://img.example.com/lose.jpg",
-        "platformLinks": {"youtube": "https://www.youtube.com/watch?v=_Yhyp-_hX2s"},
-    })
+    song_svc.search_by_name = AsyncMock(
+        return_value={
+            "title": "Lose Yourself",
+            "artist": "Eminem",
+            "thumbnailUrl": "https://img.example.com/lose.jpg",
+            "platformLinks": {"youtube": "https://www.youtube.com/watch?v=_Yhyp-_hX2s"},
+        }
+    )
     created = _make_item()
     created.title = "Lose Yourself"
     repo.create = AsyncMock(return_value=created)
@@ -60,6 +63,7 @@ async def test_add_by_search_resolves_via_song_service():
 
 # ── add_batch ─────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_add_batch_creates_stubs_for_all_tracks():
     repo = AsyncMock()
@@ -68,8 +72,18 @@ async def test_add_batch_creates_stubs_for_all_tracks():
     svc = _make_svc(queue_repo=repo)
 
     tracks = [
-        {"url": "https://open.spotify.com/track/a", "title": "Song A", "artist": "Artist A", "thumbnail_url": None},
-        {"url": "https://open.spotify.com/track/b", "title": "Song B", "artist": "Artist B", "thumbnail_url": "https://img.example.com/b.jpg"},
+        {
+            "url": "https://open.spotify.com/track/a",
+            "title": "Song A",
+            "artist": "Artist A",
+            "thumbnail_url": None,
+        },
+        {
+            "url": "https://open.spotify.com/track/b",
+            "title": "Song B",
+            "artist": "Artist B",
+            "thumbnail_url": "https://img.example.com/b.jpg",
+        },
     ]
     session_id = uuid4()
     user_id = uuid4()
@@ -88,9 +102,24 @@ async def test_add_batch_skips_failed_stub_creation():
     svc = _make_svc(queue_repo=repo)
 
     tracks = [
-        {"url": "https://open.spotify.com/track/a", "title": "A", "artist": "AA", "thumbnail_url": None},
-        {"url": "https://open.spotify.com/track/b", "title": "B", "artist": "BB", "thumbnail_url": None},
-        {"url": "https://open.spotify.com/track/c", "title": "C", "artist": "CC", "thumbnail_url": None},
+        {
+            "url": "https://open.spotify.com/track/a",
+            "title": "A",
+            "artist": "AA",
+            "thumbnail_url": None,
+        },
+        {
+            "url": "https://open.spotify.com/track/b",
+            "title": "B",
+            "artist": "BB",
+            "thumbnail_url": None,
+        },
+        {
+            "url": "https://open.spotify.com/track/c",
+            "title": "C",
+            "artist": "CC",
+            "thumbnail_url": None,
+        },
     ]
     result = await svc.add_batch(uuid4(), uuid4(), tracks)
     assert len(result) == 2
@@ -98,16 +127,23 @@ async def test_add_batch_skips_failed_stub_creation():
 
 # ── play_next (lazy resolve) ───────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_play_next_resolves_resolving_item_before_playing():
     repo = AsyncMock()
     song_svc = AsyncMock()
-    next_item = _make_item(resolve_status="resolving", source_url="https://open.spotify.com/track/x")
+    next_item = _make_item(
+        resolve_status="resolving", source_url="https://open.spotify.com/track/x"
+    )
     repo.get_next_queued = AsyncMock(return_value=next_item)
-    song_svc.resolve_song_meta = AsyncMock(return_value={
-        "title": "Resolved", "artist": "Artist",
-        "thumbnailUrl": None, "platformLinks": {"spotify": "https://open.spotify.com/track/x"},
-    })
+    song_svc.resolve_song_meta = AsyncMock(
+        return_value={
+            "title": "Resolved",
+            "artist": "Artist",
+            "thumbnailUrl": None,
+            "platformLinks": {"spotify": "https://open.spotify.com/track/x"},
+        }
+    )
     played_id = uuid4()
     repo.play_next = AsyncMock(return_value=played_id)
     svc = _make_svc(queue_repo=repo, song_svc=song_svc)
@@ -123,11 +159,15 @@ async def test_play_next_resolves_resolving_item_before_playing():
 async def test_play_next_skips_and_recurses_on_odesli_failure():
     repo = AsyncMock()
     song_svc = AsyncMock()
-    failing_item = _make_item(resolve_status="resolving", source_url="https://open.spotify.com/track/fail")
+    failing_item = _make_item(
+        resolve_status="resolving", source_url="https://open.spotify.com/track/fail"
+    )
     good_item = _make_item(resolve_status="resolved")
 
     repo.get_next_queued = AsyncMock(side_effect=[failing_item, good_item])
-    song_svc.resolve_song_meta = AsyncMock(side_effect=HTTPException(status_code=422, detail="bad url"))
+    song_svc.resolve_song_meta = AsyncMock(
+        side_effect=HTTPException(status_code=422, detail="bad url")
+    )
     played_id = uuid4()
     repo.play_next = AsyncMock(return_value=played_id)
     svc = _make_svc(queue_repo=repo, song_svc=song_svc)
@@ -209,3 +249,43 @@ async def test_play_next_repeat_queue_delegates_to_db_when_no_queued():
     session_repo.get_by_id.assert_awaited_once_with(session_id)
     repo.play_next.assert_awaited_once_with(session_id, user_id, "played")
     assert result == played_id
+
+
+@pytest.mark.asyncio
+async def test_play_specific_resolves_resolving_item_and_calls_repo():
+    repo = AsyncMock()
+    song_svc = AsyncMock()
+    session_id = uuid4()
+    user_id = uuid4()
+    item_id = uuid4()
+
+    item = _make_item(resolve_status="resolving")
+    item.id = item_id
+    repo.get_by_id = AsyncMock(return_value=item)
+    repo.play_specific = AsyncMock(return_value=item_id)
+    song_svc.resolve_song_meta = AsyncMock(
+        return_value={"title": "Song", "artist": "Artist"}
+    )
+
+    svc = _make_svc(queue_repo=repo, song_svc=song_svc)
+    result = await svc.play_specific(session_id, user_id, item_id)
+
+    song_svc.resolve_song_meta.assert_awaited_once_with(item.source_url)
+    repo.mark_resolved.assert_awaited_once()
+    repo.play_specific.assert_awaited_once_with(session_id, user_id, item_id)
+    assert result == item_id
+
+
+@pytest.mark.asyncio
+async def test_play_previous_calls_repo():
+    repo = AsyncMock()
+    session_id = uuid4()
+    user_id = uuid4()
+    prev_id = uuid4()
+
+    repo.play_previous = AsyncMock(return_value=prev_id)
+    svc = _make_svc(queue_repo=repo)
+    result = await svc.play_previous(session_id, user_id)
+
+    repo.play_previous.assert_awaited_once_with(session_id, user_id)
+    assert result == prev_id
