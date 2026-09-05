@@ -56,9 +56,8 @@ The script prints the public IP at the end — use it for DNS and the GitHub sec
 Add A records pointing to the Elastic IP output by the script:
 
 ```
-api.themusic.one         → <PUBLIC_IP>
-api-staging.themusic.one → <PUBLIC_IP>
-grafana.themusic.one     → <PUBLIC_IP>
+api.themusic.one     → <PUBLIC_IP>
+grafana.themusic.one → <PUBLIC_IP>
 ```
 
 ---
@@ -85,7 +84,7 @@ sudo cp /opt/musicone/infra/Caddyfile /etc/caddy/Caddyfile
 sudo systemctl restart caddy
 
 # Verify TLS (may take ~30s for cert provisioning)
-curl -I https://api.themusic.one/api/health
+curl -I https://api.themusic.one/musicone/api/health
 ```
 
 ---
@@ -130,8 +129,8 @@ COMPOSE_PROJECT_NAME=musicone-prod \
 COMPOSE_PROJECT_NAME=musicone-staging \
   docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build api
 
-curl https://api.themusic.one/api/health
-curl https://api-staging.themusic.one/api/health
+curl https://api.themusic.one/musicone/api/health
+curl https://api.themusic.one/musicone-staging/api/health
 curl https://grafana.themusic.one/api/health
 ```
 

@@ -19,6 +19,7 @@ on:
     paths:
       - "ui/**"
       - "api/**"
+      - "infra/**"
       - "docker-compose*.yml"
       - ".github/workflows/deploy-prod.yml"
   workflow_dispatch:
@@ -86,7 +87,7 @@ jobs:
             echo "ui=false" >> "$GITHUB_OUTPUT"
           fi
 
-          if grep -qE "^(api/|docker-compose|\.github/workflows/deploy-prod\.yml)" /tmp/changed.txt; then
+          if grep -qE "^(api/|docker-compose|infra/|\.github/workflows/deploy-prod\.yml)" /tmp/changed.txt; then
             echo "api=true"  >> "$GITHUB_OUTPUT"
           else
             echo "api=false" >> "$GITHUB_OUTPUT"
@@ -311,6 +312,9 @@ jobs:
           script: |
             cd /opt/musicone
             git pull
+            caddy validate --adapter caddyfile --config infra/Caddyfile
+            sudo cp infra/Caddyfile /etc/caddy/Caddyfile
+            sudo systemctl reload caddy
             export COMPOSE_PROJECT_NAME=musicone-prod
             export DATABASE_URL="$DATABASE_URL"
             export SUPABASE_URL="$SUPABASE_URL"
