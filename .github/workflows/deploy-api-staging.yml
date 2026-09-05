@@ -74,7 +74,14 @@ jobs:
           COOKIE_SAMESITE: ${{ vars.COOKIE_SAMESITE }}
           SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
           SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
-      - name: Health check
+      - name: Health check (poll)
         run: |
-          sleep 15
-          curl -f https://api-staging.themusic.one/musicone-staging/api/health || exit 1
+          for i in $(seq 1 30); do
+            if curl -fsS https://api.themusic.one/musicone-staging/api/health; then
+              echo "Staging API healthy after ${i} attempt(s)."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Health check failed after 60s."
+          exit 1
