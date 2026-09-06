@@ -1,6 +1,6 @@
 from __future__ import annotations
 from uuid import UUID
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from app.dependencies import get_current_user, get_queue_service
 from app.schemas.queue_item import YouTubeLinkUpdate, CastVoteRequest
 from app.services.event_bus import bus
@@ -60,3 +60,17 @@ async def get_votes(
     svc=Depends(get_queue_service),
 ):
     return await svc.get_votes(item_id)
+
+
+@router.post("/{item_id}/play")
+async def play_item(
+    item_id: UUID,
+    user_id: UUID = Depends(get_current_user),
+    svc=Depends(get_queue_service),
+):
+    item = await svc.store.queue.get_by_id(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Queue item not found")
+    next_id = await svc.play_specific(item.session_id, user_id, item_id)
+    await bus.publish(str(item.session_id), "queue_changed", {})
+    return {"next_item_id": str(next_id) if next_id else None}

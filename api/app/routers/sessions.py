@@ -53,7 +53,9 @@ async def leave_session(
             "session_updated",
             {
                 "dj_user_id": str(session.dj_user_id) if session.dj_user_id else None,
-                "host_user_id": str(session.host_user_id) if session.host_user_id else None,
+                "host_user_id": str(session.host_user_id)
+                if session.host_user_id
+                else None,
             },
         )
     return {"ok": True}
@@ -139,9 +141,13 @@ async def add_to_queue(
     if body.url:
         item = await svc.add(session_id, user_id, body.url)
     elif body.name:
-        item = await svc.add_by_search(session_id, user_id, body.name, body.artist or "")
+        item = await svc.add_by_search(
+            session_id, user_id, body.name, body.artist or ""
+        )
     else:
-        raise HTTPException(status_code=422, detail="Provide either a URL or a song name.")
+        raise HTTPException(
+            status_code=422, detail="Provide either a URL or a song name."
+        )
     await bus.publish(str(session_id), "queue_changed", {})
     return item
 
@@ -177,5 +183,29 @@ async def force_skip(
     svc=Depends(get_queue_service),
 ):
     next_id = await svc.force_skip(session_id, user_id)
+    await bus.publish(str(session_id), "queue_changed", {})
+    return {"next_item_id": str(next_id) if next_id else None}
+
+
+@router.post("/{session_id}/queue/previous")
+async def play_previous(
+    session_id: UUID,
+    user_id: UUID = Depends(get_current_user),
+    svc=Depends(get_queue_service),
+):
+    next_id = await svc.play_previous(session_id, user_id)
+    await bus.publish(str(session_id), "queue_changed", {})
+    return {"next_item_id": str(next_id) if next_id else None}
+
+
+@router.post("/{session_id}/queue/items/{item_id}/play")
+@router.post("/{session_id}/queue/{item_id}/play")
+async def play_specific(
+    session_id: UUID,
+    item_id: UUID,
+    user_id: UUID = Depends(get_current_user),
+    svc=Depends(get_queue_service),
+):
+    next_id = await svc.play_specific(session_id, user_id, item_id)
     await bus.publish(str(session_id), "queue_changed", {})
     return {"next_item_id": str(next_id) if next_id else None}

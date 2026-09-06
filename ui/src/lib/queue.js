@@ -62,3 +62,21 @@ export async function patchYouTubeLink(itemId, youtubeUrl) {
     body: JSON.stringify({ youtube_url: youtubeUrl }),
   });
 }
+
+export async function playSpecificSong(sessionId, itemId) {
+  const res = await api(`/sessions/${sessionId}/queue/items/${itemId}/play`, { method: "POST" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "Failed to play specific song");
+  }
+  return res.json();
+}
+
+export async function playPrevious(sessionId) {
+  const res = await api(`/sessions/${sessionId}/queue/previous`, { method: "POST" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "Failed to play previous song");
+  }
+  return res.json();
+}

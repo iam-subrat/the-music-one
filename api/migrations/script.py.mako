@@ -18,9 +18,18 @@ branch_labels: Union[str, Sequence[str], None] = ${repr(branch_labels)}
 depends_on: Union[str, Sequence[str], None] = ${repr(depends_on)}
 
 
+_UPGRADE_SQL = """
+-- Write raw SQL statements here
+"""
+
+_DOWNGRADE_SQL = """
+-- Write rollback SQL statements here
+"""
+
+
 def upgrade() -> None:
-    ${upgrades if upgrades else "pass"}
+    op.execute(_UPGRADE_SQL)
 
 
 def downgrade() -> None:
-    ${downgrades if downgrades else "pass"}
+    op.execute(_DOWNGRADE_SQL)

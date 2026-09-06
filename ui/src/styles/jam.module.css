@@ -337,3 +337,19 @@
 
 .queueCardResolving { opacity: 0.6; }
 .queueCardFailed { opacity: 0.4; }
+
+.queuePlayBtn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+.queuePlayBtn:hover {
+  color: var(--accent);
+}

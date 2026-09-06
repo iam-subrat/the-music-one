@@ -20,6 +20,7 @@ export default function QueueList({
   sessionId,
   userId,
   profile,
+  isDj,
   onPlatformDetected,
   onAdded,
 }) {
@@ -49,7 +50,7 @@ export default function QueueList({
           </p>
         ) : (
           upcoming.map((item, i) => (
-            <QueueCard key={item.id} item={item} index={i + 1} />
+            <QueueCard key={item.id} item={item} index={i + 1} isDj={isDj} sessionId={sessionId} />
           ))
         )}
       </div>
