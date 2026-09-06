@@ -74,12 +74,17 @@ docker --version && caddy version
 
 ---
 
-## 5. Clone the repo and configure Caddy
+## 5. Clone the repos and configure Caddy
 
 ```bash
 ssh -i ~/.ssh/musicone-ec2.pem ec2-user@<PUBLIC_IP>
 
+# Clone prod repo (main)
 git clone https://github.com/<your-org>/music-search-links.git /opt/musicone
+
+# Clone staging repo (staging)
+git clone -b staging https://github.com/<your-org>/music-search-links.git /opt/musicone-staging
+
 sudo cp /opt/musicone/infra/Caddyfile /etc/caddy/Caddyfile
 sudo systemctl restart caddy
 
@@ -120,12 +125,16 @@ chmod 600 /opt/musicone/.env.prod.sh
 ssh -i ~/.ssh/musicone-ec2.pem ec2-user@<PUBLIC_IP>
 cd /opt/musicone && source .env.prod.sh
 
+# Deploy prod API
+cd /opt/musicone && source .env.prod.sh
 COMPOSE_PROJECT_NAME=musicone-prod \
   docker compose -f docker-compose.yml up -d loki promtail grafana
 
 COMPOSE_PROJECT_NAME=musicone-prod \
   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build api
 
+# Deploy staging API
+cd /opt/musicone-staging
 COMPOSE_PROJECT_NAME=musicone-staging \
   docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build api
 
