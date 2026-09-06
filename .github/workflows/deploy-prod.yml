@@ -310,8 +310,14 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           envs: DATABASE_URL,SUPABASE_URL,SUPABASE_ANON_KEY,YOUTUBE_API_KEY,ODESLI_API_KEY,SPOTIFY_CLIENT_ID,SPOTIFY_CLIENT_SECRET,ALLOWED_ORIGINS,FRONTEND_URL,ROOT_PATH,COOKIE_DOMAIN,COOKIE_SAMESITE
           script: |
+            if [ ! -d "/opt/musicone" ]; then
+              sudo git clone -b main https://github.com/iam-subrat/the-music-one.git /opt/musicone
+              sudo chown -R ec2-user:ec2-user /opt/musicone
+            fi
             cd /opt/musicone
-            git pull
+            git fetch origin
+            git checkout main
+            git reset --hard origin/main
             caddy validate --adapter caddyfile --config infra/Caddyfile
             sudo cp infra/Caddyfile /etc/caddy/Caddyfile
             sudo systemctl reload caddy
