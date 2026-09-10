@@ -1,5 +1,5 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
-import s from '../styles/jam.module.css';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import s from "../styles/jam.module.css";
 
 // Module-level singletons: IFrame API loads once per page.
 let apiLoaded = false;
@@ -13,11 +13,11 @@ function loadApi() {
   window.onYouTubeIframeAPIReady = function () {
     prev?.();
     apiReady = true;
-    readyCallbacks.forEach(cb => cb());
+    readyCallbacks.forEach((cb) => cb());
     readyCallbacks.length = 0;
   };
-  const tag = document.createElement('script');
-  tag.src = 'https://www.youtube.com/iframe_api';
+  const tag = document.createElement("script");
+  tag.src = "https://www.youtube.com/iframe_api";
   document.head.appendChild(tag);
 }
 
@@ -28,7 +28,10 @@ function loadApi() {
  *
  * Do NOT use key={videoId} on this component. Let the videoId prop change in place.
  */
-const YouTubeAutoPlayer = forwardRef(function YouTubeAutoPlayer({ videoId, onEnded, repeat }, ref) {
+const YouTubeAutoPlayer = forwardRef(function YouTubeAutoPlayer(
+  { videoId, onEnded, repeat },
+  ref,
+) {
   const wrapperRef = useRef(null);
   const playerRef = useRef(null);
   const repeatRef = useRef(repeat);
@@ -37,19 +40,27 @@ const YouTubeAutoPlayer = forwardRef(function YouTubeAutoPlayer({ videoId, onEnd
   // changed while waiting for the YT API to load.
   const videoIdRef = useRef(videoId);
 
-  useEffect(() => { repeatRef.current = repeat; }, [repeat]);
-  useEffect(() => { onEndedRef.current = onEnded; }, [onEnded]);
+  useEffect(() => {
+    repeatRef.current = repeat;
+  }, [repeat]);
+  useEffect(() => {
+    onEndedRef.current = onEnded;
+  }, [onEnded]);
 
-  useImperativeHandle(ref, () => ({
-    play:     () => playerRef.current?.playVideo?.(),
-    pause:    () => playerRef.current?.pauseVideo?.(),
-    seek:     (sec) => playerRef.current?.seekTo?.(sec, true),
-    getTime:     () => playerRef.current?.getCurrentTime?.() ?? 0,
-    getDuration: () => playerRef.current?.getDuration?.() ?? 0,
-    // 1 = playing, 2 = paused, 0 = ended, -1 = unstarted, 3 = buffering, 5 = cued
-    getState:    () => playerRef.current?.getPlayerState?.() ?? -1,
-    isReady:     () => !!playerRef.current,
-  }), []);
+  useImperativeHandle(
+    ref,
+    () => ({
+      play: () => playerRef.current?.playVideo?.(),
+      pause: () => playerRef.current?.pauseVideo?.(),
+      seek: (sec) => playerRef.current?.seekTo?.(sec, true),
+      getTime: () => playerRef.current?.getCurrentTime?.() ?? 0,
+      getDuration: () => playerRef.current?.getDuration?.() ?? 0,
+      // 1 = playing, 2 = paused, 0 = ended, -1 = unstarted, 3 = buffering, 5 = cued
+      getState: () => playerRef.current?.getPlayerState?.() ?? -1,
+      isReady: () => !!playerRef.current,
+    }),
+    [],
+  );
 
   // Tracks whether onEnded already fired for the current video, so the
   // ENDED-state and the near-end-PAUSED safety net don't both run.
@@ -83,14 +94,24 @@ const YouTubeAutoPlayer = forwardRef(function YouTubeAutoPlayer({ videoId, onEnd
 
     function initPlayer() {
       if (!wrapperRef.current) return;
-      const playerDiv = document.createElement('div');
+      const playerDiv = document.createElement("div");
       wrapperRef.current.appendChild(playerDiv);
       playerRef.current = new window.YT.Player(playerDiv, {
         videoId: videoIdRef.current,
-        width: '100%',
-        height: '100%',
-        playerVars: { autoplay: 1, rel: 0, modestbranding: 1 },
+        width: "100%",
+        height: "100%",
+        playerVars: { autoplay: 1, rel: 0, modestbranding: 1, playsinline: 1 },
         events: {
+          onReady: () => {
+            const iframe = wrapperRef.current?.querySelector("iframe");
+            if (iframe) {
+              iframe.setAttribute(
+                "allow",
+                "autoplay; picture-in-picture; encrypted-media",
+              );
+              iframe.setAttribute("allowfullscreen", "true");
+            }
+          },
           onStateChange: (e) => {
             if (e.data === window.YT.PlayerState.ENDED) fireEnded();
           },
@@ -113,7 +134,7 @@ const YouTubeAutoPlayer = forwardRef(function YouTubeAutoPlayer({ videoId, onEnd
       }
       playerRef.current?.destroy();
       playerRef.current = null;
-      if (wrapperRef.current) wrapperRef.current.innerHTML = '';
+      if (wrapperRef.current) wrapperRef.current.innerHTML = "";
     };
   }, []);
 
