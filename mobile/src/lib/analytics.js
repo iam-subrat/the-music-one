@@ -14,10 +14,12 @@ export function initAnalytics(apiKey) {
   });
 }
 
+
+const capture = (event, props = {}) => posthog.capture(event, props);
+const identify = (userId, traits = {}) => posthog.identify(String(userId), traits);
+const reset = () => posthog.reset();
+
 export function useAnalytics() {
-  return {
-    capture: (event, props = {}) => posthog.capture(event, props),
-    identify: (userId, traits = {}) => posthog.identify(String(userId), traits),
-    reset: () => posthog.reset(),
-  };
+  return { capture, identify, reset };
 }
+

@@ -1,55 +1,80 @@
 import { useState, useEffect, useRef } from 'react';
 import { extractYouTubeId } from '../lib/platform';
-import { API_BASE } from '../lib/api';
+import { api } from '../lib/api';
 
 export function useAudioPlayer(playingItem) {
-  const audioRef = useRef(new Audio());
-  if (audioRef.current && !audioRef.current.crossOrigin) {
-    audioRef.current.crossOrigin = 'use-credentials';
-  }
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState(null);
-
+  
+  const iframeRef = useRef(null);
+  
+  // Create or get the bridge iframe once
   useEffect(() => {
-    const audio = audioRef.current;
-    audio.playsInline = true;
+    let iframe = document.getElementById('youtube-bridge-iframe');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'youtube-bridge-iframe';
+      iframe.src = 'https://themusic.one/bridge'; // Real backend URL to completely bypass local origin blocks
+      iframe.style.position = 'fixed';
+      iframe.style.width = '10px';
+      iframe.style.height = '10px';
+      iframe.style.opacity = '0.01'; // Can't be 0 or display none on webkit
+      iframe.style.pointerEvents = 'none';
+      iframe.style.zIndex = '-9999';
+      iframe.setAttribute('allow', 'autoplay');
+      document.body.appendChild(iframe);
+    }
+    iframeRef.current = iframe;
 
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-    const handleEnded = () => setIsPlaying(false);
-    const handleTimeUpdate = () => setProgress(audio.currentTime);
-    const handleLoadedMeta = () => setDuration(audio.duration || 0);
-    const handleError = (e) => {
-      console.error("Audio playback error:", e);
-      const errorDetails = audio.error ? `${audio.error.code} - ${audio.error.message}` : "Unknown media error";
-      setError(`Playback failed: ${errorDetails} | Src: ${audio.src}`);
-      setIsPlaying(false);
+    const handleMessage = (event) => {
+      // Security: Only listen to our own bridge
+      if (event.origin !== 'https://themusic.one') return;
+      
+      const data = event.data;
+      if (!data) return;
+
+      switch (data.type) {
+        case 'READY':
+          // The bridge is fully loaded and ready
+          if (iframeRef.current?.pendingVideoId) {
+            iframeRef.current.contentWindow.postMessage({ type: 'LOAD', videoId: iframeRef.current.pendingVideoId }, '*');
+            iframeRef.current.pendingVideoId = null;
+          }
+          break;
+        case 'STATE_CHANGE':
+          if (data.state === 1) { // PLAYING (1 in YouTube API)
+            setIsPlaying(true);
+          } else if (data.state === 2) { // PAUSED (2)
+            setIsPlaying(false);
+          } else if (data.state === 0) { // ENDED (0)
+            setIsPlaying(false);
+            window.dispatchEvent(new Event('yt-audio-ended'));
+          }
+          break;
+        case 'PROGRESS':
+          if (data.currentTime !== undefined) setProgress(data.currentTime);
+          if (data.duration !== undefined) setDuration(data.duration);
+          break;
+        case 'ERROR':
+          console.error('[Bridge] YT Player Error:', data.error);
+          setTimeout(() => {
+            window.dispatchEvent(new Event('yt-audio-ended'));
+          }, 3000);
+          break;
+      }
     };
 
-    audio.addEventListener('play', handlePlay);
-    audio.addEventListener('pause', handlePause);
-    audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('loadedmetadata', handleLoadedMeta);
-    audio.addEventListener('durationchange', handleLoadedMeta);
-    audio.addEventListener('error', handleError);
-
-    return () => {
-      audio.removeEventListener('play', handlePlay);
-      audio.removeEventListener('pause', handlePause);
-      audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('loadedmetadata', handleLoadedMeta);
-      audio.removeEventListener('durationchange', handleLoadedMeta);
-      audio.removeEventListener('error', handleError);
-    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, []);
 
   useEffect(() => {
     if (!playingItem) {
-      audioRef.current.pause();
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage({ type: 'PAUSE' }, '*');
+      }
       return;
     }
     
@@ -70,30 +95,13 @@ export function useAudioPlayer(playingItem) {
         }
       }
 
-      if (!isMounted) return;
+      if (!isMounted || !yId) return;
 
-      if (!yId) {
-        console.error("Cannot play: Missing YouTube ID for item", playingItem);
-        return;
-      }
-
-      const baseUrl = API_BASE || 'https://api.themusic.one';
-      const newSrc = `${baseUrl}/api/youtube/${yId}/stream`;
-      
-      if (audioRef.current.src !== newSrc) {
-        audioRef.current.src = newSrc;
-        console.log("TRYING TO PLAY AUDIO", audioRef.current.src);
-        const playPromise = audioRef.current.play();
-        if (playPromise !== undefined) {
-          playPromise
-            .then(() => console.log("AUDIO PLAYED"))
-            .catch(e => {
-               console.error("AUDIO PLAY ERROR (e.g. Autoplay policy block on iOS)", e);
-               if (e.name === "NotAllowedError") {
-                 console.log("iOS Autoplay blocked! Audio loaded but paused.");
-               }
-            });
-        }
+      if (iframeRef.current && iframeRef.current.contentWindow) {
+        // We can't guarantee if it's "READY" yet, so we post the message.
+        // If it isn't ready, the bridge won't respond, so we also save pending check:
+        iframeRef.current.pendingVideoId = yId;
+        iframeRef.current.contentWindow.postMessage({ type: 'LOAD', videoId: yId }, '*');
       }
     };
 
@@ -102,30 +110,47 @@ export function useAudioPlayer(playingItem) {
   }, [playingItem]);
 
   const togglePlay = () => {
-    if (!audioRef.current.src && playingItem) {
-      const ytUrl = playingItem.platform_links?.youtube || playingItem.platform_links?.youtubemusic || playingItem.source_url;
-      const yId = extractYouTubeId(ytUrl) || playingItem.youtube_id;
-      if (yId) {
-        const baseUrl = API_BASE || 'https://api.themusic.one';
-        audioRef.current.src = `${baseUrl}/api/youtube/${yId}/stream`;
+    if (iframeRef.current?.contentWindow) {
+      if (isPlaying) {
+        iframeRef.current.contentWindow.postMessage({ type: 'PAUSE' }, '*');
+      } else {
+        iframeRef.current.contentWindow.postMessage({ type: 'PLAY' }, '*');
       }
-    }
-    if (audioRef.current.paused && audioRef.current.src) {
-      console.log("TRYING TO PLAY AUDIO", audioRef.current.src);
-      audioRef.current.play()
-        .then(() => console.log("AUDIO PLAYED"))
-        .catch(e => console.error("AUDIO PLAY ERROR", e));
-    } else {
-      audioRef.current.pause();
     }
   };
 
   const seek = (time) => {
-    if (audioRef.current.duration) {
-      audioRef.current.currentTime = time;
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({ type: 'SEEK', time }, '*');
       setProgress(time);
     }
   };
+
+  const fakeAudioElement = useRef({
+    addEventListener: (eventName, handler) => {
+      if (eventName === 'ended') {
+        window.addEventListener('yt-audio-ended', handler);
+      }
+    },
+    removeEventListener: (eventName, handler) => {
+      if (eventName === 'ended') {
+        window.removeEventListener('yt-audio-ended', handler);
+      }
+    },
+    play: async () => { 
+        if (iframeRef.current?.contentWindow) {
+           iframeRef.current.contentWindow.postMessage({ type: 'PLAY' }, '*');
+        }
+    },
+    set currentTime(val) {
+        if (iframeRef.current?.contentWindow) {
+            iframeRef.current.contentWindow.postMessage({ type: 'SEEK', time: val }, '*');
+        }
+    },
+    get currentTime() {
+        return progress;
+    }
+  }).current;
 
   return {
     isPlaying,
@@ -134,6 +159,6 @@ export function useAudioPlayer(playingItem) {
     error,
     togglePlay,
     seek,
-    audioElement: audioRef.current
+    audioElement: fakeAudioElement
   };
 }

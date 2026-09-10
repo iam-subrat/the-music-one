@@ -16,7 +16,6 @@ from app.routers import (
     events,
     playlists,
     mobile_auth,
-    stream,
 )
 
 configure_logging(settings.log_level)
@@ -59,7 +58,6 @@ app.include_router(items.router, prefix="/api/items", tags=["items"])
 app.include_router(profiles.router, prefix="/api/profiles", tags=["profiles"])
 app.include_router(songs.router, prefix="/api/song", tags=["songs"])
 app.include_router(youtube.router, prefix="/api/youtube", tags=["youtube"])
-app.include_router(stream.router, prefix="/api/youtube", tags=["youtube_stream"])
 app.include_router(flags.router, prefix="/api/flags", tags=["flags"])
 app.include_router(events.router, prefix="/api/sessions", tags=["events"])
 app.include_router(playlists.router, prefix="/api/playlists", tags=["playlists"])
