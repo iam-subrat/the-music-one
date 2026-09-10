@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
 import { playNext, playPrevious, playSpecificSong, castSkipVote, removeSkipVote } from "../lib/queue";
 import { useSkipVotes } from "../hooks/useSkipVotes";
-import { Play, Pause, SkipForward, SkipBack, Repeat, Repeat1 } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, Repeat, Repeat1, ThumbsDown } from "lucide-react";
 
 function formatTime(seconds) {
   if (!seconds || isNaN(seconds)) return "0:00";
@@ -80,7 +80,16 @@ export default function PlayerControls({ session, playingItem, isHost, queueItem
             </p>
           </div>
           {isHost && (
-            <div className="flex items-center gap-4 shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleSkipVote}
+                className={`relative w-10 h-10 border-2 border-black rounded-full flex items-center justify-center active:scale-90 transition-transform ${hasVoted ? 'bg-black text-lime-400' : 'bg-white text-black'}`}
+              >
+                <ThumbsDown size={18} />
+                <div className="absolute -top-2 -right-2 bg-white border-2 border-black text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full">
+                  {skipVotes}
+                </div>
+              </button>
               <button
                 onClick={() => setRepeatMode(m => m === "none" ? "single" : m === "single" ? "queue" : "none")}
                 className={`w-10 h-10 border-2 border-black rounded-full flex items-center justify-center active:scale-90 transition-transform ${repeatMode !== "none" ? "bg-lime-300" : "bg-white"}`}
@@ -111,13 +120,13 @@ export default function PlayerControls({ session, playingItem, isHost, queueItem
               </button>
             </div>
           )}
-          {true && (
+          {!isHost && (
             <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={handleSkipVote}
-                  className={`border-2 border-black rounded-full px-3 py-2 text-xs font-bold uppercase tracking-wider active:scale-95 transition-transform ${hasVoted ? 'bg-black text-lime-400' : 'bg-white text-black'}`}
+                  className={`border-2 border-black rounded-full px-3 py-2 text-xs font-bold uppercase tracking-wider active:scale-95 transition-transform flex items-center gap-1.5 ${hasVoted ? 'bg-black text-lime-400' : 'bg-white text-black'}`}
                 >
-                  👎 Skip ({skipVotes}/{skipThreshold}){hasVoted ? " ✓" : ""}
+                  <ThumbsDown size={14} /> Skip ({skipVotes}/{skipThreshold}) {hasVoted ? "✓" : ""}
                 </button>
                 <div className="bg-white border-2 border-black rounded-full px-3 py-2 text-xs font-bold uppercase tracking-wider">
                   {isPlaying ? "Playing" : "Paused"}
