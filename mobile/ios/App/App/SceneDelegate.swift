@@ -401,16 +401,20 @@ final class BackgroundAudioManager {
     }
 
     func handleEnterBackground() {
-        do {
-            try AVAudioSession.sharedInstance().setActive(true)
-        } catch {
-            NSLog("[BackgroundAudioManager] Failed to re-activate AVAudioSession: \(error.localizedDescription)")
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                try AVAudioSession.sharedInstance().setActive(true)
+            } catch {
+                NSLog("[BackgroundAudioManager] Failed to re-activate AVAudioSession: \(error.localizedDescription)")
+            }
         }
     }
 
     func handleEnterForeground() {
-        do {
-            try AVAudioSession.sharedInstance().setActive(true)
-        } catch {}
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                try AVAudioSession.sharedInstance().setActive(true)
+            } catch {}
+        }
     }
 }
