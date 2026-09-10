@@ -196,6 +196,8 @@ export default function JamRoom() {
         isHost={isHost}
         queueItems={queueItems}
         refresh={refresh}
+        userId={user?.id}
+        participantCount={participants?.length || 1}
       />
     </div>
   );

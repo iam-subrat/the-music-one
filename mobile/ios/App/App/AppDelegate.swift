@@ -8,14 +8,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Configure AVAudioSession for background audio playback synchronously on launch
-        do {
-            let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .default, options: [])
-            try session.setActive(true)
-            NSLog("[AppDelegate] ✅ AVAudioSession configured with .moviePlayback for Picture-in-Picture")
-        } catch {
-            NSLog("[AppDelegate] ❌ Failed to set AVAudioSession category: \(error.localizedDescription)")
+        // Configure AVAudioSession for background audio playback asynchronously on launch to avoid UI hang
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                let session = AVAudioSession.sharedInstance()
+                try session.setCategory(.playback, mode: .default, options: [])
+                // As of iOS 17, setActive(true) should not be called synchronously on the main thread.
+                try session.setActive(true)
+                NSLog("[AppDelegate] ✅ AVAudioSession configured with .playback for background audio")
+            } catch {
+                NSLog("[AppDelegate] ❌ Failed to set AVAudioSession category: \(error.localizedDescription)")
+            }
         }
         return true
     }

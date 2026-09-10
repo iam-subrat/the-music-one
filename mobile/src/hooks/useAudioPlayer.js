@@ -9,6 +9,7 @@ export function useAudioPlayer(playingItem) {
   const [error, setError] = useState(null);
   
   const iframeRef = useRef(null);
+  const currentVideoIdRef = useRef(null);
   
   // Create or get the bridge iframe once
   useEffect(() => {
@@ -98,6 +99,10 @@ export function useAudioPlayer(playingItem) {
       if (!isMounted || !yId) return;
 
       if (iframeRef.current && iframeRef.current.contentWindow) {
+        // If we heavily re-render (e.g. queue fetch completed metadata), do not reload if already loaded
+        if (currentVideoIdRef.current === yId) return;
+        currentVideoIdRef.current = yId;
+        
         // We can't guarantee if it's "READY" yet, so we post the message.
         // If it isn't ready, the bridge won't respond, so we also save pending check:
         iframeRef.current.pendingVideoId = yId;
@@ -107,7 +112,7 @@ export function useAudioPlayer(playingItem) {
 
     resolveAndPlay();
     return () => { isMounted = false; };
-  }, [playingItem]);
+  }, [playingItem?.id, playingItem?.youtube_id, playingItem?.source_url]);
 
   const togglePlay = () => {
     if (iframeRef.current?.contentWindow) {

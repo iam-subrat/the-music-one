@@ -1,7 +1,8 @@
 let lastSkipTime = 0;
 import { useEffect, useState } from "react";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
-import { playNext, playPrevious, playSpecificSong } from "../lib/queue";
+import { playNext, playPrevious, playSpecificSong, castSkipVote, removeSkipVote } from "../lib/queue";
+import { useSkipVotes } from "../hooks/useSkipVotes";
 import { Play, Pause, SkipForward, SkipBack, Repeat, Repeat1 } from "lucide-react";
 
 function formatTime(seconds) {
@@ -11,11 +12,18 @@ function formatTime(seconds) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export default function PlayerControls({ session, playingItem, isHost, queueItems, refresh }) {
+export default function PlayerControls({ session, playingItem, isHost, queueItems, refresh, userId, participantCount }) {
   const [repeatMode, setRepeatMode] = useState("none");
+  const skipThreshold = participantCount ? Math.floor(participantCount / 2) + 1 : 1;
 
   const { isPlaying, progress, duration, togglePlay, seek, audioElement } =
     useAudioPlayer(playingItem);
+    
+  const { count: skipVotes, hasVoted } = useSkipVotes(
+    playingItem?.id,
+    userId,
+    session?.id
+  );
 
   useEffect(() => {
     const handleEnd = () => {
@@ -46,6 +54,19 @@ export default function PlayerControls({ session, playingItem, isHost, queueItem
   const handleSeek = (e) => {
     const val = parseFloat(e.target.value);
     seek(val);
+  };
+  
+  const handleSkipVote = async () => {
+    try {
+      if (hasVoted) {
+        await removeSkipVote(playingItem.id, userId);
+      } else {
+        const skipped = await castSkipVote(playingItem.id, skipThreshold);
+        if (skipped) refresh?.();
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   return (
@@ -91,8 +112,16 @@ export default function PlayerControls({ session, playingItem, isHost, queueItem
             </div>
           )}
           {!isHost && (
-            <div className="bg-white border-2 border-black rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wider">
-              {isPlaying ? "Playing" : "Paused"}
+            <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={handleSkipVote}
+                  className={`border-2 border-black rounded-full px-3 py-2 text-xs font-bold uppercase tracking-wider active:scale-95 transition-transform ${hasVoted ? 'bg-black text-lime-400' : 'bg-white text-black'}`}
+                >
+                  👎 Skip ({skipVotes}/{skipThreshold}){hasVoted ? " ✓" : ""}
+                </button>
+                <div className="bg-white border-2 border-black rounded-full px-3 py-2 text-xs font-bold uppercase tracking-wider">
+                  {isPlaying ? "Playing" : "Paused"}
+                </div>
             </div>
           )}
         </div>
@@ -106,7 +135,7 @@ export default function PlayerControls({ session, playingItem, isHost, queueItem
             value={progress}
             onChange={handleSeek}
             disabled={!isHost || !duration}
-            className="flex-1 h-3 bg-white border-2 border-black rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-black [&::-webkit-slider-thumb]:rounded-full cursor-pointer"
+            className="flex-1 h-3 bg-white border-2 border-black rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-black [&::-webkit-slider-thumb]:rounded-full cursor-pointer disabled:opacity-50"
           />
           <span>{formatTime(duration)}</span>
         </div>
