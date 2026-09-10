@@ -4,7 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useSession } from "../hooks/useSession";
 import { useQueue } from "../hooks/useQueue";
 import { useParticipants } from "../hooks/useParticipants";
-import { searchAndAddToQueue, playSpecificSong, playNext } from "../lib/queue";
+import { addToQueue, searchAndAddToQueue, playSpecificSong, playNext } from "../lib/queue";
 import PlayerControls from "../components/PlayerControls";
 import { Search, Users, Copy, Check, Music, ArrowLeft } from "lucide-react";
 
@@ -55,12 +55,17 @@ export default function JamRoom() {
     if (!query.trim()) return;
     setIsAdding(true);
     try {
-      await searchAndAddToQueue(session.id, query.trim(), "");
+      const text = query.trim();
+      if (text.startsWith("http://") || text.startsWith("https://")) {
+        await addToQueue(session.id, text);
+      } else {
+        await searchAndAddToQueue(session.id, text, "");
+      }
       refresh();
       setQuery("");
     } catch (err) {
       console.error(err);
-      alert("Could not add song.");
+      alert(`Could not add song: ${err.message}`);
     } finally {
       setIsAdding(false);
     }

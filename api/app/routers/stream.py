@@ -1,22 +1,18 @@
 import logging
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import RedirectResponse
+import httpx
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 import yt_dlp
 import asyncio
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Basic in-memory cache to avoid repeated yt-dlp calls for the same video.
-# Stream URLs typically expire after ~6 hours, so caching for 1 hour is safe.
 _STREAM_CACHE = {}
 _CACHE_TTL = 3600  # 1 hour in seconds
 
-
 async def get_stream_url(video_id: str) -> str:
     now = asyncio.get_event_loop().time()
-
-    # Check cache
     if video_id in _STREAM_CACHE:
         url, timestamp = _STREAM_CACHE[video_id]
         if now - timestamp < _CACHE_TTL:
@@ -32,13 +28,11 @@ async def get_stream_url(video_id: str) -> str:
 
     def extract():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # We use extract_info with download=False
             return ydl.extract_info(
                 f"https://www.youtube.com/watch?v={video_id}", download=False
             )
 
     try:
-        # Run in threadpool as yt-dlp is blocking
         info = await asyncio.to_thread(extract)
         if not info or "url" not in info:
             raise ValueError("Could not extract stream URL")
@@ -50,14 +44,38 @@ async def get_stream_url(video_id: str) -> str:
         logger.error(f"Failed to extract stream for {video_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to resolve audio stream")
 
-
 @router.get("/{video_id}/stream")
-async def get_youtube_stream(video_id: str):
+async def get_youtube_stream(video_id: str, request: Request):
     """
-    Resolves a YouTube video ID to a direct audio stream URL and redirects the client.
-    This allows native iOS/Android media players to stream the audio directly
-    without needing a YouTube iframe.
+    Proxies a YouTube video audio stream using yt-dlp to bypass IP blocks.
     """
     stream_url = await get_stream_url(video_id)
-    # Redirecting directly to the stream URL so the HTML5 <audio> tag can consume it
-    return RedirectResponse(url=stream_url)
+    headers = {"Range": request.headers.get("Range", "bytes=0-")}
+    
+    # Needs a custom generator that safely manages the httpx client context
+    async def stream_generator():
+        async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with client.stream("GET", stream_url, headers=headers) as r:
+                async for chunk in r.aiter_bytes():
+                    yield chunk
+
+    # We do a quick initial HEAD request so we can grab the content length and properties
+    # to pass them faithfully into the StreamingResponse, allowing iOS to scrub the audio.
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        head_r = await client.head(stream_url, headers=headers)
+        
+    response_headers = {
+        "Accept-Ranges": "bytes",
+        "Content-Type": head_r.headers.get("Content-Type", "audio/mp4"),
+    }
+    
+    if "Content-Range" in head_r.headers:
+        response_headers["Content-Range"] = head_r.headers["Content-Range"]
+    if "Content-Length" in head_r.headers:
+        response_headers["Content-Length"] = head_r.headers["Content-Length"]
+
+    return StreamingResponse(
+        stream_generator(),
+        status_code=head_r.status_code if head_r.status_code in [200, 206] else 206,
+        headers=response_headers
+    )
