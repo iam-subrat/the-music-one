@@ -13,7 +13,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, mode: .moviePlayback, options: [.allowAirPlay])
             try session.setActive(true)
-            NSLog("[AppDelegate] ✅ AVAudioSession configured for background playback")
+            NSLog("[AppDelegate] ✅ AVAudioSession configured with .moviePlayback for Picture-in-Picture")
         } catch {
             NSLog("[AppDelegate] ❌ Failed to set AVAudioSession category: \(error.localizedDescription)")
         }

@@ -336,10 +336,12 @@ final class AuthNavigationDelegateProxy: NSObject, WKNavigationDelegate, ASWebAu
                 ]
 
                 if let ac = HTTPCookie(properties: accessProps) {
+                    HTTPCookieStorage.shared.setCookie(ac)
                     group.enter()
                     cookieStore.setCookie(ac) { group.leave() }
                 }
                 if let rc = HTTPCookie(properties: refreshProps) {
+                    HTTPCookieStorage.shared.setCookie(rc)
                     group.enter()
                     cookieStore.setCookie(rc) { group.leave() }
                 }
@@ -373,7 +375,7 @@ final class AuthNavigationDelegateProxy: NSObject, WKNavigationDelegate, ASWebAu
 final class BackgroundAudioManager {
     static let shared = BackgroundAudioManager()
     private weak var webView: WKWebView?
-    private var didInjectScript = false
+    private var didConfigure = false
 
     func attach(to bridgeVC: CAPBridgeViewController) {
         _ = bridgeVC.view
@@ -384,50 +386,18 @@ final class BackgroundAudioManager {
 
         self.webView = webView
 
-        // 1. Ensure inline playback and AirPlay capabilities
+        // 1. Ensure inline playback and AirPlay capabilities on WKWebView
         webView.configuration.allowsInlineMediaPlayback = true
         webView.configuration.allowsAirPlayForMediaPlayback = true
+        webView.configuration.allowsPictureInPictureMediaPlayback = true
         webView.configuration.mediaTypesRequiringUserActionForPlayback = []
         if #available(iOS 14.5, *) {
             webView.configuration.preferences.isFraudulentWebsiteWarningEnabled = false
         }
 
-        // 2. Inject Page Visibility bypass script into all frames (including YouTube iframe)
-        guard !didInjectScript else { return }
-        didInjectScript = true
-
-        let bgAudioScript = """
-        (function() {
-            if (window.__musicone_bg_audio_injected) return;
-            window.__musicone_bg_audio_injected = true;
-
-            // Override Page Visibility API so YouTube player never detects background/hidden state
-            try {
-                Object.defineProperty(document, 'hidden', { get: function() { return false; }, configurable: true });
-                Object.defineProperty(document, 'visibilityState', { get: function() { return 'visible'; }, configurable: true });
-                Object.defineProperty(document, 'webkitHidden', { get: function() { return false; }, configurable: true });
-                Object.defineProperty(document, 'webkitVisibilityState', { get: function() { return 'visible'; }, configurable: true });
-            } catch(e) {}
-
-            // Intercept visibilitychange, blur, and pagehide events
-            var blockEvent = function(e) {
-                e.stopImmediatePropagation();
-            };
-            window.addEventListener('visibilitychange', blockEvent, true);
-            document.addEventListener('visibilitychange', blockEvent, true);
-            window.addEventListener('blur', blockEvent, true);
-            window.addEventListener('pagehide', blockEvent, true);
-
-            try {
-                document.hasFocus = function() { return true; };
-            } catch(e) {}
-        })();
-        """
-
-        let userScript = WKUserScript(source: bgAudioScript, injectionTime: .atDocumentStart, forMainFrameOnly: false)
-        webView.configuration.userContentController.addUserScript(userScript)
-        webView.evaluateJavaScript(bgAudioScript, completionHandler: nil)
-        NSLog("[BackgroundAudioManager] ✅ Configured background audio script & media settings on WKWebView")
+        guard !didConfigure else { return }
+        didConfigure = true
+        NSLog("[BackgroundAudioManager] ✅ Configured WKWebView media capabilities")
     }
 
     func handleEnterBackground() {
@@ -436,19 +406,6 @@ final class BackgroundAudioManager {
         } catch {
             NSLog("[BackgroundAudioManager] Failed to re-activate AVAudioSession: \(error.localizedDescription)")
         }
-
-        // Re-assert playback on media elements if WebKit attempted to pause
-        let resumeScript = """
-        (function() {
-            var media = document.querySelectorAll('video, audio');
-            for (var i = 0; i < media.length; i++) {
-                if (media[i].paused && !media[i].ended && media[i].currentTime > 0) {
-                    media[i].play().catch(function(){});
-                }
-            }
-        })();
-        """
-        webView?.evaluateJavaScript(resumeScript, completionHandler: nil)
     }
 
     func handleEnterForeground() {
