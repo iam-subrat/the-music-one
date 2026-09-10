@@ -4,6 +4,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import JamRoom from './pages/JamRoom';
 import NotFound from './pages/NotFound';
+import BridgePlayer from './pages/BridgePlayer';
 import { FLAGS } from './lib/flags';
 import { useAuth } from './hooks/useAuth';
 import { createSession } from './lib/session';
@@ -39,6 +40,7 @@ export default function App() {
         <Route path="/login" element={<LoginC />} />
         {FLAGS.JAM_SESSION && <Route path="/jam/new"   element={<JamNew />} />}
         {FLAGS.JAM_SESSION && <Route path="/jam/:code" element={<JamRoomC />} />}
+        <Route path="/bridge" element={<BridgePlayer />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       {!tuiMode && <TuiToggle />}

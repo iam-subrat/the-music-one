@@ -1,3 +1,4 @@
+let lastSkipTime = 0;
 import { useEffect, useState } from "react";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
 import { playNext, playPrevious, playSpecificSong } from "../lib/queue";
@@ -23,6 +24,9 @@ export default function PlayerControls({ session, playingItem, isHost, queueItem
           audioElement.currentTime = 0;
           audioElement.play().catch(console.error);
         } else {
+          const now = Date.now();
+          if (now - lastSkipTime < 2500) return;
+          lastSkipTime = now;
           playNext(session.id).catch(e => {
              if (repeatMode === "queue" && queueItems?.length > 0) {
                 playSpecificSong(session.id, queueItems[0].id).catch(console.error);

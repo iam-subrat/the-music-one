@@ -100,7 +100,7 @@ const YouTubeAutoPlayer = forwardRef(function YouTubeAutoPlayer(
         videoId: videoIdRef.current,
         width: "100%",
         height: "100%",
-        playerVars: { autoplay: 1, rel: 0, modestbranding: 1, playsinline: 1 },
+        playerVars: { autoplay: 1, rel: 0, modestbranding: 1, playsinline: 1, origin: window.location.origin },
         events: {
           onReady: () => {
             const iframe = wrapperRef.current?.querySelector("iframe");

@@ -14,7 +14,7 @@ export default function JamRoom() {
   const { user, loading: authLoading } = useAuth();
 
   const { session, loading: sessionLoading } = useSession(code);
-  const { items: queueItems, refresh } = useQueue(session?.id);
+  const { items: queueItems, refresh, addItem } = useQueue(session?.id);
   const { participants } = useParticipants(session?.id);
 
   const [query, setQuery] = useState("");
@@ -56,10 +56,14 @@ export default function JamRoom() {
     setIsAdding(true);
     try {
       const text = query.trim();
+      let addedItem;
       if (text.startsWith("http://") || text.startsWith("https://")) {
-        await addToQueue(session.id, text);
+        addedItem = await addToQueue(session.id, text);
       } else {
-        await searchAndAddToQueue(session.id, text, "");
+        addedItem = await searchAndAddToQueue(session.id, text, "");
+      }
+      if (addedItem && addedItem.id) {
+        addItem(addedItem);
       }
       refresh();
       setQuery("");
