@@ -49,29 +49,35 @@ async def get_stream_url(video_id: str) -> str:
 @router.get("/{video_id}/stream")
 async def get_youtube_stream(video_id: str, request: Request):
     stream_url = await get_stream_url(video_id)
-    headers = {"Range": request.headers.get("Range", "bytes=0-")}
+    
+    req_headers = {
+        "User-Agent": request.headers.get("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)")
+    }
+    if "range" in request.headers:
+        req_headers["Range"] = request.headers["range"]
 
-    async def stream_generator():
-        async with httpx.AsyncClient(follow_redirects=True, timeout=None) as client:
-            async with client.stream("GET", stream_url, headers=headers) as r:
-                async for chunk in r.aiter_bytes(chunk_size=65536):
-                    yield chunk
-
-    async with httpx.AsyncClient(follow_redirects=True, timeout=None) as client:
-        head_r = await client.head(stream_url, headers=headers)
+    client = httpx.AsyncClient(follow_redirects=True, timeout=None)
+    r = await client.send(client.build_request("GET", stream_url, headers=req_headers), stream=True)
 
     response_headers = {
         "Accept-Ranges": "bytes",
-        "Content-Type": head_r.headers.get("Content-Type", "audio/mp4"),
+        "Content-Type": r.headers.get("Content-Type", "audio/mp4"),
     }
+    if "content-range" in r.headers:
+        response_headers["Content-Range"] = r.headers["content-range"]
+    if "content-length" in r.headers:
+        response_headers["Content-Length"] = r.headers["content-length"]
 
-    if "Content-Range" in head_r.headers:
-        response_headers["Content-Range"] = head_r.headers["Content-Range"]
-    if "Content-Length" in head_r.headers:
-        response_headers["Content-Length"] = head_r.headers["Content-Length"]
+    async def stream_generator():
+        try:
+            async for chunk in r.aiter_bytes(chunk_size=65536):
+                yield chunk
+        finally:
+            await r.aclose()
+            await client.aclose()
 
     return StreamingResponse(
         stream_generator(),
-        status_code=head_r.status_code if head_r.status_code in [200, 206] else 206,
+        status_code=r.status_code if r.status_code in [200, 206] else 200,
         headers=response_headers,
     )
