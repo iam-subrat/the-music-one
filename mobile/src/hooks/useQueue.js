@@ -1,4 +1,3 @@
-// ui/src/hooks/useQueue.js — full file replacement
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import { openSSE } from '../lib/sse';
@@ -24,7 +23,7 @@ export function useQueue(sessionId) {
       onReconnect: () => { console.log('[useQueue] onReconnect'); refresh(); },
     });
     return cleanup;
-  }, [sessionId]);
+  }, [sessionId, refresh]);
 
   const addItem = useCallback((item) => {
     setItems(prev => [...prev, item]);

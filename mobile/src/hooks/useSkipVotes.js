@@ -25,7 +25,7 @@ export function useSkipVotes(queueItemId, userId, sessionId) {
     setHasVoted(false);
     if (!queueItemId) return;
     fetchVotes();
-  }, [fetchVotes]);
+  }, [fetchVotes, queueItemId]);
 
   useEffect(() => {
     if (!queueItemId || !sessionId) return;

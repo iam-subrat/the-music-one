@@ -137,7 +137,7 @@ export function useMediaSession({ enabled, playerRef, metadata, onNext, onPrev }
           : [],
       });
     } catch {}
-  }, [enabled, metadata?.title, metadata?.artist, metadata?.artwork]);
+  }, [enabled, metadata]);
 
   // Mirror YouTube player state → silent audio + mediaSession.playbackState.
   // Position state is required for Chrome to keep nexttrack/previoustrack

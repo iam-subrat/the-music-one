@@ -55,7 +55,7 @@ export function extractYouTubeId(url) {
   if (!url) return null;
   try {
     const u = new URL(url);
-    if (u.hostname.includes('youtu.be')) return u.pathname.slice(1);
+    if (u.hostname === 'youtu.be' || u.hostname.endsWith('.youtu.be')) return u.pathname.slice(1);
     const v = u.searchParams.get('v');
     if (v) return v;
     const match = u.pathname.match(/\/(v|embed)\/([^/?]+)/);
@@ -68,8 +68,8 @@ export function isYouTubeSearchUrl(url) {
   if (!url) return false;
   try {
     const { hostname, pathname, searchParams } = new URL(url);
-    if (hostname.includes('music.youtube.com') && pathname === '/search') return true;
-    if ((hostname.includes('youtube.com') || hostname.includes('youtu.be')) &&
+    if ((hostname === "music.youtube.com" || hostname.endsWith(".music.youtube.com")) && pathname === "/search") return true;
+    if ((hostname === "youtube.com" || hostname.endsWith(".youtube.com") || hostname === "youtu.be" || hostname.endsWith(".youtu.be")) &&
         (pathname === '/results' || pathname === '/search') &&
         (searchParams.has('q') || searchParams.has('search_query'))) return true;
     return false;

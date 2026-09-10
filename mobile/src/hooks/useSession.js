@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import { openSSE } from '../lib/sse';
 
@@ -6,7 +6,7 @@ export function useSession(code) {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  async function fetchSession() {
+  const fetchSession = useCallback(async () => {
     if (!code) return null;
     const res = await api(`/sessions/${code}`);
     if (res.ok) {
@@ -16,21 +16,20 @@ export function useSession(code) {
     }
     setSession(null);
     return null;
-  }
+  }, [code]);
 
   useEffect(() => {
     if (!code) return;
     fetchSession().finally(() => setLoading(false));
-  }, [code]);
+  }, [code, fetchSession]);
 
-  // session?.id in dep array — React tracks state, not refs
   useEffect(() => {
     if (!session?.id) return;
     return openSSE(session.id, {
       session_updated: (payload) => setSession(prev => ({ ...prev, ...payload })),
       onReconnect: () => fetchSession(),
     });
-  }, [session?.id]);
+  }, [session?.id, fetchSession]);
 
   return { session, loading, setSession };
 }

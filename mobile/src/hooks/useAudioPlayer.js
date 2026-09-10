@@ -59,8 +59,8 @@ export function useAudioPlayer(playingItem) {
   }, [playingItem]);
 
   const togglePlay = () => {
-    if (audioRef.current.paused) audioRef.current.play();
-    else audioRef.current.pause();
+      audioRef.current.play().catch(console.error);
+      audioRef.current.pause();
   };
 
   const seek = (time) => {
@@ -77,6 +77,6 @@ export function useAudioPlayer(playingItem) {
     error,
     togglePlay,
     seek,
-    audioElement: audioRef.current
+    audioElement: audioElement
   };
 }

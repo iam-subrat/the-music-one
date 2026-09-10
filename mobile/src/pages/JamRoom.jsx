@@ -148,7 +148,7 @@ export default function JamRoom() {
           </button>
         )}
         <div className="space-y-3">
-          {queueItems.map((item, idx) => (
+          {queueItems.map((item) => (
             <button
               key={item.id}
               onClick={() => isHost ? playSpecificSong(session.id, item.id).then(() => refresh()).catch(e => alert("Could not skip to this song: " + e.message)) : null}

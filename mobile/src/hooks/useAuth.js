@@ -43,7 +43,7 @@ export function useAuth() {
         }
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [capture, identify]);
 
   function signInWithGoogle(returnTo) {
     if (typeof returnTo === 'string' && returnTo) {
