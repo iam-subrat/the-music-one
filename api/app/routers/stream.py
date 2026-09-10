@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 _STREAM_CACHE = {}
 _CACHE_TTL = 3600  # 1 hour in seconds
 
+
 async def get_stream_url(video_id: str) -> str:
     now = asyncio.get_event_loop().time()
     if video_id in _STREAM_CACHE:
@@ -44,31 +45,26 @@ async def get_stream_url(video_id: str) -> str:
         logger.error(f"Failed to extract stream for {video_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to resolve audio stream")
 
+
 @router.get("/{video_id}/stream")
 async def get_youtube_stream(video_id: str, request: Request):
-    """
-    Proxies a YouTube video audio stream using yt-dlp to bypass IP blocks.
-    """
     stream_url = await get_stream_url(video_id)
     headers = {"Range": request.headers.get("Range", "bytes=0-")}
-    
-    # Needs a custom generator that safely manages the httpx client context
+
     async def stream_generator():
-        async with httpx.AsyncClient(follow_redirects=True) as client:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=None) as client:
             async with client.stream("GET", stream_url, headers=headers) as r:
-                async for chunk in r.aiter_bytes():
+                async for chunk in r.aiter_bytes(chunk_size=65536):
                     yield chunk
 
-    # We do a quick initial HEAD request so we can grab the content length and properties
-    # to pass them faithfully into the StreamingResponse, allowing iOS to scrub the audio.
-    async with httpx.AsyncClient(follow_redirects=True) as client:
+    async with httpx.AsyncClient(follow_redirects=True, timeout=None) as client:
         head_r = await client.head(stream_url, headers=headers)
-        
+
     response_headers = {
         "Accept-Ranges": "bytes",
         "Content-Type": head_r.headers.get("Content-Type", "audio/mp4"),
     }
-    
+
     if "Content-Range" in head_r.headers:
         response_headers["Content-Range"] = head_r.headers["Content-Range"]
     if "Content-Length" in head_r.headers:
@@ -77,5 +73,5 @@ async def get_youtube_stream(video_id: str, request: Request):
     return StreamingResponse(
         stream_generator(),
         status_code=head_r.status_code if head_r.status_code in [200, 206] else 206,
-        headers=response_headers
+        headers=response_headers,
     )
