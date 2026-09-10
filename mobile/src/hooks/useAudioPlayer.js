@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { extractYouTubeId } from '../lib/platform';
 
 export function useAudioPlayer(playingItem) {
   const audioRef = useRef(new Audio());
@@ -9,13 +10,11 @@ export function useAudioPlayer(playingItem) {
 
   useEffect(() => {
     const audio = audioRef.current;
-    audio.crossOrigin = "use-credentials";
-
     audio.playsInline = true;
 
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
-    const handleEnded = () => setIsPlaying(false); // Should maybe trigger playNext? Handled in component.
+    const handleEnded = () => setIsPlaying(false);
     const handleTimeUpdate = () => setProgress(audio.currentTime);
     const handleLoadedMeta = () => setDuration(audio.duration);
     const handleError = (e) => {
@@ -50,7 +49,13 @@ export function useAudioPlayer(playingItem) {
     
     // Check if it's the same song to avoid restarting
     const apiUrl = import.meta.env.VITE_API_URL || 'https://api.themusic.one';
-    const newSrc = `${apiUrl}/api/youtube/${playingItem.youtube_id || playingItem.id}/stream`;
+    const ytUrl = playingItem.platform_links?.youtube || playingItem.platform_links?.youtubemusic || playingItem.source_url;
+    const yId = extractYouTubeId(ytUrl) || playingItem.youtube_id;
+    if (!yId) {
+      console.error("Cannot play: Missing YouTube ID for item", playingItem);
+      return;
+    }
+    const newSrc = `${apiUrl}/api/youtube/${yId}/stream`;
     
     if (audioRef.current.src !== newSrc) {
       audioRef.current.src = newSrc;
@@ -59,8 +64,11 @@ export function useAudioPlayer(playingItem) {
   }, [playingItem]);
 
   const togglePlay = () => {
+    if (audioRef.current.paused) {
       audioRef.current.play().catch(console.error);
+    } else {
       audioRef.current.pause();
+    }
   };
 
   const seek = (time) => {
@@ -77,6 +85,6 @@ export function useAudioPlayer(playingItem) {
     error,
     togglePlay,
     seek,
-    audioElement: audioElement
+    audioElement: audioRef.current
   };
 }
