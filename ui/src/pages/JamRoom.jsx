@@ -279,12 +279,13 @@ export default function JamRoom() {
                 setSession((prev) => ({ ...prev, repeat_mode: mode }))
               }
             />
-            <QueueList
+                        <QueueList
               items={queueItems}
               repeatMode={session.repeat_mode ?? "none"}
               sessionId={session.id}
               userId={user?.id}
               profile={profile}
+              isDj={session?.dj_user_id === user?.id || session?.host_user_id === user?.id}
               onPlatformDetected={setPreferredPlatform}
               onAdded={(item) => {
                 addItem(item);

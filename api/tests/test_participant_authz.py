@@ -7,6 +7,7 @@ Steps covered:
   4. Heartbeat router guard
   5. SSE stream router guard
 """
+
 from __future__ import annotations
 
 import pytest
@@ -21,6 +22,7 @@ from app.models.session import SessionParticipant
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
+
 def _make_queue_svc(is_participant: bool = True):
     """QueueService with store.sessions.is_participant pre-configured."""
     store = MagicMock()
@@ -34,6 +36,7 @@ def _make_queue_svc(is_participant: bool = True):
 # ═══════════════════════════════════════════════════════════════════════════
 # Step 1 — SessionRepository.is_participant
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_is_participant_returns_true_when_user_in_session():
@@ -74,6 +77,7 @@ async def test_is_participant_returns_false_when_user_not_in_session():
 # Step 2 — SessionService.require_participant
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_require_participant_passes_when_user_is_participant():
     store = MagicMock()
@@ -100,12 +104,18 @@ async def test_require_participant_raises_403_when_user_not_participant():
 # Step 3 — QueueService guards
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_add_raises_when_user_not_participant():
     svc = _make_queue_svc(is_participant=False)
-    svc.song_svc.resolve_song_meta = AsyncMock(return_value={
-        "title": "T", "artist": "A", "thumbnailUrl": None, "platformLinks": {}
-    })
+    svc.song_svc.resolve_song_meta = AsyncMock(
+        return_value={
+            "title": "T",
+            "artist": "A",
+            "thumbnailUrl": None,
+            "platformLinks": {},
+        }
+    )
 
     with pytest.raises(PermissionError):
         await svc.add(uuid4(), uuid4(), "https://open.spotify.com/track/xyz")
@@ -136,9 +146,26 @@ async def test_play_next_raises_when_user_not_participant():
         await svc.play_next(uuid4(), uuid4())
 
 
+@pytest.mark.asyncio
+async def test_play_specific_raises_when_user_not_participant():
+    svc = _make_queue_svc(is_participant=False)
+
+    with pytest.raises(PermissionError):
+        await svc.play_specific(uuid4(), uuid4(), uuid4())
+
+
+@pytest.mark.asyncio
+async def test_play_previous_raises_when_user_not_participant():
+    svc = _make_queue_svc(is_participant=False)
+
+    with pytest.raises(PermissionError):
+        await svc.play_previous(uuid4(), uuid4())
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Step 4 — heartbeat router guard
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_heartbeat_raises_403_when_not_participant():
@@ -170,6 +197,7 @@ async def test_heartbeat_raises_403_when_not_participant():
 # ═══════════════════════════════════════════════════════════════════════════
 # Step 5 — SSE stream router guard
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_sse_stream_raises_404_or_403_when_not_participant():

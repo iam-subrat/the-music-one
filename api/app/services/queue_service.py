@@ -99,6 +99,31 @@ class QueueService:
 
         return None
 
+    async def play_specific(
+        self, session_id: UUID, user_id: UUID, item_id: UUID
+    ) -> Optional[UUID]:
+        if not await self.store.sessions.is_participant(session_id, user_id):
+            raise PermissionError("Not a session participant")
+
+        item = await self.store.queue.get_by_id(item_id)
+        if not item:
+            return None
+        if item.resolve_status == "resolving":
+            try:
+                meta = await self.song_svc.resolve_song_meta(item.source_url)
+                await self.store.queue.mark_resolved(item.id, meta, user_id)
+            except Exception:
+                await self.store.queue.mark_failed(item.id, user_id)
+                return None
+
+        return await self.store.queue.play_specific(session_id, user_id, item_id)
+
+    async def play_previous(self, session_id: UUID, user_id: UUID) -> Optional[UUID]:
+        if not await self.store.sessions.is_participant(session_id, user_id):
+            raise PermissionError("Not a session participant")
+
+        return await self.store.queue.play_previous(session_id, user_id)
+
     async def force_skip(self, session_id: UUID, user_id: UUID) -> Optional[UUID]:
         if not await self.store.sessions.is_participant(session_id, user_id):
             raise PermissionError("Not a session participant")
