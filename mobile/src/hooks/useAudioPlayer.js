@@ -59,13 +59,13 @@ export function useAudioPlayer(playingItem) {
     
     if (audioRef.current.src !== newSrc) {
       audioRef.current.src = newSrc;
-      audioRef.current.play().catch(console.error);
+      console.log("TRYING TO PLAY AUDIO", audioRef.current.src); audioRef.current.play().then(() => console.log("AUDIO PLAYED")).catch(e => console.error("AUDIO PLAY ERROR", e));
     }
   }, [playingItem]);
 
   const togglePlay = () => {
     if (audioRef.current.paused) {
-      audioRef.current.play().catch(console.error);
+      console.log("TRYING TO PLAY AUDIO", audioRef.current.src); audioRef.current.play().then(() => console.log("AUDIO PLAYED")).catch(e => console.error("AUDIO PLAY ERROR", e));
     } else {
       audioRef.current.pause();
     }

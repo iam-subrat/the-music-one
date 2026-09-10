@@ -46,22 +46,16 @@ async def get_stream_url(video_id: str) -> str:
 
 @router.get("/{video_id}/stream")
 async def get_youtube_stream(video_id: str, request: Request):
-    """
-    Proxies a YouTube video audio stream using yt-dlp to bypass IP blocks.
-    """
     stream_url = await get_stream_url(video_id)
     headers = {"Range": request.headers.get("Range", "bytes=0-")}
     
-    # Needs a custom generator that safely manages the httpx client context
     async def stream_generator():
-        async with httpx.AsyncClient(follow_redirects=True) as client:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=None) as client:
             async with client.stream("GET", stream_url, headers=headers) as r:
-                async for chunk in r.aiter_bytes():
+                async for chunk in r.aiter_bytes(chunk_size=65536):
                     yield chunk
 
-    # We do a quick initial HEAD request so we can grab the content length and properties
-    # to pass them faithfully into the StreamingResponse, allowing iOS to scrub the audio.
-    async with httpx.AsyncClient(follow_redirects=True) as client:
+    async with httpx.AsyncClient(follow_redirects=True, timeout=None) as client:
         head_r = await client.head(stream_url, headers=headers)
         
     response_headers = {
