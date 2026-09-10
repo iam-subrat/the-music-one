@@ -11,7 +11,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Configure AVAudioSession for background audio playback synchronously on launch
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .moviePlayback, options: [.allowAirPlay])
+            try session.setCategory(.playback, mode: .default, options: [])
             try session.setActive(true)
             NSLog("[AppDelegate] ✅ AVAudioSession configured with .moviePlayback for Picture-in-Picture")
         } catch {

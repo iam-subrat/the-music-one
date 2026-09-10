@@ -9,15 +9,16 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 _STREAM_CACHE = {}
-_CACHE_TTL = 3600  # 1 hour in seconds
+_CACHE_TTL = 300  # 5 minutes in seconds
 
 
-async def get_stream_url(video_id: str) -> str:
+async def get_stream_url(video_id: str, force_refresh: bool = False) -> str:
     now = asyncio.get_event_loop().time()
-    if video_id in _STREAM_CACHE:
+    if not force_refresh and video_id in _STREAM_CACHE:
         url, timestamp = _STREAM_CACHE[video_id]
         if now - timestamp < _CACHE_TTL:
             return url
+
 
     ydl_opts = {
         "format": "bestaudio[ext=m4a]/bestaudio/best",
@@ -25,7 +26,9 @@ async def get_stream_url(video_id: str) -> str:
         "quiet": True,
         "no_warnings": True,
         "extract_flat": False,
+        "extractor_args": {"youtube": {"player_client": ["ios", "android"]}}
     }
+
 
     def extract():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -59,6 +62,17 @@ async def get_youtube_stream(video_id: str, request: Request):
     client = httpx.AsyncClient(follow_redirects=True, timeout=None)
     r = await client.send(client.build_request("GET", stream_url, headers=req_headers), stream=True)
 
+    if r.status_code not in [200, 206]:
+        # Upstream URL might have expired; force refresh stream URL once
+        await r.aclose()
+        stream_url = await get_stream_url(video_id, force_refresh=True)
+        r = await client.send(client.build_request("GET", stream_url, headers=req_headers), stream=True)
+
+    if r.status_code not in [200, 206]:
+        await r.aclose()
+        await client.aclose()
+        raise HTTPException(status_code=502, detail="Audio stream unavailable")
+
     response_headers = {
         "Accept-Ranges": "bytes",
         "Content-Type": r.headers.get("Content-Type", "audio/mp4"),
@@ -78,6 +92,6 @@ async def get_youtube_stream(video_id: str, request: Request):
 
     return StreamingResponse(
         stream_generator(),
-        status_code=r.status_code if r.status_code in [200, 206] else 200,
+        status_code=r.status_code,
         headers=response_headers,
     )
