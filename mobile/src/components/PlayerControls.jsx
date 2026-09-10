@@ -111,7 +111,7 @@ export default function PlayerControls({ session, playingItem, isHost, queueItem
               </button>
             </div>
           )}
-          {!isHost && (
+          {true && (
             <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={handleSkipVote}
