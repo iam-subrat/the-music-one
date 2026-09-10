@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     rate_limit_enabled: bool = True
     rate_limit_default_per_minute: int = 100
-    rate_limit_strict_per_minute: int = 15
+    rate_limit_strict_per_minute: int = 150
 
     @property
     def cookie_samesite_value(self) -> str:
