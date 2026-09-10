@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { extractYouTubeId } from '../lib/platform';
+import { API_BASE } from '../lib/api';
 
 export function useAudioPlayer(playingItem) {
   const audioRef = useRef(new Audio());
@@ -16,7 +17,7 @@ export function useAudioPlayer(playingItem) {
     const handlePause = () => setIsPlaying(false);
     const handleEnded = () => setIsPlaying(false);
     const handleTimeUpdate = () => setProgress(audio.currentTime);
-    const handleLoadedMeta = () => setDuration(audio.duration);
+    const handleLoadedMeta = () => setDuration(audio.duration || 0);
     const handleError = (e) => {
       console.error("Audio playback error:", e);
       const errorDetails = audio.error ? `${audio.error.code} - ${audio.error.message}` : "Unknown media error";
@@ -29,6 +30,7 @@ export function useAudioPlayer(playingItem) {
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('loadedmetadata', handleLoadedMeta);
+    audio.addEventListener('durationchange', handleLoadedMeta);
     audio.addEventListener('error', handleError);
 
     return () => {
@@ -37,6 +39,7 @@ export function useAudioPlayer(playingItem) {
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadedmetadata', handleLoadedMeta);
+      audio.removeEventListener('durationchange', handleLoadedMeta);
       audio.removeEventListener('error', handleError);
     };
   }, []);
@@ -48,14 +51,14 @@ export function useAudioPlayer(playingItem) {
     }
     
     // Check if it's the same song to avoid restarting
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://api.themusic.one';
     const ytUrl = playingItem.platform_links?.youtube || playingItem.platform_links?.youtubemusic || playingItem.source_url;
     const yId = extractYouTubeId(ytUrl) || playingItem.youtube_id;
     if (!yId) {
       console.error("Cannot play: Missing YouTube ID for item", playingItem);
       return;
     }
-    const newSrc = `${apiUrl}/api/youtube/${yId}/stream`;
+    const baseUrl = API_BASE || 'https://api.themusic.one';
+    const newSrc = `${baseUrl}/api/youtube/${yId}/stream`;
     
     if (audioRef.current.src !== newSrc) {
       audioRef.current.src = newSrc;
