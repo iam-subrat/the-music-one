@@ -171,7 +171,10 @@ async def play_next(
     user_id: UUID = Depends(get_current_user),
     svc=Depends(get_queue_service),
 ):
-    next_id = await svc.play_next(session_id, user_id)
+    try:
+        next_id = await svc.play_next(session_id, user_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     await bus.publish(str(session_id), "queue_changed", {})
     return {"next_item_id": str(next_id) if next_id else None}
 
@@ -182,7 +185,10 @@ async def force_skip(
     user_id: UUID = Depends(get_current_user),
     svc=Depends(get_queue_service),
 ):
-    next_id = await svc.force_skip(session_id, user_id)
+    try:
+        next_id = await svc.force_skip(session_id, user_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     await bus.publish(str(session_id), "queue_changed", {})
     return {"next_item_id": str(next_id) if next_id else None}
 
