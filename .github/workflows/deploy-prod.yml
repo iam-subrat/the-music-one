@@ -2,13 +2,11 @@
 # Production deployment pipeline.
 #
 # Required GitHub environments (configure in repo Settings → Environments):
-#   • production   — required reviewers configured here. Gates the entire run.
-#                    All deploy jobs also reference this env to access secrets.
-#                    NOTE: GitHub's per-job re-approval behavior is undocumented.
-#                    If deploy jobs trigger extra approval prompts, create a
-#                    `production-deploy` env (no reviewers, same secrets) and
-#                    replace `environment: production` on migrate/build-ui/deploy-api.
-#   • github-pages — default GitHub Pages environment (auto-managed).
+#   • production-approval — required reviewers configured here. Gates the entire run.
+#                           (No secrets needed here)
+#   • production          — holds secrets for the deploy jobs. DO NOT require reviewers
+#                           here, or GitHub will ask for approval multiple times.
+#   • github-pages        — default GitHub Pages environment (auto-managed).
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: Deploy → Production
@@ -209,13 +207,14 @@ jobs:
           echo "release_id=$(echo  "$RESPONSE" | jq -r '.id')"       >> "$GITHUB_OUTPUT"
           echo "release_url=$(echo "$RESPONSE" | jq -r '.html_url')" >> "$GITHUB_OUTPUT"
 
-  # ── 3. Single approval gate. ONLY job using `production` env. ─────────────────
+
+  # ── 3. Single approval gate. ONLY job using `production-approval` env. ─────────────────
   approve:
     needs: [detect, draft]
     if: needs.detect.outputs.ui == 'true' || needs.detect.outputs.api == 'true'
     runs-on: ubuntu-latest
     environment:
-      name: production
+      name: production-approval
       url: ${{ needs.draft.outputs.release_url }}
     steps:
       - run: echo "Approved — proceeding with production deployment."
