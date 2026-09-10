@@ -102,6 +102,16 @@ const YouTubeAutoPlayer = forwardRef(function YouTubeAutoPlayer(
         height: "100%",
         playerVars: { autoplay: 1, rel: 0, modestbranding: 1, playsinline: 1 },
         events: {
+          onReady: () => {
+            const iframe = wrapperRef.current?.querySelector("iframe");
+            if (iframe) {
+              iframe.setAttribute(
+                "allow",
+                "autoplay; picture-in-picture; encrypted-media",
+              );
+              iframe.setAttribute("allowfullscreen", "true");
+            }
+          },
           onStateChange: (e) => {
             if (e.data === window.YT.PlayerState.ENDED) fireEnded();
           },

@@ -1,15 +1,27 @@
 {
   "appId": "com.subrat.musicone",
   "appName": "MusicOne",
-  "webDir": "www",
+  "webDir": "dist",
   "bundledWebRuntime": false,
   "server": {
-    "url": "https://themusic.one",
-    "cleartext": false
+    "hostname": "themusic.one",
+    "iosScheme": "https",
+    "androidScheme": "https",
+    "allowNavigation": [
+      "*"
+    ]
   },
   "ios": {
     "contentInset": "automatic",
     "allowsLinkPreview": false,
     "scrollEnabled": true
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
+    "CapacitorCookies": {
+      "enabled": true
+    }
   }
 }

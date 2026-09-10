@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#f4f5f0] text-black font-sans antialiased selection:bg-lime-accent;
+  }
+}
+
+@layer components {
+  .brutal-card {
+    @apply bg-white border-2 border-black rounded-[16px];
+  }
+  
+  .brutal-btn {
+    @apply bg-lime-accent border-2 border-black rounded-[12px] font-bold text-black flex items-center justify-center transition-transform active:scale-95;
+  }
+  
+  .brutal-input {
+    @apply bg-white border-2 border-black rounded-[12px] px-4 py-3 outline-none focus:ring-2 focus:ring-lime-accent transition-shadow;
+  }
+}
