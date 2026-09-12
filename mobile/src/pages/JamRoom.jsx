@@ -42,7 +42,7 @@ export default function JamRoom() {
   // ── Ended session screen ───────────────────────────────────────────────────
   if (authLoading || sessionLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f4f5f0]">
+      <div className="screen bg-[#f4f5f0] items-center justify-center">
         <div className="w-16 h-16 border-4 border-black border-t-lime-accent rounded-full animate-spin"></div>
       </div>
     );
@@ -50,17 +50,19 @@ export default function JamRoom() {
 
   if (!session) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#f4f5f0] p-6">
-        <h1 className="text-3xl font-black mb-2">Jam not found</h1>
-        <p className="font-medium text-gray-600 mb-6">
-          This room doesn't exist or has ended.
-        </p>
-        <button
-          onClick={() => navigate("/")}
-          className="brutal-btn w-full max-w-sm py-4"
-        >
-          Go Home
-        </button>
+      <div className="screen bg-[#f4f5f0] items-center px-6">
+        <div className="flex-1 flex flex-col items-center justify-center max-w-sm w-full mx-auto text-center">
+          <h1 className="text-3xl font-black mb-2">Jam not found</h1>
+          <p className="font-medium text-gray-600 mb-6">
+            This room doesn't exist or has ended.
+          </p>
+          <button
+            onClick={() => navigate("/")}
+            className="brutal-btn w-full py-4"
+          >
+            Go Home
+          </button>
+        </div>
       </div>
     );
   }
@@ -71,13 +73,21 @@ export default function JamRoom() {
       ["played", "playing", "skipped"].includes(i.status),
     );
     return (
-      <div className="min-h-screen bg-[#f4f5f0] flex flex-col items-center justify-center p-6 gap-4">
-        <p className="text-2xl font-black">Session ended</p>
-        <p className="font-medium text-gray-600">
-          {played.length} song{played.length !== 1 ? "s" : ""} played
-        </p>
+      <div className="screen bg-[#f4f5f0]">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <p className="text-2xl font-black">Session ended</p>
+          <p className="font-medium text-gray-600 mt-1">
+            {played.length} song{played.length !== 1 ? "s" : ""} played
+          </p>
+          <button
+            onClick={() => navigate("/")}
+            className="brutal-btn w-full max-w-sm py-4 mt-6"
+          >
+            Back to Home
+          </button>
+        </div>
         {played.length > 0 && (
-          <div className="w-full max-w-sm flex flex-col gap-3 mt-2">
+          <div className="overflow-y-auto px-6 pb-6 flex flex-col gap-3 max-h-[40%]">
             {played.map((item) => (
               <div key={item.id} className="brutal-card p-3 flex gap-3">
                 <div className="w-10 h-10 bg-black rounded flex items-center justify-center shrink-0">
@@ -93,12 +103,6 @@ export default function JamRoom() {
             ))}
           </div>
         )}
-        <button
-          onClick={() => navigate("/")}
-          className="brutal-btn w-full max-w-sm py-4 mt-2"
-        >
-          Back to Home
-        </button>
       </div>
     );
   }
@@ -180,7 +184,7 @@ export default function JamRoom() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#f4f5f0] flex flex-col">
+    <div className="screen bg-[#f4f5f0]">
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="p-4 border-b-2 border-black bg-white sticky top-0 z-10 flex justify-between items-center gap-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -225,8 +229,8 @@ export default function JamRoom() {
         </div>
       </header>
 
-      {/* ── Main content ───────────────────────────────────────────────────── */}
-      <main className="flex-1 p-6 pb-40 overflow-y-auto">
+      {/* ── Main content — flex-1 scrolls only within the remaining screen height */}
+      <main className="flex-1 overflow-y-auto overscroll-contain px-6 pt-6 pb-32">
         {/* Participants */}
         <div className="flex gap-4 mb-6 overflow-x-auto pb-2">
           {participants.map((p) => (
