@@ -1,9 +1,26 @@
-let lastSkipTime = 0;
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
-import { playNext, playPrevious, playSpecificSong, castSkipVote, removeSkipVote } from "../lib/queue";
+import {
+  playNext,
+  playPrevious,
+  playSpecificSong,
+  forceSkip,
+  castSkipVote,
+  removeSkipVote,
+} from "../lib/queue";
 import { useSkipVotes } from "../hooks/useSkipVotes";
-import { Play, Pause, SkipForward, SkipBack, Repeat, Repeat1, ThumbsDown } from "lucide-react";
+import {
+  Play,
+  Pause,
+  SkipForward,
+  SkipBack,
+  Repeat,
+  Repeat1,
+  ThumbsDown,
+} from "lucide-react";
+
+// Module-level debounce guard: prevents double-fire from rapid song-end events
+let lastAutoAdvanceTime = 0;
 
 function formatTime(seconds) {
   if (!seconds || isNaN(seconds)) return "0:00";
@@ -12,50 +29,75 @@ function formatTime(seconds) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export default function PlayerControls({ session, playingItem, isHost, queueItems, refresh, userId, participantCount }) {
-  const [repeatMode, setRepeatMode] = useState("none");
-  const skipThreshold = participantCount ? Math.floor(participantCount / 2) + 1 : 1;
+/**
+ * PlayerControls
+ *
+ * Props:
+ *  - session          Session object from useSession (contains id, repeat_mode, etc.)
+ *  - playingItem      Current playing queue item or null
+ *  - isHost           Whether the current user is the session host
+ *  - isDJ             Whether the current user has DJ controls (host or DJ role)
+ *  - queueItems       Full queue array (used for position context)
+ *  - refresh          Callback to reload the queue from the server
+ *  - userId           Current user's id (for skip votes)
+ *  - participantCount Number of participants (for skip threshold)
+ *  - repeatMode       "none" | "song" | "queue" — sourced from session.repeat_mode via parent
+ *  - onRepeatModeChange(next) — called when the user toggles repeat; parent persists to server
+ */
+export default function PlayerControls({
+  session,
+  playingItem,
+  isHost,
+  isDJ,
+  queueItems,
+  refresh,
+  userId,
+  participantCount,
+  repeatMode = "none",
+  onRepeatModeChange,
+}) {
+  const skipThreshold = participantCount
+    ? Math.floor(participantCount / 2) + 1
+    : 1;
 
   const { isPlaying, progress, duration, togglePlay, seek, audioElement } =
     useAudioPlayer(playingItem);
-    
+
   const { count: skipVotes, hasVoted } = useSkipVotes(
     playingItem?.id,
     userId,
-    session?.id
+    session?.id,
   );
 
+  // ── Auto-advance on natural song end ─────────────────────────────────────
   useEffect(() => {
     const handleEnd = () => {
-      if (isHost && session) {
-        if (repeatMode === "single") {
-          audioElement.currentTime = 0;
-          audioElement.play().catch(console.error);
-        } else {
-          const now = Date.now();
-          if (now - lastSkipTime < 2500) return;
-          lastSkipTime = now;
-          playNext(session.id).catch(e => {
-             if (repeatMode === "queue" && queueItems?.length > 0) {
-                playSpecificSong(session.id, queueItems[0].id).catch(console.error);
-             } else {
-                console.error(e);
-             }
-          });
-        }
+      // Only the DJ/host advances the queue automatically
+      if (!isDJ || !session) return;
+
+      // Debounce: ignore duplicate events within 2.5 s
+      const now = Date.now();
+      if (now - lastAutoAdvanceTime < 2500) return;
+      lastAutoAdvanceTime = now;
+
+      if (repeatMode === "song") {
+        // Bug 2 fix: replay the same song via the bridge iframe
+        audioElement.currentTime = 0;
+        audioElement.play().catch(console.error);
+      } else {
+        // "queue" and "none": the server handles wrap-around (repeat queue)
+        // or stops at the end (repeat none). No client-side first-item hack.
+        playNext(session.id)
+          .then(() => refresh?.())
+          .catch(console.error);
       }
     };
+
     audioElement.addEventListener("ended", handleEnd);
     return () => audioElement.removeEventListener("ended", handleEnd);
-  }, [audioElement, isHost, session, repeatMode, queueItems]);
+  }, [audioElement, isDJ, session, repeatMode, refresh]);
 
-  if (!playingItem) return null;
-
-  const handleSeek = (e) => {
-    const val = parseFloat(e.target.value);
-    seek(val);
-  };
-  
+  // ── Skip vote handler ─────────────────────────────────────────────────────
   const handleSkipVote = async () => {
     try {
       if (hasVoted) {
@@ -69,9 +111,36 @@ export default function PlayerControls({ session, playingItem, isHost, queueItem
     }
   };
 
+  // ── Repeat toggle: cycle none → song → queue → none ──────────────────────
+  const handleRepeatToggle = () => {
+    const next =
+      { none: "song", song: "queue", queue: "none" }[repeatMode] ?? "none";
+    onRepeatModeChange?.(next);
+  };
+
+  // ── Seek bar ──────────────────────────────────────────────────────────────
+  const handleSeek = (e) => {
+    seek(parseFloat(e.target.value));
+  };
+
+  // ── Manual skip forward (marks current song as "skipped", not "played") ───
+  const handleSkipForward = () => {
+    if (!isDJ) return;
+    // Bug 4 fix: use forceSkip() which calls /queue/skip → status="skipped"
+    // so the song is removed from the visible queue, same as web.
+    // Do NOT use playNext() which marks it as "played" and leaves it visible.
+    forceSkip(session.id)
+      .then(() => refresh?.())
+      .catch((e) => console.error("Skip forward failed:", e));
+  };
+
+  // Render nothing if no song is playing (player bar should be invisible)
+  if (!playingItem) return null;
+
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-lime-accent border-t-4 border-black p-4 z-50 rounded-t-3xl shadow-[0_-8px_0_0_rgba(0,0,0,0.1)]">
       <div className="max-w-md mx-auto">
+        {/* ── Song info + controls ────────────────────────────────────────── */}
         <div className="flex justify-between items-center mb-4">
           <div className="flex-1 min-w-0 pr-4">
             <h4 className="font-black text-xl truncate">{playingItem.title}</h4>
@@ -79,29 +148,60 @@ export default function PlayerControls({ session, playingItem, isHost, queueItem
               {playingItem.artist || "Unknown"}
             </p>
           </div>
-          {isHost && (
+
+          {/* DJ controls */}
+          {isDJ && (
             <div className="flex items-center gap-2 shrink-0">
+              {/* Skip vote (visible to all, including DJ) */}
               <button
                 onClick={handleSkipVote}
-                className={`relative w-10 h-10 border-2 border-black rounded-full flex items-center justify-center active:scale-90 transition-transform ${hasVoted ? 'bg-black text-lime-400' : 'bg-white text-black'}`}
+                className={`relative w-10 h-10 border-2 border-black rounded-full flex items-center justify-center active:scale-90 transition-transform ${
+                  hasVoted ? "bg-black text-lime-400" : "bg-white text-black"
+                }`}
               >
                 <ThumbsDown size={18} />
                 <div className="absolute -top-2 -right-2 bg-white border-2 border-black text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full">
                   {skipVotes}
                 </div>
               </button>
+
+              {/* Repeat toggle — cycles none → song → queue */}
               <button
-                onClick={() => setRepeatMode(m => m === "none" ? "single" : m === "single" ? "queue" : "none")}
-                className={`w-10 h-10 border-2 border-black rounded-full flex items-center justify-center active:scale-90 transition-transform ${repeatMode !== "none" ? "bg-lime-300" : "bg-white"}`}
+                onClick={handleRepeatToggle}
+                title={
+                  repeatMode === "song"
+                    ? "Repeat Song"
+                    : repeatMode === "queue"
+                      ? "Repeat Queue"
+                      : "No Repeat"
+                }
+                className={`w-10 h-10 border-2 border-black rounded-full flex items-center justify-center active:scale-90 transition-transform ${
+                  repeatMode !== "none" ? "bg-lime-300" : "bg-white"
+                }`}
               >
-                {repeatMode === "single" ? <Repeat1 size={18} /> : <Repeat size={18} className={repeatMode === "none" ? "opacity-30" : ""} />}
+                {repeatMode === "song" ? (
+                  <Repeat1 size={18} />
+                ) : (
+                  <Repeat
+                    size={18}
+                    className={repeatMode === "none" ? "opacity-30" : ""}
+                  />
+                )}
               </button>
+
+              {/* Previous */}
               <button
-                onClick={() => playPrevious(session.id).then(() => refresh?.()).catch(e => console.error(e))}
+                onClick={() =>
+                  playPrevious(session.id)
+                    .then(() => refresh?.())
+                    .catch((e) => console.error(e))
+                }
                 className="w-10 h-10 bg-white border-2 border-black rounded-full flex items-center justify-center active:scale-90 transition-transform"
               >
                 <SkipBack size={18} />
               </button>
+
+              {/* Play / Pause */}
               <button
                 onClick={togglePlay}
                 className="w-14 h-14 bg-white border-2 border-black rounded-full flex items-center justify-center shadow-brutal active:scale-90 active:shadow-none transition-all"
@@ -112,29 +212,37 @@ export default function PlayerControls({ session, playingItem, isHost, queueItem
                   <Play size={24} className="ml-1" />
                 )}
               </button>
+
+              {/* Skip forward — marks song as "skipped" (Bug 4 fix) */}
               <button
-                onClick={() => playNext(session.id).then(() => refresh?.()).catch(e => console.error(e))}
+                onClick={handleSkipForward}
                 className="w-10 h-10 bg-white border-2 border-black rounded-full flex items-center justify-center active:scale-90 transition-transform"
               >
                 <SkipForward size={18} />
               </button>
             </div>
           )}
-          {!isHost && (
+
+          {/* Guest view: skip vote + status pill */}
+          {!isDJ && (
             <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={handleSkipVote}
-                  className={`border-2 border-black rounded-full px-3 py-2 text-xs font-bold uppercase tracking-wider active:scale-95 transition-transform flex items-center gap-1.5 ${hasVoted ? 'bg-black text-lime-400' : 'bg-white text-black'}`}
-                >
-                  <ThumbsDown size={14} /> Skip ({skipVotes}/{skipThreshold}) {hasVoted ? "✓" : ""}
-                </button>
-                <div className="bg-white border-2 border-black rounded-full px-3 py-2 text-xs font-bold uppercase tracking-wider">
-                  {isPlaying ? "Playing" : "Paused"}
-                </div>
+              <button
+                onClick={handleSkipVote}
+                className={`border-2 border-black rounded-full px-3 py-2 text-xs font-bold uppercase tracking-wider active:scale-95 transition-transform flex items-center gap-1.5 ${
+                  hasVoted ? "bg-black text-lime-400" : "bg-white text-black"
+                }`}
+              >
+                <ThumbsDown size={14} />
+                Skip ({skipVotes}/{skipThreshold}) {hasVoted ? "✓" : ""}
+              </button>
+              <div className="bg-white border-2 border-black rounded-full px-3 py-2 text-xs font-bold uppercase tracking-wider">
+                {isPlaying ? "Playing" : "Paused"}
+              </div>
             </div>
           )}
         </div>
 
+        {/* ── Progress bar ────────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 text-sm font-bold font-mono text-green-900">
           <span>{formatTime(progress)}</span>
           <input
@@ -143,7 +251,7 @@ export default function PlayerControls({ session, playingItem, isHost, queueItem
             max={duration || 100}
             value={progress}
             onChange={handleSeek}
-            disabled={!isHost || !duration}
+            disabled={!isDJ || !duration}
             className="flex-1 h-3 bg-white border-2 border-black rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-black [&::-webkit-slider-thumb]:rounded-full cursor-pointer disabled:opacity-50"
           />
           <span>{formatTime(duration)}</span>
