@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
+import MarqueeText from "./MarqueeText";
 import {
   playNext,
   playPrevious,
@@ -143,10 +144,16 @@ export default function PlayerControls({
         {/* ── Song info + controls ────────────────────────────────────────── */}
         <div className="flex justify-between items-center mb-4">
           <div className="flex-1 min-w-0 pr-4">
-            <h4 className="font-black text-xl truncate">{playingItem.title}</h4>
-            <p className="font-bold text-green-900 opacity-80 text-sm truncate">
-              {playingItem.artist || "Unknown"}
-            </p>
+            <MarqueeText
+              as="h4"
+              text={playingItem.title}
+              className="font-black text-xl"
+            />
+            <MarqueeText
+              as="p"
+              text={playingItem.artist || "Unknown"}
+              className="font-bold text-green-900 opacity-80 text-sm"
+            />
           </div>
 
           {/* DJ controls */}
