@@ -300,7 +300,7 @@ export default function JamRoom() {
                   : null
               }
               disabled={!isDJ}
-              className={`w-full text-left brutal-card p-4 flex gap-4 transition-transform ${
+              className={`w-full text-left brutal-card p-4 flex items-center gap-4 transition-transform ${
                 item.status === "playing"
                   ? "bg-lime-accent/50 border-lime-600 border-4"
                   : "hover:-translate-y-1"
