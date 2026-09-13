@@ -58,6 +58,9 @@ export function useAudioPlayer(playingItem) {
           }
           break;
         case 'PROGRESS':
+          if (data.duration !== undefined && data.duration > 0) {
+            setDuration(data.duration);
+          }
           if (data.currentTime !== undefined) {
             if (seekingRef.current && Date.now() - seekTimeRef.current < 1500) {
               if (Math.abs(data.currentTime - seekTargetRef.current) > 2) {
@@ -67,7 +70,6 @@ export function useAudioPlayer(playingItem) {
             }
             setProgress(data.currentTime);
           }
-          if (data.duration !== undefined) setDuration(data.duration);
           break;
         case 'ERROR':
           console.error('[Bridge] YT Player Error:', data.error);

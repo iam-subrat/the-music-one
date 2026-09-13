@@ -119,81 +119,49 @@ export default function PlayerControls({
   };
 
   // ── Seek bar: smooth drag + drop-to-seek ──────────────────────────────────
-  const trackRef = useRef(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragProgress, setDragProgress] = useState(0);
-  const isDraggingRef = useRef(false);
-  const dragProgressRef = useRef(0);
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [scrubValue, setScrubValue] = useState(0);
+  const scrubValueRef = useRef(0);
+  const isScrubbingRef = useRef(false);
 
-  const calculateTimeFromPointer = (e) => {
-    if (!trackRef.current || !duration) return 0;
-    const rect = trackRef.current.getBoundingClientRect();
-    if (rect.width <= 0) return 0;
-    const ratio = Math.max(
-      0,
-      Math.min(1, (e.clientX - rect.left) / rect.width),
-    );
-    return ratio * duration;
-  };
-
-  const handlePointerDown = (e) => {
+  const handleInput = (e) => {
     if (!isDJ || !duration) return;
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch (_) {}
-    isDraggingRef.current = true;
-    setIsDragging(true);
-    const newTime = calculateTimeFromPointer(e);
-    dragProgressRef.current = newTime;
-    setDragProgress(newTime);
+    const val = parseFloat(e.target.value);
+    isScrubbingRef.current = true;
+    scrubValueRef.current = val;
+    setIsScrubbing(true);
+    setScrubValue(val);
   };
 
-  const handlePointerMove = (e) => {
-    if (!isDraggingRef.current) return;
-    const newTime = calculateTimeFromPointer(e);
-    dragProgressRef.current = newTime;
-    setDragProgress(newTime);
-  };
-
-  const handlePointerUp = (e) => {
-    if (!isDraggingRef.current) return;
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch (_) {}
-    isDraggingRef.current = false;
-    setIsDragging(false);
-    const target = dragProgressRef.current;
-    seek(target);
-  };
-
-  const handleKeyDown = (e) => {
-    if (!isDJ || !duration) return;
-    if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      seek(Math.max(0, (isDragging ? dragProgress : progress) - 5));
-    } else if (e.key === "ArrowRight") {
-      e.preventDefault();
-      seek(Math.min(duration, (isDragging ? dragProgress : progress) + 5));
+  const handleCommit = () => {
+    if (isScrubbingRef.current) {
+      isScrubbingRef.current = false;
+      setIsScrubbing(false);
+      const target = scrubValueRef.current;
+      seek(target);
     }
   };
 
-  // Window release fallback to ensure seek always commits
+  // Window release fallback to ensure seek always commits if finger lifts outside
   useEffect(() => {
-    if (!isDragging) return;
-    const onWindowPointerUp = () => {
-      if (isDraggingRef.current) {
-        isDraggingRef.current = false;
-        setIsDragging(false);
-        seek(dragProgressRef.current);
+    const handleWindowRelease = () => {
+      if (isScrubbingRef.current) {
+        isScrubbingRef.current = false;
+        setIsScrubbing(false);
+        seek(scrubValueRef.current);
       }
     };
-    window.addEventListener("pointerup", onWindowPointerUp);
-    window.addEventListener("touchend", onWindowPointerUp);
+    window.addEventListener("pointerup", handleWindowRelease, {
+      passive: true,
+    });
+    window.addEventListener("touchend", handleWindowRelease, { passive: true });
+    window.addEventListener("mouseup", handleWindowRelease, { passive: true });
     return () => {
-      window.removeEventListener("pointerup", onWindowPointerUp);
-      window.removeEventListener("touchend", onWindowPointerUp);
+      window.removeEventListener("pointerup", handleWindowRelease);
+      window.removeEventListener("touchend", handleWindowRelease);
+      window.removeEventListener("mouseup", handleWindowRelease);
     };
-  }, [isDragging, seek]);
+  }, [seek]);
 
   // ── Next track (advances queue, marks song as "played") ────────────────────
   const handleNext = () => {
@@ -203,10 +171,10 @@ export default function PlayerControls({
       .catch((e) => console.error("Play next failed:", e));
   };
 
-  const currentProgress = isDragging ? dragProgress : progress;
+  const displayProgress = isScrubbing ? scrubValue : progress;
   const progressPercent =
     duration > 0
-      ? Math.min(100, Math.max(0, (currentProgress / duration) * 100))
+      ? Math.min(100, Math.max(0, (displayProgress / duration) * 100))
       : 0;
 
   // Render nothing if no song is playing (player bar should be invisible)
@@ -327,37 +295,35 @@ export default function PlayerControls({
         {/* ── Progress bar ────────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 text-sm font-bold font-mono text-green-900 select-none">
           <span className="w-10 text-left shrink-0">
-            {formatTime(currentProgress)}
+            {formatTime(displayProgress)}
           </span>
-          <div
-            ref={trackRef}
-            role="slider"
-            aria-valuemin={0}
-            aria-valuemax={duration || 100}
-            aria-valuenow={currentProgress}
-            tabIndex={isDJ ? 0 : -1}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
-            onKeyDown={handleKeyDown}
-            className={`relative flex-1 flex items-center h-8 ${
-              isDJ && duration ? "cursor-pointer" : "cursor-default opacity-50"
-            } touch-none`}
-          >
-            {/* Track background */}
-            <div className="w-full h-3 bg-white border-2 border-black rounded-full overflow-hidden relative">
+          <div className="relative flex-1 flex items-center h-8">
+            {/* Solid underlying track - never flickers */}
+            <div className="absolute left-0 right-0 h-3 bg-white border-2 border-black rounded-full overflow-hidden pointer-events-none">
               <div
                 className="h-full bg-black"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            {/* Draggable thumb */}
-            <div
-              className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 bg-black border-2 border-white rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.4)] pointer-events-none transition-transform ${
-                isDragging ? "scale-125" : "scale-100"
-              }`}
-              style={{ left: `${progressPercent}%` }}
+
+            {/* Native transparent input slider over the track */}
+            <input
+              type="range"
+              min={0}
+              max={duration || 100}
+              step="any"
+              value={displayProgress}
+              onInput={handleInput}
+              onChange={handleInput}
+              onPointerUp={handleCommit}
+              onTouchEnd={handleCommit}
+              onMouseUp={handleCommit}
+              disabled={!isDJ || !duration}
+              className="relative w-full h-8 bg-transparent appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
+                [&::-webkit-slider-runnable-track]:bg-transparent
+                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:bg-black [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_2px_4px_rgba(0,0,0,0.3)] active:[&::-webkit-slider-thumb]:scale-110
+                [&::-moz-range-track]:bg-transparent
+                [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:bg-black [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:shadow-[0_2px_4px_rgba(0,0,0,0.3)]"
             />
           </div>
           <span className="w-10 text-right shrink-0">
