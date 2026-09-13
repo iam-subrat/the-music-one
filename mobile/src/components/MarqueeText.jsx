@@ -1,46 +1,65 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, memo } from "react";
 
-export default function MarqueeText({
+function MarqueeText({
   text = "",
   as: Component = "div",
   className = "",
-  speed = 35,
+  speed = 30,
 }) {
   const containerRef = useRef(null);
   const measureRef = useRef(null);
   const [overflows, setOverflows] = useState(false);
-  const [duration, setDuration] = useState(10);
+  const [duration, setDuration] = useState(8);
 
   useEffect(() => {
+    let lastContainerWidth = 0;
+
     const checkOverflow = () => {
-      if (containerRef.current && measureRef.current) {
-        const textWidth = measureRef.current.offsetWidth;
-        const containerWidth = containerRef.current.clientWidth;
-        const isOverflow = textWidth > containerWidth;
-        setOverflows(isOverflow);
-        if (isOverflow) {
-          const calcDuration = Math.max(
-            5,
-            Math.round((textWidth + 32) / speed),
-          );
-          setDuration(calcDuration);
-        }
+      if (!containerRef.current || !measureRef.current) return;
+      const textWidth = measureRef.current.getBoundingClientRect().width;
+      const containerWidth = containerRef.current.getBoundingClientRect().width;
+
+      if (containerWidth <= 0) return;
+
+      // Hysteresis buffer: only overflow if text genuinely exceeds container by > 4px
+      const isOverflow = textWidth > containerWidth + 4;
+
+      setOverflows((prev) => (prev !== isOverflow ? isOverflow : prev));
+
+      if (isOverflow) {
+        // Comfortable scroll speed: ~30px/sec + 4s pauses (2s start, 2s end)
+        const scrollDist = textWidth + 32; // 32px is pr-8
+        const scrollTime = scrollDist / speed;
+        const totalDuration = Math.max(6, Math.round(scrollTime + 4));
+        setDuration((prev) =>
+          Math.abs(prev - totalDuration) >= 1 ? totalDuration : prev,
+        );
       }
     };
 
-    const rafId = requestAnimationFrame(checkOverflow);
+    // Initial check
+    checkOverflow();
 
-    const ro = new ResizeObserver(() => {
-      checkOverflow();
-    });
-
-    if (containerRef.current) {
-      ro.observe(containerRef.current);
+    // Check on resize, but ignore subpixel/negligible fluctuations (<= 3px)
+    // to avoid layout loops or interrupting active CSS animations
+    let ro = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const width = entry.contentRect.width;
+          if (Math.abs(width - lastContainerWidth) > 3) {
+            lastContainerWidth = width;
+            checkOverflow();
+          }
+        }
+      });
+      if (containerRef.current) {
+        ro.observe(containerRef.current);
+      }
     }
 
     return () => {
-      cancelAnimationFrame(rafId);
-      ro.disconnect();
+      ro?.disconnect();
     };
   }, [text, speed]);
 
@@ -74,3 +93,5 @@ export default function MarqueeText({
     </Component>
   );
 }
+
+export default memo(MarqueeText);
