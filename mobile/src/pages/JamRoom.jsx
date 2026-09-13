@@ -303,7 +303,9 @@ export default function JamRoom() {
               className={`w-full text-left brutal-card p-4 flex items-center gap-4 transition-transform ${
                 item.status === "playing"
                   ? "bg-lime-accent/50 border-lime-600 border-4"
-                  : "hover:-translate-y-1"
+                  : item.status === "played"
+                    ? "opacity-50 hover:-translate-y-1"
+                    : "hover:-translate-y-1"
               }`}
             >
               <div className="w-8 h-8 flex items-center justify-center shrink-0 font-black text-gray-400 text-sm">

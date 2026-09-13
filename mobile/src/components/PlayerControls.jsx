@@ -5,7 +5,6 @@ import {
   playNext,
   playPrevious,
   playSpecificSong,
-  forceSkip,
   castSkipVote,
   removeSkipVote,
 } from "../lib/queue";
@@ -124,15 +123,12 @@ export default function PlayerControls({
     seek(parseFloat(e.target.value));
   };
 
-  // ── Manual skip forward (marks current song as "skipped", not "played") ───
-  const handleSkipForward = () => {
+  // ── Next track (advances queue, marks song as "played") ────────────────────
+  const handleNext = () => {
     if (!isDJ) return;
-    // Bug 4 fix: use forceSkip() which calls /queue/skip → status="skipped"
-    // so the song is removed from the visible queue, same as web.
-    // Do NOT use playNext() which marks it as "played" and leaves it visible.
-    forceSkip(session.id)
+    playNext(session.id)
       .then(() => refresh?.())
-      .catch((e) => console.error("Skip forward failed:", e));
+      .catch((e) => console.error("Play next failed:", e));
   };
 
   // Render nothing if no song is playing (player bar should be invisible)
@@ -220,9 +216,10 @@ export default function PlayerControls({
                 )}
               </button>
 
-              {/* Skip forward — marks song as "skipped" (Bug 4 fix) */}
+              {/* Next */}
               <button
-                onClick={handleSkipForward}
+                onClick={handleNext}
+                title="Next"
                 className="w-10 h-10 bg-white border-2 border-black rounded-full flex items-center justify-center active:scale-90 transition-transform"
               >
                 <SkipForward size={18} />
