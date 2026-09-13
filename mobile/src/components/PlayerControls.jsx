@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
 import MarqueeText from "./MarqueeText";
 import {
@@ -118,10 +118,82 @@ export default function PlayerControls({
     onRepeatModeChange?.(next);
   };
 
-  // ── Seek bar ──────────────────────────────────────────────────────────────
-  const handleSeek = (e) => {
-    seek(parseFloat(e.target.value));
+  // ── Seek bar: smooth drag + drop-to-seek ──────────────────────────────────
+  const trackRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragProgress, setDragProgress] = useState(0);
+  const isDraggingRef = useRef(false);
+  const dragProgressRef = useRef(0);
+
+  const calculateTimeFromPointer = (e) => {
+    if (!trackRef.current || !duration) return 0;
+    const rect = trackRef.current.getBoundingClientRect();
+    if (rect.width <= 0) return 0;
+    const ratio = Math.max(
+      0,
+      Math.min(1, (e.clientX - rect.left) / rect.width),
+    );
+    return ratio * duration;
   };
+
+  const handlePointerDown = (e) => {
+    if (!isDJ || !duration) return;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (_) {}
+    isDraggingRef.current = true;
+    setIsDragging(true);
+    const newTime = calculateTimeFromPointer(e);
+    dragProgressRef.current = newTime;
+    setDragProgress(newTime);
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDraggingRef.current) return;
+    const newTime = calculateTimeFromPointer(e);
+    dragProgressRef.current = newTime;
+    setDragProgress(newTime);
+  };
+
+  const handlePointerUp = (e) => {
+    if (!isDraggingRef.current) return;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (_) {}
+    isDraggingRef.current = false;
+    setIsDragging(false);
+    const target = dragProgressRef.current;
+    seek(target);
+  };
+
+  const handleKeyDown = (e) => {
+    if (!isDJ || !duration) return;
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      seek(Math.max(0, (isDragging ? dragProgress : progress) - 5));
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      seek(Math.min(duration, (isDragging ? dragProgress : progress) + 5));
+    }
+  };
+
+  // Window release fallback to ensure seek always commits
+  useEffect(() => {
+    if (!isDragging) return;
+    const onWindowPointerUp = () => {
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false;
+        setIsDragging(false);
+        seek(dragProgressRef.current);
+      }
+    };
+    window.addEventListener("pointerup", onWindowPointerUp);
+    window.addEventListener("touchend", onWindowPointerUp);
+    return () => {
+      window.removeEventListener("pointerup", onWindowPointerUp);
+      window.removeEventListener("touchend", onWindowPointerUp);
+    };
+  }, [isDragging, seek]);
 
   // ── Next track (advances queue, marks song as "played") ────────────────────
   const handleNext = () => {
@@ -130,6 +202,12 @@ export default function PlayerControls({
       .then(() => refresh?.())
       .catch((e) => console.error("Play next failed:", e));
   };
+
+  const currentProgress = isDragging ? dragProgress : progress;
+  const progressPercent =
+    duration > 0
+      ? Math.min(100, Math.max(0, (currentProgress / duration) * 100))
+      : 0;
 
   // Render nothing if no song is playing (player bar should be invisible)
   if (!playingItem) return null;
@@ -247,18 +325,44 @@ export default function PlayerControls({
         </div>
 
         {/* ── Progress bar ────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 text-sm font-bold font-mono text-green-900">
-          <span>{formatTime(progress)}</span>
-          <input
-            type="range"
-            min={0}
-            max={duration || 100}
-            value={progress}
-            onChange={handleSeek}
-            disabled={!isDJ || !duration}
-            className="flex-1 h-3 bg-white border-2 border-black rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-black [&::-webkit-slider-thumb]:rounded-full cursor-pointer disabled:opacity-50"
-          />
-          <span>{formatTime(duration)}</span>
+        <div className="flex items-center gap-3 text-sm font-bold font-mono text-green-900 select-none">
+          <span className="w-10 text-left shrink-0">
+            {formatTime(currentProgress)}
+          </span>
+          <div
+            ref={trackRef}
+            role="slider"
+            aria-valuemin={0}
+            aria-valuemax={duration || 100}
+            aria-valuenow={currentProgress}
+            tabIndex={isDJ ? 0 : -1}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            onKeyDown={handleKeyDown}
+            className={`relative flex-1 flex items-center h-8 ${
+              isDJ && duration ? "cursor-pointer" : "cursor-default opacity-50"
+            } touch-none`}
+          >
+            {/* Track background */}
+            <div className="w-full h-3 bg-white border-2 border-black rounded-full overflow-hidden relative">
+              <div
+                className="h-full bg-black"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            {/* Draggable thumb */}
+            <div
+              className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 bg-black border-2 border-white rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.4)] pointer-events-none transition-transform ${
+                isDragging ? "scale-125" : "scale-100"
+              }`}
+              style={{ left: `${progressPercent}%` }}
+            />
+          </div>
+          <span className="w-10 text-right shrink-0">
+            {formatTime(duration)}
+          </span>
         </div>
       </div>
     </div>

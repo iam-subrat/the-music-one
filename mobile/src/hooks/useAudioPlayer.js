@@ -10,6 +10,9 @@ export function useAudioPlayer(playingItem) {
   
   const iframeRef = useRef(null);
   const currentVideoIdRef = useRef(null);
+  const seekingRef = useRef(false);
+  const seekTargetRef = useRef(0);
+  const seekTimeRef = useRef(0);
   
   // Create or get the bridge iframe once
   useEffect(() => {
@@ -55,7 +58,15 @@ export function useAudioPlayer(playingItem) {
           }
           break;
         case 'PROGRESS':
-          if (data.currentTime !== undefined) setProgress(data.currentTime);
+          if (data.currentTime !== undefined) {
+            if (seekingRef.current && Date.now() - seekTimeRef.current < 1500) {
+              if (Math.abs(data.currentTime - seekTargetRef.current) > 2) {
+                break;
+              }
+              seekingRef.current = false;
+            }
+            setProgress(data.currentTime);
+          }
           if (data.duration !== undefined) setDuration(data.duration);
           break;
         case 'ERROR':
@@ -126,6 +137,9 @@ export function useAudioPlayer(playingItem) {
 
   const seek = (time) => {
     if (iframeRef.current?.contentWindow) {
+      seekingRef.current = true;
+      seekTargetRef.current = time;
+      seekTimeRef.current = Date.now();
       iframeRef.current.contentWindow.postMessage({ type: 'SEEK', time }, '*');
       setProgress(time);
     }
