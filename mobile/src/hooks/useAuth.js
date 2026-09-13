@@ -1,12 +1,26 @@
 import { useState, useEffect } from 'react';
-import { api, API_BASE } from '../lib/api';
+import { api, API_BASE, clearAuthTokens } from '../lib/api';
 import { useAnalytics } from '../lib/analytics';
 
 let _identifiedUserId = null; // module-level: shared across all useAuth() instances
 
 export function useAuth() {
-  const [user, setUser]       = useState(null);
-  const [profile, setProfile] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const cached = localStorage.getItem('musicone_user');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [profile, setProfile] = useState(() => {
+    try {
+      const cached = localStorage.getItem('musicone_profile');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
   const { capture, identify, reset } = useAnalytics();
 
@@ -17,6 +31,10 @@ export function useAuth() {
         if (data) {
           setUser({ id: data.id });
           setProfile(data);
+          try {
+            localStorage.setItem('musicone_user', JSON.stringify({ id: data.id }));
+            localStorage.setItem('musicone_profile', JSON.stringify(data));
+          } catch {}
           if (_identifiedUserId !== data.id) {
             identify(data.id, {
               email:        data.email,
@@ -40,6 +58,13 @@ export function useAuth() {
               }
             } catch {}
           }
+        } else {
+          setUser(null);
+          setProfile(null);
+          try {
+            localStorage.removeItem('musicone_user');
+            localStorage.removeItem('musicone_profile');
+          } catch {}
         }
       })
       .finally(() => setLoading(false));
@@ -57,6 +82,11 @@ export function useAuth() {
     capture('user_signed_out');
     reset();
     _identifiedUserId = null;
+    clearAuthTokens();
+    try {
+      localStorage.removeItem('musicone_user');
+      localStorage.removeItem('musicone_profile');
+    } catch {}
     setUser(null);
     setProfile(null);
   }

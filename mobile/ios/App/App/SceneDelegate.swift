@@ -348,8 +348,13 @@ final class AuthNavigationDelegateProxy: NSObject, WKNavigationDelegate, ASWebAu
             }
 
             group.notify(queue: .main) { [weak self] in
-                NSLog("[AuthManager] 🍪 All cookies saved in WKHTTPCookieStore. Reloading WebView.")
-                self?.webView?.reload()
+                NSLog("[AuthManager] 🍪 All cookies saved in WKHTTPCookieStore. Injecting localStorage tokens and reloading.")
+                let escapedAccess = accessToken.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'")
+                let escapedRefresh = refreshToken.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'")
+                let js = "try { localStorage.setItem('musicone_access_token', '\(escapedAccess)'); localStorage.setItem('musicone_refresh_token', '\(escapedRefresh)'); } catch(e){}"
+                self?.webView?.evaluateJavaScript(js) { _, _ in
+                    self?.webView?.reload()
+                }
             }
         }
     }

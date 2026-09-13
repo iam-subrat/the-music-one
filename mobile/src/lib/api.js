@@ -4,12 +4,35 @@ const CSRF_HEADER = { 'X-Requested-With': 'XMLHttpRequest' };
 const TOKEN_KEY = 'musicone_access_token';
 const REFRESH_TOKEN_KEY = 'musicone_refresh_token';
 
+function getCookie(name) {
+  try {
+    const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function getAccessToken() {
-  return localStorage.getItem(TOKEN_KEY);
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (token) return token;
+  const cookie = getCookie('access_token');
+  if (cookie) {
+    try { localStorage.setItem(TOKEN_KEY, cookie); } catch {}
+    return cookie;
+  }
+  return null;
 }
 
 export function getRefreshToken() {
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
+  const token = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (token) return token;
+  const cookie = getCookie('refresh_token');
+  if (cookie) {
+    try { localStorage.setItem(REFRESH_TOKEN_KEY, cookie); } catch {}
+    return cookie;
+  }
+  return null;
 }
 
 export function setAuthTokens({ access_token, refresh_token }) {
@@ -28,28 +51,43 @@ async function doRefresh() {
   const refreshToken = getRefreshToken();
   if (refreshToken) {
     // Mobile Bearer refresh
-    const res = await fetch(`${API_BASE}/api/auth/mobile/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...CSRF_HEADER },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setAuthTokens(data);
-      return true;
-    }
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/mobile/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...CSRF_HEADER },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAuthTokens(data);
+        return true;
+      }
+    } catch {}
   }
 
-  // Fallback to cookie refresh (web)
-  const resCookie = await fetch(`${API_BASE}/api/auth/refresh`, {
-    method: 'POST',
-    credentials: 'include',
-    cache: 'no-store',
-    headers: CSRF_HEADER,
-  });
+  // Fallback to cookie refresh (web / WebKit)
+  try {
+    const resCookie = await fetch(`${API_BASE}/api/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+      cache: 'no-store',
+      headers: CSRF_HEADER,
+    });
 
-  if (resCookie.ok) return true;
+    if (resCookie.ok) {
+      const data = await resCookie.json().catch(() => null);
+      if (data?.access_token) {
+        setAuthTokens(data);
+      } else {
+        // Cookie refresh succeeded (cookie set with new token);
+        // clear stale expired Bearer access token so retry uses refreshed cookie.
+        localStorage.removeItem(TOKEN_KEY);
+      }
+      return true;
+    }
+  } catch {}
 
+  // If both refresh mechanisms failed, purge stale auth tokens
   clearAuthTokens();
   return false;
 }

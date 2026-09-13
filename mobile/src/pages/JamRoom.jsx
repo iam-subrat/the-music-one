@@ -1,33 +1,45 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useSession } from "../hooks/useSession";
 import { useQueue } from "../hooks/useQueue";
 import { useParticipants } from "../hooks/useParticipants";
-import { addToQueue, searchAndAddToQueue, playSpecificSong, playNext } from "../lib/queue";
+import {
+  addToQueue,
+  searchAndAddToQueue,
+  playSpecificSong,
+  playNext,
+} from "../lib/queue";
+import { endSession, setRepeatMode } from "../lib/session";
+import { isAuthError, promptSignIn } from "../lib/authPrompt";
 import PlayerControls from "../components/PlayerControls";
-import { Search, Users, Copy, Check, Music, ArrowLeft } from "lucide-react";
+import { Search, Users, Copy, Check, Music, ArrowLeft, X } from "lucide-react";
 
 export default function JamRoom() {
   const { code } = useParams();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
-  const { session, loading: sessionLoading } = useSession(code);
-  const { items: queueItems, refresh, addItem } = useQueue(session?.id);
+  const { session, loading: sessionLoading, setSession } = useSession(code);
+  const { items: queueItems, refresh } = useQueue(session?.id);
   const { participants } = useParticipants(session?.id);
 
   const [query, setQuery] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // For "End Session" analytics guard
+  const joinedAtRef = useRef(null);
   useEffect(() => {
-    if (!authLoading && !user) navigate("/login?next=/jam/" + code);
-  }, [user, authLoading, code, navigate]);
+    if (session?.id && !joinedAtRef.current) {
+      joinedAtRef.current = Date.now();
+    }
+  }, [session?.id]);
 
+  // ── Ended session screen ───────────────────────────────────────────────────
   if (authLoading || sessionLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f4f5f0]">
+      <div className="screen bg-[#f4f5f0] items-center justify-center">
         <div className="w-16 h-16 border-4 border-black border-t-lime-accent rounded-full animate-spin"></div>
       </div>
     );
@@ -35,43 +47,172 @@ export default function JamRoom() {
 
   if (!session) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#f4f5f0] p-6">
-        <h1 className="text-3xl font-black mb-2">Jam not found</h1>
-        <p className="font-medium text-gray-600 mb-6">
-          This room doesn't exist or has ended.
-        </p>
-        <button
-          onClick={() => navigate("/")}
-          className="brutal-btn w-full max-w-sm py-4"
-        >
-          Go Home
-        </button>
+      <div className="screen bg-[#f4f5f0] items-center px-6">
+        <div className="flex-1 flex flex-col items-center justify-center max-w-sm w-full mx-auto text-center">
+          <h1 className="text-3xl font-black mb-2">Jam not found</h1>
+          <p className="font-medium text-gray-600 mb-6">
+            This room doesn't exist or has ended.
+          </p>
+          <button
+            onClick={() => navigate("/")}
+            className="brutal-btn w-full py-4"
+          >
+            Go Home
+          </button>
+        </div>
       </div>
     );
   }
 
+  // ── Ended session screen ───────────────────────────────────────────────────
+  if (session.status === "ended") {
+    const played = queueItems.filter((i) =>
+      ["played", "playing", "skipped"].includes(i.status),
+    );
+    return (
+      <div className="screen bg-[#f4f5f0]">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <p className="text-2xl font-black">Session ended</p>
+          <p className="font-medium text-gray-600 mt-1">
+            {played.length} song{played.length !== 1 ? "s" : ""} played
+          </p>
+          <button
+            onClick={() => navigate("/")}
+            className="brutal-btn w-full max-w-sm py-4 mt-6"
+          >
+            Back to Home
+          </button>
+        </div>
+        {played.length > 0 && (
+          <div className="overflow-y-auto px-6 pb-6 flex flex-col gap-3 max-h-[40%]">
+            {played.map((item) => (
+              <div key={item.id} className="brutal-card p-3 flex gap-3">
+                <div className="w-10 h-10 bg-black rounded flex items-center justify-center shrink-0">
+                  <Music className="text-lime-accent" size={20} />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-bold truncate">{item.title}</p>
+                  <p className="text-sm text-gray-500 truncate">
+                    {item.artist}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Derived state ──────────────────────────────────────────────────────────
+  // Mirror exactly how the web computes isHost: only the session host_user_id.
+  // Do NOT mix in dj_user_id — that grants separate DJ controls on the web.
+  const isHost = session.host_user_id === user?.id;
+  const isDJ = session.dj_user_id === user?.id || isHost;
+
+  const playingItem = queueItems.find((i) => i.status === "playing") ?? null;
+
+  // ── Repeat mode: read from server session, write back via API ─────────────
+  const repeatMode = session.repeat_mode ?? "none";
+  const handleRepeatModeChange = (next) => {
+    // Optimistic local update so the UI responds immediately
+    setSession((prev) => ({ ...prev, repeat_mode: next }));
+    setRepeatMode(session.id, next).catch((e) => {
+      // Roll back on failure
+      setSession((prev) => ({ ...prev, repeat_mode: repeatMode }));
+      if (isAuthError(e)) {
+        promptSignIn(
+          "Your session expired. Would you like to sign in again to change playback settings?",
+          `/jam/${code}`,
+        );
+      }
+    });
+  };
+
+  // ── Queue display: upcoming only ──────────────────────────────────────────
+  function getUpcoming(items, mode) {
+    if (!items || items.length === 0) return [];
+    const playing = items.find((i) => i.status === "playing");
+
+    if (mode === "song") {
+      return playing ? [{ ...playing, status: "queued" }] : [];
+    }
+
+    const eligible = items.filter(
+      (i) => i.status !== "skipped" && i.status !== "playing",
+    );
+    if (!playing) return eligible;
+
+    // Songs after current playing position till the last song added
+    const after = eligible
+      .filter((i) => i.position > playing.position)
+      .sort((a, b) => a.position - b.position);
+
+    if (mode === "queue") {
+      const before = eligible
+        .filter((i) => i.position < playing.position)
+        .sort((a, b) => a.position - b.position);
+      return [...after, ...before];
+    }
+
+    return after;
+  }
+
+  const upcomingItems = getUpcoming(queueItems, repeatMode);
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!query.trim()) return;
+    if (!user) {
+      promptSignIn(
+        "You need to sign in to add songs to the queue. Would you like to sign in now?",
+        `/jam/${code}`,
+      );
+      return;
+    }
     setIsAdding(true);
     try {
       const text = query.trim();
-      let addedItem;
       if (text.startsWith("http://") || text.startsWith("https://")) {
-        addedItem = await addToQueue(session.id, text);
+        await addToQueue(session.id, text);
       } else {
-        addedItem = await searchAndAddToQueue(session.id, text, "");
+        await searchAndAddToQueue(session.id, text, "");
       }
-      if (addedItem && addedItem.id) {
-        addItem(addedItem);
-      }
-      refresh();
+      // Bug 1 fix: do NOT call addItem() optimistically — it races with
+      // the server-authoritative refresh() and scrambles queue order.
+      // refresh() + SSE queue_changed delivers the correct ordered list.
+      await refresh();
       setQuery("");
     } catch (err) {
       console.error(err);
-      alert(`Could not add song: ${err.message}`);
+      if (isAuthError(err)) {
+        promptSignIn(
+          "Your session expired. Would you like to sign in again to add songs?",
+          `/jam/${code}`,
+        );
+      } else {
+        alert(`Could not add song: ${err.message}`);
+      }
     } finally {
       setIsAdding(false);
+    }
+  };
+
+  const handleEndSession = async () => {
+    if (!window.confirm("End this jam for everyone?")) return;
+    try {
+      await endSession(session.id);
+      navigate("/");
+    } catch (e) {
+      if (isAuthError(e)) {
+        promptSignIn(
+          "Your session expired. Would you like to sign in again to end the session?",
+          `/jam/${code}`,
+        );
+      } else {
+        alert("Failed to end session: " + e.message);
+      }
     }
   };
 
@@ -81,37 +222,56 @@ export default function JamRoom() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const playingItem = queueItems.find((i) => i.status === "playing");
-  const isHost = [String(session.host_id), String(session.dj_id), String(session.dj_user_id), String(session.creator_id), String(session.owner_id), String(session.user_id)].includes(String(user?.id));
-
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#f4f5f0] flex flex-col">
-      <header className="p-6 border-b-2 border-black bg-white sticky top-0 z-10 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate("/")} className="bg-white border-2 border-black rounded-lg p-2 flex items-center justify-center active:scale-90 transition-transform">
+    <div className="screen bg-[#f4f5f0]">
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <header className="p-4 border-b-2 border-black bg-white sticky top-0 z-10 flex justify-between items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            onClick={() => navigate("/")}
+            className="bg-white border-2 border-black rounded-lg p-2 flex items-center justify-center active:scale-90 transition-transform shrink-0"
+          >
             <ArrowLeft size={20} />
           </button>
-          <div>
+          <div className="min-w-0">
             <div className="text-xs font-bold tracking-wider text-green-800 uppercase">
               Jam Session
             </div>
-            <h1 className="text-2xl font-black">{session.name}</h1>
+            <h1 className="text-xl font-black truncate">{session.name}</h1>
           </div>
         </div>
-        <button
-          onClick={copyCode}
-          className="brutal-card p-2 flex items-center gap-2 hover:bg-gray-50 active:scale-95"
-        >
-          {copied ? (
-            <Check size={18} className="text-green-600" />
-          ) : (
-            <Copy size={18} />
+
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Invite code copy */}
+          <button
+            onClick={copyCode}
+            className="brutal-card p-2 flex items-center gap-2 hover:bg-gray-50 active:scale-95"
+          >
+            {copied ? (
+              <Check size={18} className="text-green-600" />
+            ) : (
+              <Copy size={18} />
+            )}
+            <span className="font-bold text-sm">{code}</span>
+          </button>
+
+          {/* Bug 3 fix: End Session button — host only, mirrors web JamRoom.jsx */}
+          {isHost && (
+            <button
+              onClick={handleEndSession}
+              className="flex items-center gap-1.5 px-3 py-2 bg-red-500 text-white border-2 border-black rounded-lg font-bold text-sm active:scale-95 transition-transform shadow-[2px_2px_0_0_rgba(0,0,0,1)]"
+            >
+              <X size={16} />
+              End
+            </button>
           )}
-          <span className="font-bold">{code}</span>
-        </button>
+        </div>
       </header>
 
-      <main className="flex-1 p-6 pb-40 overflow-y-auto">
+      {/* ── Main content — flex-1 scrolls only within the remaining screen height */}
+      <main className="flex-1 overflow-y-auto overscroll-contain px-6 pt-6 pb-32">
+        {/* Participants */}
         <div className="flex gap-4 mb-6 overflow-x-auto pb-2">
           {participants.map((p) => (
             <div
@@ -124,6 +284,7 @@ export default function JamRoom() {
           ))}
         </div>
 
+        {/* Search / Add song */}
         <form onSubmit={handleSearch} className="mb-8">
           <div className="relative">
             <input
@@ -147,57 +308,98 @@ export default function JamRoom() {
           </div>
         </form>
 
+        {/* Start button when nothing is playing yet */}
         <h2 className="text-xl font-black mb-4">Up Next</h2>
         {!playingItem && queueItems.length > 0 && (
           <button
-            onClick={() => isHost ? playNext(session.id).then(() => refresh()).catch(e => alert("Could not play: " + e.message)) : alert("Only the host can start the jam!")}
+            onClick={() =>
+              isDJ
+                ? playNext(session.id)
+                    .then(() => refresh())
+                    .catch((e) => alert("Could not play: " + e.message))
+                : alert("Only the host can start the jam!")
+            }
             className="w-full bg-lime-accent border-2 border-black rounded-lg py-4 mb-4 text-lg font-black shadow-brutal active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
           >
             Start Playing First Song
           </button>
         )}
+
+        {/* Queue list — upcoming only (no played/skipped clutter) */}
         <div className="space-y-3">
-          {queueItems.map((item) => (
+          {upcomingItems.map((item, idx) => (
             <button
               key={item.id}
-              onClick={() => isHost ? playSpecificSong(session.id, item.id).then(() => refresh()).catch(e => alert("Could not skip to this song: " + e.message)) : null}
-              disabled={!isHost}
-              className={`w-full text-left brutal-card p-4 flex gap-4 transition-transform ${item.status === "playing" ? "bg-lime-accent/50 border-lime-600 border-4" : "hover:-translate-y-1"}`}
+              onClick={() =>
+                isDJ
+                  ? playSpecificSong(session.id, item.id)
+                      .then(() => refresh())
+                      .catch((e) => {
+                        if (isAuthError(e)) {
+                          promptSignIn(
+                            "Your session expired. Would you like to sign in again to control playback?",
+                            `/jam/${code}`,
+                          );
+                        } else {
+                          alert("Could not skip to this song: " + e.message);
+                        }
+                      })
+                  : null
+              }
+              disabled={!isDJ}
+              className={`w-full text-left brutal-card p-4 flex items-center gap-4 transition-transform ${
+                item.status === "played"
+                  ? "opacity-50 hover:-translate-y-1"
+                  : "hover:-translate-y-1"
+              }`}
             >
+              <div className="w-8 h-8 flex items-center justify-center shrink-0 font-black text-gray-400 text-sm">
+                {idx + 1}
+              </div>
               <div className="w-12 h-12 bg-black rounded flex items-center justify-center shrink-0">
-                <Music className="text-lime-accent" size={24} />
+                {item.thumbnail_url ? (
+                  <img
+                    src={item.thumbnail_url}
+                    alt=""
+                    className="w-12 h-12 rounded object-cover"
+                  />
+                ) : (
+                  <Music className="text-lime-accent" size={24} />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-bold text-lg truncate">{item.title}</h3>
                 <p className="text-sm font-medium text-gray-600 truncate">
                   {item.artist || "Unknown Artist"}
                 </p>
-                {item.status === "playing" && (
-                  <span className="text-xs font-black uppercase text-lime-700 tracking-wider">
-                    Now Playing
-                  </span>
-                )}
               </div>
             </button>
           ))}
-          {queueItems.length === 0 && (
+
+          {upcomingItems.length === 0 && (
             <div className="text-center p-8 border-2 border-dashed border-gray-400 rounded-xl">
               <p className="font-bold text-gray-500">
-                Queue is empty. Add a song!
+                {repeatMode === "queue" && queueItems.length > 0
+                  ? "Looping all songs…"
+                  : "Queue is empty. Add a song!"}
               </p>
             </div>
           )}
         </div>
       </main>
 
+      {/* ── Fixed player bar ───────────────────────────────────────────────── */}
       <PlayerControls
         session={session}
         playingItem={playingItem}
         isHost={isHost}
+        isDJ={isDJ}
         queueItems={queueItems}
         refresh={refresh}
         userId={user?.id}
         participantCount={participants?.length || 1}
+        repeatMode={repeatMode}
+        onRepeatModeChange={handleRepeatModeChange}
       />
     </div>
   );
