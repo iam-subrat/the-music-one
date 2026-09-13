@@ -86,10 +86,36 @@ export default function PlayerControls({
         audioElement.currentTime = 0;
         audioElement.play().catch(console.error);
       } else {
-        // "queue" and "none": the server handles wrap-around (repeat queue)
-        // or stops at the end (repeat none). No client-side first-item hack.
+        // Find next eligible item in queue
+        const playing = queueItems?.find((i) => i.status === "playing");
+        const eligible = (queueItems || []).filter(
+          (i) => i.status !== "skipped" && i.status !== "playing",
+        );
+        const after = playing
+          ? eligible
+              .filter((i) => i.position > playing.position)
+              .sort((a, b) => a.position - b.position)
+          : eligible;
+        const before = playing
+          ? eligible
+              .filter((i) => i.position < playing.position)
+              .sort((a, b) => a.position - b.position)
+          : [];
+        const nextItem =
+          (repeatMode === "queue" ? [...after, ...before] : after)[0] || null;
+
         playNext(session.id)
-          .then(() => refresh?.())
+          .then((res) => {
+            if (res?.next_item_id) {
+              refresh?.();
+            } else if (nextItem) {
+              playSpecificSong(session.id, nextItem.id)
+                .then(() => refresh?.())
+                .catch(console.error);
+            } else {
+              refresh?.();
+            }
+          })
           .catch((e) => {
             console.error("Auto-advance failed:", e);
             if (isAuthError(e)) {
@@ -97,6 +123,10 @@ export default function PlayerControls({
                 "The song ended, but your session has expired. Would you like to sign in again to continue playback?",
                 session?.invite_code ? `/jam/${session.invite_code}` : null,
               );
+            } else if (nextItem) {
+              playSpecificSong(session.id, nextItem.id)
+                .then(() => refresh?.())
+                .catch(console.error);
             }
           });
       }
@@ -104,7 +134,7 @@ export default function PlayerControls({
 
     audioElement.addEventListener("ended", handleEnd);
     return () => audioElement.removeEventListener("ended", handleEnd);
-  }, [audioElement, isDJ, session, repeatMode, refresh]);
+  }, [audioElement, isDJ, session, repeatMode, refresh, queueItems]);
 
   // ── Skip vote handler ─────────────────────────────────────────────────────
   const handleSkipVote = async () => {
@@ -185,11 +215,103 @@ export default function PlayerControls({
     };
   }, [seek]);
 
-  // ── Next track (advances queue, marks song as "played") ────────────────────
+  // ── Previous track (restarts track if >3s in or repeat song, or plays previous in queue) ──
+  const handlePrevious = () => {
+    if (!isDJ) return;
+    if (repeatMode === "song" || progress > 3) {
+      seek(0);
+      audioElement.play?.().catch?.(console.error);
+      return;
+    }
+
+    const playing = queueItems?.find((i) => i.status === "playing");
+    const eligible = (queueItems || []).filter(
+      (i) => i.status !== "skipped" && i.status !== "playing",
+    );
+    const before = playing
+      ? eligible
+          .filter((i) => i.position < playing.position)
+          .sort((a, b) => b.position - a.position)
+      : eligible;
+    const after = playing
+      ? eligible
+          .filter((i) => i.position > playing.position)
+          .sort((a, b) => b.position - a.position)
+      : [];
+    const prevItem =
+      (repeatMode === "queue" ? [...before, ...after] : before)[0] || null;
+
+    playPrevious(session.id)
+      .then((res) => {
+        if (res?.next_item_id) {
+          refresh?.();
+        } else if (prevItem) {
+          playSpecificSong(session.id, prevItem.id)
+            .then(() => refresh?.())
+            .catch(console.error);
+        } else {
+          seek(0);
+          audioElement.play?.().catch?.(console.error);
+        }
+      })
+      .catch((e) => {
+        console.error("Play previous failed:", e);
+        if (isAuthError(e)) {
+          promptSignIn(
+            "Your session expired. Would you like to sign in again to control playback?",
+            session?.invite_code ? `/jam/${session.invite_code}` : null,
+          );
+        } else if (prevItem) {
+          playSpecificSong(session.id, prevItem.id)
+            .then(() => refresh?.())
+            .catch(console.error);
+        } else {
+          seek(0);
+        }
+      });
+  };
+
+  // ── Next track (advances queue, or loops current track if at end / repeat song) ──
   const handleNext = () => {
     if (!isDJ) return;
+    if (repeatMode === "song") {
+      seek(0);
+      audioElement.play?.().catch?.(console.error);
+      return;
+    }
+    const playing = queueItems?.find((i) => i.status === "playing");
+    const eligible = (queueItems || []).filter(
+      (i) => i.status !== "skipped" && i.status !== "playing",
+    );
+    const after = playing
+      ? eligible
+          .filter((i) => i.position > playing.position)
+          .sort((a, b) => a.position - b.position)
+      : eligible;
+    const before = playing
+      ? eligible
+          .filter((i) => i.position < playing.position)
+          .sort((a, b) => a.position - b.position)
+      : [];
+    const nextItem =
+      (repeatMode === "queue" ? [...after, ...before] : after)[0] || null;
+
     playNext(session.id)
-      .then(() => refresh?.())
+      .then((res) => {
+        if (res?.next_item_id) {
+          refresh?.();
+        } else if (nextItem) {
+          playSpecificSong(session.id, nextItem.id)
+            .then(() => refresh?.())
+            .catch(console.error);
+        } else {
+          refresh?.();
+          if (repeatMode === "song") {
+            seek(0);
+            audioElement.play?.().catch?.(console.error);
+          }
+        }
+      })
       .catch((e) => {
         console.error("Play next failed:", e);
         if (isAuthError(e)) {
@@ -197,6 +319,10 @@ export default function PlayerControls({
             "Your session expired. Would you like to sign in again to control playback?",
             session?.invite_code ? `/jam/${session.invite_code}` : null,
           );
+        } else if (nextItem) {
+          playSpecificSong(session.id, nextItem.id)
+            .then(() => refresh?.())
+            .catch(console.error);
         }
       });
   };
@@ -270,21 +396,8 @@ export default function PlayerControls({
 
               {/* Previous */}
               <button
-                onClick={() =>
-                  playPrevious(session.id)
-                    .then(() => refresh?.())
-                    .catch((e) => {
-                      console.error("Play previous failed:", e);
-                      if (isAuthError(e)) {
-                        promptSignIn(
-                          "Your session expired. Would you like to sign in again to control playback?",
-                          session?.invite_code
-                            ? `/jam/${session.invite_code}`
-                            : null,
-                        );
-                      }
-                    })
-                }
+                onClick={handlePrevious}
+                title="Previous"
                 className="w-10 h-10 bg-white border-2 border-black rounded-full flex items-center justify-center active:scale-90 transition-transform"
               >
                 <SkipBack size={18} />

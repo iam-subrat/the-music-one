@@ -129,17 +129,33 @@ export default function JamRoom() {
     });
   };
 
-  // ── Queue display: upcoming only (same as web getUpcoming) ────────────────
+  // ── Queue display: upcoming only ──────────────────────────────────────────
   function getUpcoming(items, mode) {
-    if (mode !== "queue") return items.filter((i) => i.status === "queued");
+    if (!items || items.length === 0) return [];
     const playing = items.find((i) => i.status === "playing");
+
+    if (mode === "song") {
+      return playing ? [{ ...playing, status: "queued" }] : [];
+    }
+
     const eligible = items.filter(
       (i) => i.status !== "skipped" && i.status !== "playing",
     );
     if (!playing) return eligible;
-    const after = eligible.filter((i) => i.position > playing.position);
-    const before = eligible.filter((i) => i.position < playing.position);
-    return [...after, ...before];
+
+    // Songs after current playing position till the last song added
+    const after = eligible
+      .filter((i) => i.position > playing.position)
+      .sort((a, b) => a.position - b.position);
+
+    if (mode === "queue") {
+      const before = eligible
+        .filter((i) => i.position < playing.position)
+        .sort((a, b) => a.position - b.position);
+      return [...after, ...before];
+    }
+
+    return after;
   }
 
   const upcomingItems = getUpcoming(queueItems, repeatMode);
@@ -332,15 +348,13 @@ export default function JamRoom() {
               }
               disabled={!isDJ}
               className={`w-full text-left brutal-card p-4 flex items-center gap-4 transition-transform ${
-                item.status === "playing"
-                  ? "bg-lime-accent/50 border-lime-600 border-4"
-                  : item.status === "played"
-                    ? "opacity-50 hover:-translate-y-1"
-                    : "hover:-translate-y-1"
+                item.status === "played"
+                  ? "opacity-50 hover:-translate-y-1"
+                  : "hover:-translate-y-1"
               }`}
             >
               <div className="w-8 h-8 flex items-center justify-center shrink-0 font-black text-gray-400 text-sm">
-                {item.status === "playing" ? "▶" : idx + 1}
+                {idx + 1}
               </div>
               <div className="w-12 h-12 bg-black rounded flex items-center justify-center shrink-0">
                 {item.thumbnail_url ? (
@@ -358,11 +372,6 @@ export default function JamRoom() {
                 <p className="text-sm font-medium text-gray-600 truncate">
                   {item.artist || "Unknown Artist"}
                 </p>
-                {item.status === "playing" && (
-                  <span className="text-xs font-black uppercase text-lime-700 tracking-wider">
-                    Now Playing
-                  </span>
-                )}
               </div>
             </button>
           ))}

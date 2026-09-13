@@ -171,7 +171,7 @@ export function useAudioPlayer(playingItem) {
       seekTargetRef.current = time;
       seekTimeRef.current = Date.now();
       progressRef.current = time;
-      if (durationRef.current > 5 && time < durationRef.current - 5.0) {
+      if (time === 0 || (durationRef.current > 5 && time < durationRef.current - 5.0)) {
         endedFiredForVideoRef.current = null;
       }
       iframeRef.current.contentWindow.postMessage({ type: 'SEEK', time }, '*');
@@ -192,6 +192,7 @@ export function useAudioPlayer(playingItem) {
     },
     play: async () => { 
         if (iframeRef.current?.contentWindow) {
+           setIsPlaying(true);
            iframeRef.current.contentWindow.postMessage({ type: 'PLAY' }, '*');
         }
     },
@@ -199,6 +200,7 @@ export function useAudioPlayer(playingItem) {
         if (iframeRef.current?.contentWindow) {
             progressRef.current = val;
             endedFiredForVideoRef.current = null;
+            setProgress(val);
             iframeRef.current.contentWindow.postMessage({ type: 'SEEK', time: val }, '*');
         }
     },
