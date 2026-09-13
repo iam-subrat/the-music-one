@@ -9,6 +9,7 @@ import {
   removeSkipVote,
 } from "../lib/queue";
 import { useSkipVotes } from "../hooks/useSkipVotes";
+import { isAuthError, promptSignIn } from "../lib/authPrompt";
 import {
   Play,
   Pause,
@@ -89,7 +90,15 @@ export default function PlayerControls({
         // or stops at the end (repeat none). No client-side first-item hack.
         playNext(session.id)
           .then(() => refresh?.())
-          .catch(console.error);
+          .catch((e) => {
+            console.error("Auto-advance failed:", e);
+            if (isAuthError(e)) {
+              promptSignIn(
+                "The song ended, but your session has expired. Would you like to sign in again to continue playback?",
+                session?.invite_code ? `/jam/${session.invite_code}` : null,
+              );
+            }
+          });
       }
     };
 
@@ -99,6 +108,13 @@ export default function PlayerControls({
 
   // ── Skip vote handler ─────────────────────────────────────────────────────
   const handleSkipVote = async () => {
+    if (!userId) {
+      promptSignIn(
+        "Please sign in to vote to skip this song.",
+        session?.invite_code ? `/jam/${session.invite_code}` : null,
+      );
+      return;
+    }
     try {
       if (hasVoted) {
         await removeSkipVote(playingItem.id, userId);
@@ -107,7 +123,13 @@ export default function PlayerControls({
         if (skipped) refresh?.();
       }
     } catch (e) {
-      console.error(e);
+      console.error("Skip vote failed:", e);
+      if (isAuthError(e)) {
+        promptSignIn(
+          "Your session expired. Would you like to sign in again to vote to skip?",
+          session?.invite_code ? `/jam/${session.invite_code}` : null,
+        );
+      }
     }
   };
 
@@ -168,7 +190,15 @@ export default function PlayerControls({
     if (!isDJ) return;
     playNext(session.id)
       .then(() => refresh?.())
-      .catch((e) => console.error("Play next failed:", e));
+      .catch((e) => {
+        console.error("Play next failed:", e);
+        if (isAuthError(e)) {
+          promptSignIn(
+            "Your session expired. Would you like to sign in again to control playback?",
+            session?.invite_code ? `/jam/${session.invite_code}` : null,
+          );
+        }
+      });
   };
 
   const displayProgress = isScrubbing ? scrubValue : progress;
@@ -243,7 +273,17 @@ export default function PlayerControls({
                 onClick={() =>
                   playPrevious(session.id)
                     .then(() => refresh?.())
-                    .catch((e) => console.error(e))
+                    .catch((e) => {
+                      console.error("Play previous failed:", e);
+                      if (isAuthError(e)) {
+                        promptSignIn(
+                          "Your session expired. Would you like to sign in again to control playback?",
+                          session?.invite_code
+                            ? `/jam/${session.invite_code}`
+                            : null,
+                        );
+                      }
+                    })
                 }
                 className="w-10 h-10 bg-white border-2 border-black rounded-full flex items-center justify-center active:scale-90 transition-transform"
               >

@@ -13,6 +13,16 @@ export function useAudioPlayer(playingItem) {
   const seekingRef = useRef(false);
   const seekTargetRef = useRef(0);
   const seekTimeRef = useRef(0);
+  const durationRef = useRef(0);
+  const progressRef = useRef(0);
+  const endedFiredForVideoRef = useRef(null);
+
+  const triggerEnded = () => {
+    if (endedFiredForVideoRef.current === currentVideoIdRef.current) return;
+    endedFiredForVideoRef.current = currentVideoIdRef.current;
+    setIsPlaying(false);
+    window.dispatchEvent(new Event('yt-audio-ended'));
+  };
   
   // Create or get the bridge iframe once
   useEffect(() => {
@@ -52,16 +62,21 @@ export function useAudioPlayer(playingItem) {
             setIsPlaying(true);
           } else if (data.state === 2) { // PAUSED (2)
             setIsPlaying(false);
+            // Near-end safety net: YouTube often transitions to PAUSED at duration - 1s (e.g. 3:33 of 3:34)
+            if (durationRef.current > 5 && progressRef.current >= durationRef.current - 2.0) {
+              triggerEnded();
+            }
           } else if (data.state === 0) { // ENDED (0)
-            setIsPlaying(false);
-            window.dispatchEvent(new Event('yt-audio-ended'));
+            triggerEnded();
           }
           break;
         case 'PROGRESS':
           if (data.duration !== undefined && data.duration > 0) {
+            durationRef.current = data.duration;
             setDuration(data.duration);
           }
           if (data.currentTime !== undefined) {
+            progressRef.current = data.currentTime;
             if (seekingRef.current && Date.now() - seekTimeRef.current < 1500) {
               if (Math.abs(data.currentTime - seekTargetRef.current) > 2) {
                 break;
@@ -69,12 +84,22 @@ export function useAudioPlayer(playingItem) {
               seekingRef.current = false;
             }
             setProgress(data.currentTime);
+
+            // If song is playing back near beginning/middle, allow end event to fire again (for repeat mode)
+            if (durationRef.current > 5 && data.currentTime < durationRef.current - 5.0) {
+              endedFiredForVideoRef.current = null;
+            }
+
+            // Natural end detection in PROGRESS: reached within 0.8s of end
+            if (durationRef.current > 5 && data.currentTime >= durationRef.current - 0.8) {
+              triggerEnded();
+            }
           }
           break;
         case 'ERROR':
           console.error('[Bridge] YT Player Error:', data.error);
           setTimeout(() => {
-            window.dispatchEvent(new Event('yt-audio-ended'));
+            triggerEnded();
           }, 3000);
           break;
       }
@@ -115,6 +140,9 @@ export function useAudioPlayer(playingItem) {
         // If we heavily re-render (e.g. queue fetch completed metadata), do not reload if already loaded
         if (currentVideoIdRef.current === yId) return;
         currentVideoIdRef.current = yId;
+        endedFiredForVideoRef.current = null;
+        durationRef.current = 0;
+        progressRef.current = 0;
         
         // We can't guarantee if it's "READY" yet, so we post the message.
         // If it isn't ready, the bridge won't respond, so we also save pending check:
@@ -142,6 +170,10 @@ export function useAudioPlayer(playingItem) {
       seekingRef.current = true;
       seekTargetRef.current = time;
       seekTimeRef.current = Date.now();
+      progressRef.current = time;
+      if (durationRef.current > 5 && time < durationRef.current - 5.0) {
+        endedFiredForVideoRef.current = null;
+      }
       iframeRef.current.contentWindow.postMessage({ type: 'SEEK', time }, '*');
       setProgress(time);
     }
@@ -165,11 +197,13 @@ export function useAudioPlayer(playingItem) {
     },
     set currentTime(val) {
         if (iframeRef.current?.contentWindow) {
+            progressRef.current = val;
+            endedFiredForVideoRef.current = null;
             iframeRef.current.contentWindow.postMessage({ type: 'SEEK', time: val }, '*');
         }
     },
     get currentTime() {
-        return progress;
+        return progressRef.current;
     }
   }).current;
 

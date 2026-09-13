@@ -7,7 +7,9 @@ export async function addToQueue(sessionId, url) {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || 'Failed to add to queue');
+    const err = new Error(body.detail || 'Failed to add to queue');
+    err.status = res.status;
+    throw err;
   }
   return res.json();
 }
@@ -19,7 +21,9 @@ export async function searchAndAddToQueue(sessionId, name, artist) {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || 'Could not find song.');
+    const err = new Error(body.detail || 'Could not find song.');
+    err.status = res.status;
+    throw err;
   }
   return res.json();
 }
@@ -31,13 +35,23 @@ export async function getQueue(sessionId) {
 
 export async function playNext(sessionId) {
   const res = await api(`/sessions/${sessionId}/queue/next`, { method: 'POST' });
-  if (!res.ok) throw new Error('Failed to advance queue');
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const err = new Error(body.detail || 'Failed to advance queue');
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
 }
 
 export async function forceSkip(sessionId) {
   const res = await api(`/sessions/${sessionId}/queue/skip`, { method: 'POST' });
-  if (!res.ok) throw new Error('Failed to skip');
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const err = new Error(body.detail || 'Failed to skip');
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
 }
 
@@ -46,14 +60,24 @@ export async function castSkipVote(queueItemId, threshold) {
     method: 'POST',
     body: JSON.stringify({ threshold }),
   });
-  if (!res.ok) throw new Error('Failed to cast vote');
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const err = new Error(body.detail || 'Failed to cast vote');
+    err.status = res.status;
+    throw err;
+  }
   const data = await res.json();
   return data.skipped;
 }
 
 export async function removeSkipVote(queueItemId, _userId) {
   const res = await api(`/items/${queueItemId}/votes`, { method: 'DELETE' });
-  if (!res.ok) throw new Error('Failed to remove vote');
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const err = new Error(body.detail || 'Failed to remove vote');
+    err.status = res.status;
+    throw err;
+  }
 }
 
 export async function patchYouTubeLink(itemId, youtubeUrl) {
@@ -67,7 +91,9 @@ export async function playSpecificSong(sessionId, itemId) {
   const res = await api(`/sessions/${sessionId}/queue/items/${itemId}/play`, { method: "POST" });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || "Failed to play specific song");
+    const err = new Error(body.detail || "Failed to play specific song");
+    err.status = res.status;
+    throw err;
   }
   return res.json();
 }
@@ -76,7 +102,9 @@ export async function playPrevious(sessionId) {
   const res = await api(`/sessions/${sessionId}/queue/previous`, { method: "POST" });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || "Failed to play previous song");
+    const err = new Error(body.detail || "Failed to play previous song");
+    err.status = res.status;
+    throw err;
   }
   return res.json();
 }

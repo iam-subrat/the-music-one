@@ -2,6 +2,7 @@ import { Routes, Route, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { createSession } from "./lib/session";
+import { isAuthError, promptSignIn } from "./lib/authPrompt";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -17,9 +18,20 @@ function JamNew() {
       navigate("/login?next=/jam/new");
       return;
     }
-    createSession(user.id).then((s) =>
-      navigate(`/jam/${s.invite_code}`, { replace: true }),
-    );
+    createSession(user.id)
+      .then((s) => navigate(`/jam/${s.invite_code}`, { replace: true }))
+      .catch((err) => {
+        console.error("Create session failed:", err);
+        if (isAuthError(err)) {
+          promptSignIn(
+            "Your session has expired. Would you like to sign in to start a new Jam?",
+            "/jam/new",
+          );
+        } else {
+          alert("Could not start jam: " + err.message);
+          navigate("/");
+        }
+      });
   }, [user, loading, navigate]);
 
   return (

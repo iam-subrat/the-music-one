@@ -11,6 +11,7 @@ import {
   playNext,
 } from "../lib/queue";
 import { endSession, setRepeatMode } from "../lib/session";
+import { isAuthError, promptSignIn } from "../lib/authPrompt";
 import PlayerControls from "../components/PlayerControls";
 import { Search, Users, Copy, Check, Music, ArrowLeft, X } from "lucide-react";
 
@@ -34,10 +35,6 @@ export default function JamRoom() {
       joinedAtRef.current = Date.now();
     }
   }, [session?.id]);
-
-  useEffect(() => {
-    if (!authLoading && !user) navigate("/login?next=/jam/" + code);
-  }, [user, authLoading, code, navigate]);
 
   // ── Ended session screen ───────────────────────────────────────────────────
   if (authLoading || sessionLoading) {
@@ -120,9 +117,15 @@ export default function JamRoom() {
   const handleRepeatModeChange = (next) => {
     // Optimistic local update so the UI responds immediately
     setSession((prev) => ({ ...prev, repeat_mode: next }));
-    setRepeatMode(session.id, next).catch(() => {
+    setRepeatMode(session.id, next).catch((e) => {
       // Roll back on failure
       setSession((prev) => ({ ...prev, repeat_mode: repeatMode }));
+      if (isAuthError(e)) {
+        promptSignIn(
+          "Your session expired. Would you like to sign in again to change playback settings?",
+          `/jam/${code}`,
+        );
+      }
     });
   };
 
@@ -145,6 +148,13 @@ export default function JamRoom() {
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!query.trim()) return;
+    if (!user) {
+      promptSignIn(
+        "You need to sign in to add songs to the queue. Would you like to sign in now?",
+        `/jam/${code}`,
+      );
+      return;
+    }
     setIsAdding(true);
     try {
       const text = query.trim();
@@ -160,7 +170,14 @@ export default function JamRoom() {
       setQuery("");
     } catch (err) {
       console.error(err);
-      alert(`Could not add song: ${err.message}`);
+      if (isAuthError(err)) {
+        promptSignIn(
+          "Your session expired. Would you like to sign in again to add songs?",
+          `/jam/${code}`,
+        );
+      } else {
+        alert(`Could not add song: ${err.message}`);
+      }
     } finally {
       setIsAdding(false);
     }
@@ -172,7 +189,14 @@ export default function JamRoom() {
       await endSession(session.id);
       navigate("/");
     } catch (e) {
-      alert("Failed to end session: " + e.message);
+      if (isAuthError(e)) {
+        promptSignIn(
+          "Your session expired. Would you like to sign in again to end the session?",
+          `/jam/${code}`,
+        );
+      } else {
+        alert("Failed to end session: " + e.message);
+      }
     }
   };
 
@@ -294,9 +318,16 @@ export default function JamRoom() {
                 isDJ
                   ? playSpecificSong(session.id, item.id)
                       .then(() => refresh())
-                      .catch((e) =>
-                        alert("Could not skip to this song: " + e.message),
-                      )
+                      .catch((e) => {
+                        if (isAuthError(e)) {
+                          promptSignIn(
+                            "Your session expired. Would you like to sign in again to control playback?",
+                            `/jam/${code}`,
+                          );
+                        } else {
+                          alert("Could not skip to this song: " + e.message);
+                        }
+                      })
                   : null
               }
               disabled={!isDJ}
