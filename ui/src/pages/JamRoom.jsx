@@ -211,7 +211,11 @@ export default function JamRoom() {
   }
 
   const nowPlaying = queueItems.find((i) => i.status === "playing") ?? null;
-  console.log('[JamRoom] render', { queueCount: queueItems.length, nowPlayingId: nowPlaying?.id, title: nowPlaying?.title });
+  console.log("[JamRoom] render", {
+    queueCount: queueItems.length,
+    nowPlayingId: nowPlaying?.id,
+    title: nowPlaying?.title,
+  });
   const isDJ = session.dj_user_id === user?.id;
   const isHost = session.host_user_id === user?.id;
 
@@ -278,14 +282,18 @@ export default function JamRoom() {
               onRepeatModeChange={(mode) =>
                 setSession((prev) => ({ ...prev, repeat_mode: mode }))
               }
+              queueItems={queueItems}
             />
-                        <QueueList
+            <QueueList
               items={queueItems}
               repeatMode={session.repeat_mode ?? "none"}
               sessionId={session.id}
               userId={user?.id}
               profile={profile}
-              isDj={session?.dj_user_id === user?.id || session?.host_user_id === user?.id}
+              isDj={
+                session?.dj_user_id === user?.id ||
+                session?.host_user_id === user?.id
+              }
               onPlatformDetected={setPreferredPlatform}
               onAdded={(item) => {
                 addItem(item);
