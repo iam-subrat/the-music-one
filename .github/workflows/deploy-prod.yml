@@ -17,7 +17,6 @@ on:
     paths:
       - "ui/**"
       - "api/**"
-      - "mobile/**"
       - "infra/**"
       - "docker-compose*.yml"
       - ".github/workflows/deploy-prod.yml"
@@ -31,10 +30,6 @@ on:
         description: "Deploy API"
         type: boolean
         default: true
-      tag_mobile:
-        description: "Create tag (mobile)"
-        type: boolean
-        default: false
 
 # Serialize runs so concurrent pushes don't race on tag creation.
 concurrency:
@@ -54,7 +49,6 @@ jobs:
     outputs:
       ui:       ${{ steps.filter.outputs.ui }}
       api:      ${{ steps.filter.outputs.api }}
-      mobile:   ${{ steps.filter.outputs.mobile }}
       last_tag: ${{ steps.version.outputs.last_tag }}
       next:     ${{ steps.version.outputs.next }}
 
@@ -67,21 +61,19 @@ jobs:
         id: filter
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "ui=${{ inputs.deploy_ui }}"       >> "$GITHUB_OUTPUT"
-            echo "api=${{ inputs.deploy_api }}"      >> "$GITHUB_OUTPUT"
-            echo "mobile=${{ inputs.tag_mobile }}"   >> "$GITHUB_OUTPUT"
+            echo "ui=${{ inputs.deploy_ui }}"   >> "$GITHUB_OUTPUT"
+            echo "api=${{ inputs.deploy_api }}"  >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           BEFORE="${{ github.event.before }}"
           AFTER="${{ github.sha }}"
 
-          # First push, or force-push to an unreachable commit → assume changed.
+          # First push, or force-push to an unreachable commit → assume both changed.
           if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
              || ! git cat-file -e "$BEFORE" 2>/dev/null; then
-            echo "ui=true"     >> "$GITHUB_OUTPUT"
-            echo "api=true"    >> "$GITHUB_OUTPUT"
-            echo "mobile=true" >> "$GITHUB_OUTPUT"
+            echo "ui=true"  >> "$GITHUB_OUTPUT"
+            echo "api=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -97,12 +89,6 @@ jobs:
             echo "api=true"  >> "$GITHUB_OUTPUT"
           else
             echo "api=false" >> "$GITHUB_OUTPUT"
-          fi
-
-          if grep -qE "^mobile/" /tmp/changed.txt; then
-            echo "mobile=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "mobile=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Compute next version
@@ -162,7 +148,7 @@ jobs:
   # ── 2. Draft release (reviewer edits notes before approving) ──────────────────
   draft:
     needs: detect
-    if: needs.detect.outputs.mobile == 'true'
+    if: needs.detect.outputs.ui == 'true' || needs.detect.outputs.api == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -182,21 +168,12 @@ jobs:
           NEXT:     ${{ needs.detect.outputs.next }}
         run: |
           if git rev-parse "$LAST_TAG" >/dev/null 2>&1; then
-            CHANGED=$(git diff --name-only "${LAST_TAG}..HEAD" -- ui/ api/ mobile/ 2>/dev/null || true)
+            CHANGED=$(git diff --name-only "${LAST_TAG}..HEAD" -- ui/ api/ 2>/dev/null || true)
           else
-            CHANGED=$(git ls-files ui/ api/ mobile/)
+            CHANGED=$(git ls-files ui/ api/)
           fi
 
-          if echo "$CHANGED" | grep -q "^mobile/"; then
-            SUFFIX="[Mobile]"
-            if echo "$CHANGED" | grep -q "^ui/" && echo "$CHANGED" | grep -q "^api/"; then
-              SUFFIX="[Mobile + UI + API]"
-            elif echo "$CHANGED" | grep -q "^ui/"; then
-              SUFFIX="[Mobile + UI]"
-            elif echo "$CHANGED" | grep -q "^api/"; then
-              SUFFIX="[Mobile + API]"
-            fi
-          elif echo "$CHANGED" | grep -q "^ui/" && echo "$CHANGED" | grep -q "^api/"; then
+          if echo "$CHANGED" | grep -q "^ui/" && echo "$CHANGED" | grep -q "^api/"; then
             SUFFIX="[UI + API]"
           elif echo "$CHANGED" | grep -q "^ui/"; then
             SUFFIX="[UI]"
@@ -234,13 +211,11 @@ jobs:
   # ── 3. Single approval gate. ONLY job using `production-approval` env. ─────────────────
   approve:
     needs: [detect, draft]
-    if: |
-      !failure() && !cancelled() &&
-      (needs.detect.outputs.ui == 'true' || needs.detect.outputs.api == 'true' || needs.detect.outputs.mobile == 'true')
+    if: needs.detect.outputs.ui == 'true' || needs.detect.outputs.api == 'true'
     runs-on: ubuntu-latest
     environment:
       name: production-approval
-      url: ${{ needs.draft.outputs.release_url || 'https://themusic.one' }}
+      url: ${{ needs.draft.outputs.release_url }}
     steps:
       - run: echo "Approved — proceeding with production deployment."
 
@@ -401,19 +376,16 @@ jobs:
       - id: deployment
         uses: actions/deploy-pages@v4
 
-  # ── 6. Tag + publish release (only if mobile changed and all requested deploys succeeded) ──
+  # ── 6. Tag + publish release (only if every requested deploy succeeded) ──────
   release:
-    needs: [detect, draft, approve, deploy-ui, deploy-api]
+    needs: [detect, draft, deploy-ui, deploy-api]
     if: |
       always() &&
       needs.detect.result == 'success' &&
-      needs.detect.outputs.mobile == 'true' &&
       needs.draft.result  == 'success' &&
-      needs.approve.result == 'success' &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      (needs.detect.outputs.ui != 'true' || needs.deploy-ui.result == 'success') &&
-      (needs.detect.outputs.api != 'true' || needs.deploy-api.result == 'success')
+      (needs.deploy-ui.result == 'success' || needs.deploy-api.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       contents: write
