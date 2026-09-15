@@ -14,6 +14,8 @@ import {
   castSkipVote,
   removeSkipVote,
   playNext,
+  playPrevious,
+  playSpecificSong,
   patchYouTubeLink,
 } from "../lib/queue";
 import { setRepeatMode } from "../lib/session";
@@ -33,6 +35,7 @@ export default function NowPlaying({
   onQueueChange,
   repeatMode,
   onRepeatModeChange,
+  queueItems,
 }) {
   const toast = useToast();
   const { count: skipVotes, hasVoted } = useSkipVotes(
@@ -145,14 +148,153 @@ export default function NowPlaying({
     }
   }, [ytId]);
 
+  const handleNext = async () => {
+    if (!isDJ) return;
+    if (repeatMode === "song") {
+      ytPlayerRef.current?.seek(0);
+      ytPlayerRef.current?.play();
+      return;
+    }
+    const playing = queueItems?.find((i) => i.status === "playing");
+    const eligible = (queueItems || []).filter(
+      (i) => i.status !== "skipped" && i.status !== "playing",
+    );
+    const after = playing
+      ? eligible
+          .filter((i) => i.position > playing.position)
+          .sort((a, b) => a.position - b.position)
+      : eligible;
+    const before = playing
+      ? eligible
+          .filter((i) => i.position < playing.position)
+          .sort((a, b) => a.position - b.position)
+      : [];
+    const nextItem =
+      (repeatMode === "queue" ? [...after, ...before] : after)[0] || null;
+
+    try {
+      const n = await playNext(sessionId);
+      onQueueChange?.();
+      if (!n?.next_item_id) {
+        if (nextItem) {
+          await playSpecificSong(sessionId, nextItem.id);
+          onQueueChange?.();
+        } else {
+          toast("Queue is empty!");
+        }
+      }
+    } catch (e) {
+      if (nextItem) {
+        try {
+          await playSpecificSong(sessionId, nextItem.id);
+          onQueueChange?.();
+        } catch (err) {
+          toast(err.message);
+        }
+      } else {
+        toast(e.message);
+      }
+    }
+  };
+
+  const handlePrevious = async () => {
+    if (!isDJ) return;
+    const currentTime = ytPlayerRef.current?.getTime?.() ?? 0;
+    if (repeatMode === "song" || currentTime > 3) {
+      ytPlayerRef.current?.seek(0);
+      ytPlayerRef.current?.play();
+      return;
+    }
+
+    const playing = queueItems?.find((i) => i.status === "playing");
+    const eligible = (queueItems || []).filter(
+      (i) => i.status !== "skipped" && i.status !== "playing",
+    );
+    const before = playing
+      ? eligible
+          .filter((i) => i.position < playing.position)
+          .sort((a, b) => b.position - a.position)
+      : eligible;
+    const after = playing
+      ? eligible
+          .filter((i) => i.position > playing.position)
+          .sort((a, b) => b.position - a.position)
+      : [];
+    const prevItem =
+      (repeatMode === "queue" ? [...before, ...after] : before)[0] || null;
+
+    try {
+      const n = await playPrevious(sessionId);
+      onQueueChange?.();
+      if (!n?.next_item_id) {
+        if (prevItem) {
+          await playSpecificSong(sessionId, prevItem.id);
+          onQueueChange?.();
+        } else {
+          ytPlayerRef.current?.seek(0);
+          ytPlayerRef.current?.play();
+          toast("No previous song!");
+        }
+      }
+    } catch (e) {
+      if (prevItem) {
+        try {
+          await playSpecificSong(sessionId, prevItem.id);
+          onQueueChange?.();
+        } catch (err) {
+          toast(err.message);
+        }
+      } else {
+        ytPlayerRef.current?.seek(0);
+        toast(e.message);
+      }
+    }
+  };
+
   async function handleEnded() {
     if (!isDJ) return;
+    if (repeatMode === "song") {
+      ytPlayerRef.current?.seek(0);
+      ytPlayerRef.current?.play();
+      return;
+    }
+    const playing = queueItems?.find((i) => i.status === "playing");
+    const eligible = (queueItems || []).filter(
+      (i) => i.status !== "skipped" && i.status !== "playing",
+    );
+    const after = playing
+      ? eligible
+          .filter((i) => i.position > playing.position)
+          .sort((a, b) => a.position - b.position)
+      : eligible;
+    const before = playing
+      ? eligible
+          .filter((i) => i.position < playing.position)
+          .sort((a, b) => a.position - b.position)
+      : [];
+    const nextItem =
+      (repeatMode === "queue" ? [...after, ...before] : after)[0] || null;
+
     try {
       const next = await playNext(sessionId);
       onQueueChange?.();
-      if (!next?.next_item_id) toast("Queue is empty!");
+      if (!next?.next_item_id) {
+        if (nextItem) {
+          await playSpecificSong(sessionId, nextItem.id);
+          onQueueChange?.();
+        } else {
+          toast("Queue is empty!");
+        }
+      }
     } catch (e) {
-      toast(e.message);
+      if (nextItem) {
+        try {
+          await playSpecificSong(sessionId, nextItem.id);
+          onQueueChange?.();
+        } catch {}
+      } else {
+        toast(e.message);
+      }
     }
   }
 
@@ -179,30 +321,10 @@ export default function NowPlaying({
           <div
             style={{ display: "flex", gap: "8px", justifyContent: "center" }}
           >
-            <button
-              className="btn"
-              onClick={() =>
-                playPrevious(sessionId)
-                  .then((n) => {
-                    onQueueChange?.();
-                    if (!n?.next_item_id) toast("No previous song!");
-                  })
-                  .catch((e) => toast(e.message))
-              }
-            >
+            <button className="btn" onClick={handlePrevious}>
               ⏮ Prev
             </button>
-            <button
-              className="btn"
-              onClick={() =>
-                playNext(sessionId)
-                  .then((n) => {
-                    onQueueChange?.();
-                    if (!n?.next_item_id) toast("Queue is empty!");
-                  })
-                  .catch((e) => toast(e.message))
-              }
-            >
+            <button className="btn" onClick={handleNext}>
               Play Next ▶
             </button>
           </div>
@@ -295,32 +417,12 @@ export default function NowPlaying({
 
       <div className={s.djControls}>
         {isDJ && (
-          <button
-            className="btn"
-            onClick={() =>
-              playPrevious(sessionId)
-                .then((n) => {
-                  onQueueChange?.();
-                  if (!n?.next_item_id) toast("No previous song!");
-                })
-                .catch((e) => toast(e.message))
-            }
-          >
+          <button className="btn" onClick={handlePrevious}>
             ⏮ Prev
           </button>
         )}
         {isDJ && (
-          <button
-            className="btn"
-            onClick={() =>
-              playNext(sessionId)
-                .then((n) => {
-                  onQueueChange?.();
-                  if (!n?.next_item_id) toast("Queue is empty!");
-                })
-                .catch((e) => toast(e.message))
-            }
-          >
+          <button className="btn" onClick={handleNext}>
             Next ▶
           </button>
         )}

@@ -327,12 +327,23 @@ export default function TuiJamRoom() {
           append({ kind: "err", text: "✗ DJ only" });
           break;
         }
+        if (
+          session.repeat_mode === "song" ||
+          (ytPlayerRef.current?.getTime?.() ?? 0) > 3
+        ) {
+          ytPlayerRef.current?.seek(0);
+          ytPlayerRef.current?.play();
+          append({ kind: "ok", text: "⏮ restarted song from beginning" });
+          break;
+        }
         try {
           const res = await playPrevious(session.id);
           if (res?.next_item_id) {
             append({ kind: "ok", text: "⏮ previous song" });
             refreshQueue();
           } else {
+            ytPlayerRef.current?.seek(0);
+            ytPlayerRef.current?.play();
             append({ kind: "warn", text: "~ no previous song" });
           }
         } catch (e) {
@@ -343,6 +354,12 @@ export default function TuiJamRoom() {
       case "n":
         if (!isDJ) {
           append({ kind: "err", text: "✗ DJ only" });
+          break;
+        }
+        if (session.repeat_mode === "song") {
+          ytPlayerRef.current?.seek(0);
+          ytPlayerRef.current?.play();
+          append({ kind: "ok", text: "↺ replaying song (repeat mode: song)" });
           break;
         }
         try {

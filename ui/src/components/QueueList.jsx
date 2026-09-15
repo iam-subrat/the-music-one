@@ -3,15 +3,31 @@ import QueueCard from "./QueueCard";
 import AddSongForm from "./AddSongForm";
 
 export function getUpcoming(items, repeatMode) {
-  if (repeatMode !== "queue") return items.filter((i) => i.status === "queued");
+  if (!items || items.length === 0) return [];
   const playing = items.find((i) => i.status === "playing");
+
+  if (repeatMode === "song") {
+    return playing ? [{ ...playing, status: "queued" }] : [];
+  }
+
   const eligible = items.filter(
     (i) => i.status !== "skipped" && i.status !== "playing",
   );
   if (!playing) return eligible;
-  const after = eligible.filter((i) => i.position > playing.position);
-  const before = eligible.filter((i) => i.position < playing.position);
-  return [...after, ...before];
+
+  // Songs after current playing position till the last song added
+  const after = eligible
+    .filter((i) => i.position > playing.position)
+    .sort((a, b) => a.position - b.position);
+
+  if (repeatMode === "queue") {
+    const before = eligible
+      .filter((i) => i.position < playing.position)
+      .sort((a, b) => a.position - b.position);
+    return [...after, ...before];
+  }
+
+  return after;
 }
 
 export default function QueueList({
@@ -46,11 +62,19 @@ export default function QueueList({
               padding: "8px 0",
             }}
           >
-            Queue is empty. Add a song above!
+            {repeatMode === "queue" && items?.length > 0
+              ? "Looping all songs…"
+              : "Queue is empty. Add a song above!"}
           </p>
         ) : (
           upcoming.map((item, i) => (
-            <QueueCard key={item.id} item={item} index={i + 1} isDj={isDj} sessionId={sessionId} />
+            <QueueCard
+              key={item.id}
+              item={item}
+              index={i + 1}
+              isDj={isDj}
+              sessionId={sessionId}
+            />
           ))
         )}
       </div>
