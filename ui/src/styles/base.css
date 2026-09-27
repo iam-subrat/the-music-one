@@ -45,21 +45,29 @@ body {
 
 .jam-persistent-player {
   position: fixed;
-  right: 18px;
-  bottom: 18px;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
   z-index: 20;
-  width: min(320px, calc(100vw - 36px));
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  width: min(480px, calc(100vw - 32px));
+  height: 44px;
+  border: 1px solid rgba(184, 255, 103, 0.24);
+  border-radius: 999px;
   overflow: hidden;
-  background: var(--surface);
-  box-shadow: var(--shadow-lg);
+  background: rgba(15, 19, 17, 0.94);
+  color: #f2f7ec;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(16px);
 }
+
+.jam-persistent-player > :not(.jam-persistent-player__status) { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.jam-persistent-player__status { display: flex; height: 100%; align-items: center; justify-content: center; gap: 9px; padding: 0 18px; font-size: .77rem; font-weight: 650; letter-spacing: .01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jam-persistent-player__dot { width: 7px; height: 7px; border-radius: 50%; background: #b8ff67; box-shadow: 0 0 0 4px rgba(184, 255, 103, .14); }
 
 html[data-tui="1"] .jam-persistent-player {
   width: 1px;
   height: 1px;
-  right: 0;
+  left: 0;
   bottom: 0;
   opacity: 0;
   pointer-events: none;

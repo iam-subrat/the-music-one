@@ -19,13 +19,12 @@ import { JamPlaybackProvider, useJamPlayback } from './playback/JamPlaybackConte
 
 function PlaybackRouteCleanup() {
   const { pathname } = useLocation();
-  const { clearPlayback, pause } = useJamPlayback();
+  const { clearPlayback } = useJamPlayback();
   useEffect(() => {
     if (!pathname.startsWith('/jam/')) {
-      pause();
       clearPlayback();
     }
-  }, [pathname, clearPlayback, pause]);
+  }, [pathname, clearPlayback]);
   return null;
 }
 

@@ -1,13 +1,23 @@
 import { forwardRef, useImperativeHandle } from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import NowPlaying from "./NowPlaying";
 import { JamPlaybackProvider } from "../playback/JamPlaybackContext";
 
+const player = {
+  play: vi.fn(),
+  pause: vi.fn(),
+  seek: vi.fn(),
+  getTime: () => 0,
+  getDuration: () => 180,
+  getState: () => 1,
+  isReady: () => true,
+};
+
 vi.mock("../components/YouTubeAutoPlayer", () => ({
   default: forwardRef(({ videoId }, ref) => {
-    useImperativeHandle(ref, () => ({ play: vi.fn(), pause: vi.fn(), seek: vi.fn(), getTime: () => 0, getDuration: () => 180, getState: () => 1, isReady: () => true }));
+    useImperativeHandle(ref, () => player);
     return <div data-testid="youtube-player" data-video-id={videoId} />;
   }),
 }));
@@ -51,5 +61,39 @@ describe("NowPlaying shared playback", () => {
   test("does not enable shared playback for a non-DJ viewer", () => {
     render(<JamPlaybackProvider><NowPlaying {...playingProps} isDJ={false} /></JamPlaybackProvider>);
     expect(screen.queryByTestId("youtube-player")).not.toBeInTheDocument();
+  });
+
+  test("gives the DJ accessible transport controls", async () => {
+    render(<JamPlaybackProvider><NowPlaying {...playingProps} /></JamPlaybackProvider>);
+
+    await waitFor(() => expect(screen.getByTestId("youtube-player")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Previous track" })).toBeEnabled();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Pause playback" })).toBeEnabled());
+    expect(screen.getByRole("button", { name: "Next track" })).toBeEnabled();
+  });
+
+  test("lets the DJ seek using the labelled playback position slider", async () => {
+    render(<JamPlaybackProvider><NowPlaying {...playingProps} /></JamPlaybackProvider>);
+
+    await waitFor(() => expect(screen.getByTestId("youtube-player")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("slider", { name: "Playback position" })).toHaveAttribute("max", "180"));
+    const seekbar = screen.getByRole("slider", { name: "Playback position" });
+    expect(seekbar).toHaveAttribute("min", "0");
+    expect(seekbar).toHaveAttribute("max", "180");
+    expect(seekbar).toHaveAttribute("value", "0");
+    expect(seekbar).toBeEnabled();
+
+    fireEvent.change(seekbar, { target: { value: "73" } });
+    expect(player.seek).toHaveBeenCalledWith(73);
+  });
+
+  test("keeps the viewer's transport read-only", () => {
+    render(<JamPlaybackProvider><NowPlaying {...playingProps} isDJ={false} /></JamPlaybackProvider>);
+
+    expect(screen.getByRole("slider", { name: "Playback position" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Previous track" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Play playback" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pause playback" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Next track" })).not.toBeInTheDocument();
   });
 });

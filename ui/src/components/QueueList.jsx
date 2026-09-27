@@ -41,20 +41,27 @@ export default function QueueList({
   onPlatformDetected,
   onAdded,
   onQueueChange,
+  showAdd = true,
 }) {
   const upcoming = getUpcoming(items, repeatMode);
   return (
-    <div className={s.queueSection}>
-      <AddSongForm
-        sessionId={sessionId}
-        userId={userId}
-        profile={profile}
-        onPlatformDetected={onPlatformDetected}
-        onAdded={onAdded}
-      />
-      <p style={{ color: "var(--muted)", fontSize: "0.8rem", marginBottom: 6 }}>
-        {upcoming.length} song{upcoming.length !== 1 ? "s" : ""} in queue
-      </p>
+    <section className={s.queueSection} aria-labelledby="queue-heading">
+      {showAdd && (
+        <AddSongForm
+          sessionId={sessionId}
+          userId={userId}
+          profile={profile}
+          onPlatformDetected={onPlatformDetected}
+          onAdded={onAdded}
+        />
+      )}
+      <div className={s.sectionHeading}>
+        <div>
+          <p className={s.eyebrow}>Coming up</p>
+          <h3 id="queue-heading">Queue</h3>
+        </div>
+        <span className={s.queueCount}>{upcoming.length} song{upcoming.length !== 1 ? "s" : ""}</span>
+      </div>
       <div className={s.queueList}>
         {upcoming.length === 0 ? (
           <p
@@ -83,6 +90,6 @@ export default function QueueList({
           ))
         )}
       </div>
-    </div>
+    </section>
   );
 }
