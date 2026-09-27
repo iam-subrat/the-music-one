@@ -58,7 +58,7 @@
 - Consumes: `extractYouTubeId`, `isYouTubeSearchUrl`, `extractSearchQuery` from `ui/src/lib/platform.js`; `api` from `ui/src/lib/api.js`; `patchYouTubeLink` from `ui/src/lib/queue.js`.
 - Produces: `resolveYouTubeVideo(item, request)` returning `Promise<{ videoId: string | null, title: string | null, persisted: boolean }>` and `useResolvedYouTubeVideo(item, isDJ)` returning `{ videoId, resolvedTitle }`.
 
-- [ ] **Step 1: Write failing resolver tests**
+- [x] **Step 1: Write failing resolver tests**
 
 ```js
 import { describe, expect, test, vi } from "vitest";
@@ -85,13 +85,13 @@ test("uses title and artist fallback and returns the resolved result", async () 
 });
 ```
 
-- [ ] **Step 2: Run the focused test and verify it fails because the resolver does not exist**
+- [x] **Step 2: Run the focused test and verify it fails because the resolver does not exist**
 
 Run: `cd ui && npm test -- src/playback/resolveYouTubeVideo.test.js`
 
 Expected: FAIL with an unresolved import for `./resolveYouTubeVideo`.
 
-- [ ] **Step 3: Implement the pure resolver and lifecycle-safe hook**
+- [x] **Step 3: Implement the pure resolver and lifecycle-safe hook**
 
 ```js
 export async function resolveYouTubeVideo(item, request) {
@@ -109,7 +109,7 @@ export async function resolveYouTubeVideo(item, request) {
 
 In `useResolvedYouTubeVideo`, keep an incrementing request token in a ref. Reset the displayed result when `item?.id` or `isDJ` changes; only commit a result when the current token still matches and invoke `patchYouTubeLink` only for the current fallback item.
 
-- [ ] **Step 4: Add the stale-result hook test before implementation is finalized**
+- [x] **Step 4: Add the stale-result hook test before implementation is finalized**
 
 ```jsx
 test("ignores a late result for the previous queue item", async () => {
@@ -123,7 +123,7 @@ test("ignores a late result for the previous queue item", async () => {
 });
 ```
 
-- [ ] **Step 5: Run focused tests and commit**
+- [x] **Step 5: Run focused tests and commit**
 
 Run: `cd ui && npm test -- src/playback/resolveYouTubeVideo.test.js`
 
@@ -146,7 +146,7 @@ git commit -m "refactor: share YouTube video resolution"
 - Produces: `JamPlaybackProvider` and `useJamPlayback()` with `{ registerPlayback(descriptor), playerRef, play, pause, seek, getTime, getDuration, getState }`.
 - `descriptor` shape: `{ sessionId, queueItemId, videoId, enabled, repeat, metadata, onEnded }`.
 
-- [ ] **Step 1: Write the player-lifetime regression test**
+- [x] **Step 1: Write the player-lifetime regression test**
 
 ```jsx
 vi.mock("../components/YouTubeAutoPlayer", () => ({
@@ -165,13 +165,13 @@ test("keeps one player mounted when a TUI registration replaces the GUI registra
 });
 ```
 
-- [ ] **Step 2: Run the focused test and verify it fails because the context does not exist**
+- [x] **Step 2: Run the focused test and verify it fails because the context does not exist**
 
 Run: `cd ui && npm test -- src/playback/JamPlaybackContext.test.jsx`
 
 Expected: FAIL with an unresolved import for `JamPlaybackContext`.
 
-- [ ] **Step 3: Implement provider registration without conditional player ownership**
+- [x] **Step 3: Implement provider registration without conditional player ownership**
 
 ```jsx
 const PlaybackContext = createContext(null);
@@ -198,7 +198,7 @@ export function JamPlaybackProvider({ children }) {
 
 `samePlayback` must compare `sessionId`, `queueItemId`, and `videoId`. `PersistentPlayer` renders no player until `descriptor.enabled && descriptor.videoId`; once mounted, it changes video only when those playback keys change. Its `onEnded` callback reads the latest descriptor from a ref, so the active surface can replace its handler without remounting the iframe. Move the existing `useMediaSession` call here with provider-owned metadata and controls.
 
-- [ ] **Step 4: Add mode replacement, stale descriptor, and paused-state tests**
+- [x] **Step 4: Add mode replacement, stale descriptor, and paused-state tests**
 
 ```jsx
 test("does not replace active playback with a descriptor from another session after cleanup", () => {
@@ -212,7 +212,7 @@ test("leaves a paused shared player paused when the registering surface changes"
 });
 ```
 
-- [ ] **Step 5: Mount the provider once in `App` and run tests**
+- [x] **Step 5: Mount the provider once in `App` and run tests**
 
 Wrap the route tree and global GUI chrome in `<JamPlaybackProvider>`. Do not key the provider by `tuiMode` or by route component, because either key would recreate the player.
 
@@ -220,7 +220,7 @@ Run: `cd ui && npm test -- src/playback/JamPlaybackContext.test.jsx`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add ui/src/playback/JamPlaybackContext.jsx ui/src/playback/JamPlaybackContext.test.jsx ui/src/App.jsx
@@ -237,7 +237,7 @@ git commit -m "feat: keep Jam playback alive across modes"
 - Consumes: `useResolvedYouTubeVideo` and `useJamPlayback` from Tasks 1–2.
 - Produces: the same `NowPlaying` public props; it registers its descriptor in an effect and displays shared controls through provider methods.
 
-- [ ] **Step 1: Write the failing consumer test**
+- [x] **Step 1: Write the failing consumer test**
 
 ```jsx
 test("registers the active GUI song without mounting its own YouTube player", async () => {
@@ -247,13 +247,13 @@ test("registers the active GUI song without mounting its own YouTube player", as
 });
 ```
 
-- [ ] **Step 2: Run the test and verify it fails against the local-player implementation**
+- [x] **Step 2: Run the test and verify it fails against the local-player implementation**
 
 Run: `cd ui && npm test -- src/components/NowPlaying.test.jsx`
 
 Expected: FAIL because `NowPlaying` still imports and renders a local `YouTubeAutoPlayer`.
 
-- [ ] **Step 3: Replace local player ownership with descriptor registration**
+- [x] **Step 3: Replace local player ownership with descriptor registration**
 
 Remove `YouTubeAutoPlayer`, `useMediaSession`, `ytPlayerRef`, and the duplicated resolver effect from `NowPlaying`. Obtain `{ videoId, resolvedTitle }` from `useResolvedYouTubeVideo(nowPlaying, isDJ)` and register:
 
@@ -271,7 +271,7 @@ useEffect(() => registerPlayback({
 
 Use the shared `seek`, `play`, and `getTime` methods in previous/next and repeat controls. Preserve the current queue fallback behavior and analytics events exactly.
 
-- [ ] **Step 4: Add an empty-queue and non-DJ registration test**
+- [x] **Step 4: Add an empty-queue and non-DJ registration test**
 
 ```jsx
 test("does not enable shared playback when a viewer is not the DJ", async () => {
@@ -280,7 +280,7 @@ test("does not enable shared playback when a viewer is not the DJ", async () => 
 });
 ```
 
-- [ ] **Step 5: Run focused tests and commit**
+- [x] **Step 5: Run focused tests and commit**
 
 Run: `cd ui && npm test -- src/components/NowPlaying.test.jsx src/playback/JamPlaybackContext.test.jsx`
 
@@ -301,7 +301,7 @@ git commit -m "refactor: connect graphical Jam controls to shared player"
 - Consumes: `useResolvedYouTubeVideo`, `useJamPlayback`, current TUI queue/session hooks.
 - Produces: TUI `play`, `pause`, `seek`, `seekend`, `prev`, and `next` commands backed by the provider-owned player.
 
-- [ ] **Step 1: Extend the provider test with a TUI command probe**
+- [x] **Step 1: Extend the provider test with a TUI command probe**
 
 ```jsx
 test("exposes a stable seek command after GUI registration is replaced by TUI", () => {
@@ -311,17 +311,17 @@ test("exposes a stable seek command after GUI registration is replaced by TUI", 
 });
 ```
 
-- [ ] **Step 2: Run it and verify it fails before TUI consumes the shared commands**
+- [x] **Step 2: Run it and verify it fails before TUI consumes the shared commands**
 
 Run: `cd ui && npm test -- src/playback/JamPlaybackContext.test.jsx`
 
 Expected: FAIL until the provider command API is complete.
 
-- [ ] **Step 3: Remove TUI-local player and resolution state**
+- [x] **Step 3: Remove TUI-local player and resolution state**
 
 Delete `YouTubeAutoPlayer`, `useMediaSession`, `ytPlayerRef`, `ytId`, `ytResolveKey`, and the duplicated YouTube-resolution effect from `TuiJamRoom`. Resolve the video through `useResolvedYouTubeVideo(nowPlaying, isDJ)` and register the same descriptor with its TUI-specific `onEnded` function. Replace every `ytPlayerRef.current` use with the matching `useJamPlayback()` command/method.
 
-- [ ] **Step 4: Verify no TUI render owns a player and test provider behavior**
+- [x] **Step 4: Verify no TUI render owns a player and test provider behavior**
 
 Run: `rg -n "YouTubeAutoPlayer|useMediaSession|ytPlayerRef" ui/src/tui/TuiJamRoom.jsx`
 
@@ -331,7 +331,7 @@ Run: `cd ui && npm test -- src/playback/JamPlaybackContext.test.jsx`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add ui/src/tui/TuiJamRoom.jsx ui/src/playback/JamPlaybackContext.test.jsx
@@ -351,7 +351,7 @@ git commit -m "refactor: route TUI commands through shared player"
 - Consumes: `useTui()`.
 - Produces: `guiTheme: "pulse" | "studio"` and `setGuiTheme(theme)` alongside existing `tuiMode`, `toggleTui`, and `setTui`.
 
-- [ ] **Step 1: Write failing theme-persistence tests**
+- [x] **Step 1: Write failing theme-persistence tests**
 
 ```jsx
 test("restores Studio as the graphical theme", () => {
@@ -366,25 +366,25 @@ test("does not set graphical theme markup while terminal mode is active", () => 
 });
 ```
 
-- [ ] **Step 2: Run the focused test and verify it fails because GUI theme is absent**
+- [x] **Step 2: Run the focused test and verify it fails because GUI theme is absent**
 
 Run: `cd ui && npm test -- src/components/NowPlaying.test.jsx`
 
 Expected: FAIL with missing `guiTheme`/`setGuiTheme` context values.
 
-- [ ] **Step 3: Add theme state and the GUI switcher**
+- [x] **Step 3: Add theme state and the GUI switcher**
 
 Add a second storage key, `musicone:gui-theme`, in `TuiContext`. Validate the initial value so any unknown stored value becomes `"pulse"`. Persist only valid selections. In `JamRoom`, add an accessible two-option toggle with labels `Pulse` and `Studio`, `aria-pressed` state, and `setGuiTheme`. Apply `${s.jamRoom} ${s[guiTheme]}` to the graphical room root; do not apply it to `TerminalShell`.
 
-- [ ] **Step 4: Implement responsive Pulse and Studio CSS variables**
+- [x] **Step 4: Implement responsive Pulse and Studio CSS variables**
 
 Define theme variables on `.jamRoom.pulse` and `.jamRoom.studio` for canvas, surface, foreground, muted foreground, border, and accent. Rework existing layout selectors to consume those variables: session header, now-playing artwork/meta/control block, queue, participant card, and provider-owned player host. At narrow widths stack the queue and participant surface; retain full-size text and accessible controls. Give Studio opaque light surfaces, deep-green controls, and readable secondary copy; give Pulse opaque near-black surfaces and lime active controls.
 
-- [ ] **Step 5: Keep the persistent player host visible only where appropriate**
+- [x] **Step 5: Keep the persistent player host visible only where appropriate**
 
 Add a provider host class that renders as a compact bottom player bar for graphical Jam routes. When `document.documentElement.dataset.tui === "1"`, minimize it to an off-layout 1px host without using `display: none`, so the iframe remains active. Never conditionally render or key the host on GUI theme or `tuiMode`.
 
-- [ ] **Step 6: Run focused tests and commit**
+- [x] **Step 6: Run focused tests and commit**
 
 Run: `cd ui && npm test -- src/components/NowPlaying.test.jsx src/playback/JamPlaybackContext.test.jsx`
 
@@ -404,19 +404,19 @@ git commit -m "feat: add Pulse and Studio Jam room themes"
 - Consumes: all completed tasks.
 - Produces: a buildable UI with focused regression proof and documented manual playback verification.
 
-- [ ] **Step 1: Run the complete UI test suite**
+- [x] **Step 1: Run the complete UI test suite**
 
 Run: `cd ui && npm test`
 
 Expected: PASS with no failing existing test.
 
-- [ ] **Step 2: Run the production build**
+- [x] **Step 2: Run the production build**
 
 Run: `cd ui && npm run build`
 
 Expected: Vite exits with code 0 and emits `ui/dist/`.
 
-- [ ] **Step 3: Manually validate the user-facing mode matrix**
+- [x] **Step 3: Manually validate the user-facing mode matrix**
 
 With an active DJ session and a direct YouTube queue item, start playback and verify:
 
@@ -432,7 +432,7 @@ With an active DJ session and a direct YouTube queue item, start playback and ve
 10. In TUI, add one track by URL and one by `add "title" artist`; verify both route through the existing queue API and refresh the queue.
 11. Import a playlist in each surface, select a subset of tracks, confirm the add, and verify only that subset is queued while current playback continues.
 
-- [ ] **Step 4: Inspect the final diff and report verification-only corrections**
+- [x] **Step 4: Inspect the final diff and report verification-only corrections**
 
 Run: `git diff --check && git status --short`
 

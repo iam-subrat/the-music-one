@@ -52,6 +52,7 @@ export default function PlaylistModal({ url, sessionId, onAdded, onClose }) {
       const result = await addPlaylistBatch(sessionId, tracks);
       const count = result.added?.length ?? 0;
       toast(`Added ${count} song${count !== 1 ? 's' : ''} to queue.`);
+      result.added?.forEach((item) => onAdded?.(item));
       onClose();
     } catch (e) {
       toast(e.message || 'Failed to add tracks.');

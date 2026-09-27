@@ -33,11 +33,11 @@ export default function NowPlaying({
   queueItems,
 }) {
   const toast = useToast();
-  const { count: skipVotes, hasVoted } = useSkipVotes(
-    nowPlaying?.id,
-    userId,
-    sessionId,
-  );
+  const {
+    count: skipVotes,
+    hasVoted,
+    refresh: refreshSkipVotes,
+  } = useSkipVotes(nowPlaying?.id, userId, sessionId);
   const skipThreshold = Math.floor(participantCount / 2) + 1;
   const { capture } = useAnalytics();
   const prevNowPlayingIdRef = useRef(null);
@@ -267,7 +267,7 @@ export default function NowPlaying({
   return (
     <div className={s.nowPlaying}>
       <div className={s.nowPlayingLabel}>
-        <div className={s.pulse} /> Now Playing
+        <div className={s.pulseDot} /> Now Playing
       </div>
 
       <div className={s.nowPlayingMeta}>
@@ -384,6 +384,7 @@ export default function NowPlaying({
     try {
       if (hasVoted) {
         await removeSkipVote(nowPlaying.id, userId);
+        refreshSkipVotes?.();
       } else {
         capture("skip_vote_cast", {
           votes_so_far: skipVotes + 1,
@@ -391,6 +392,7 @@ export default function NowPlaying({
         });
         const skipped = await castSkipVote(nowPlaying.id, skipThreshold);
         if (skipped) onQueueChange?.();
+        else refreshSkipVotes?.();
       }
     } catch (e) {
       toast(e.message);
