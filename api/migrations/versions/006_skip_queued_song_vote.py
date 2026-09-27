@@ -63,9 +63,9 @@ BEGIN
     RETURN true;
   END IF;
 
-  IF v_status = 'queued' THEN
+  IF v_status IN ('queued', 'played') THEN
     UPDATE queue_items SET status = 'skipped'
-    WHERE id = p_queue_item_id AND status = 'queued';
+    WHERE id = p_queue_item_id AND status IN ('queued', 'played');
     RETURN FOUND;
   END IF;
 

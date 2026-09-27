@@ -488,10 +488,6 @@ export default function TuiJamRoom() {
           append({ kind: "warn", text: "usage: skip <queue number>" });
           break;
         }
-        if (arg.trim() && queueTarget.status !== "queued") {
-          append({ kind: "warn", text: "~ only queued songs can be voted out" });
-          break;
-        }
         if (isDJ && !arg.trim()) {
           try {
             await forceSkip(session.id);
@@ -521,10 +517,6 @@ export default function TuiJamRoom() {
           : nowPlaying;
         if (!queueTarget) {
           append({ kind: "warn", text: arg.trim() ? "usage: unvote <queue number>" : "~ no vote to remove" });
-          break;
-        }
-        if (arg.trim() && queueTarget.status !== "queued") {
-          append({ kind: "warn", text: "~ only queued songs have skip votes" });
           break;
         }
         try {

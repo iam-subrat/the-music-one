@@ -22,7 +22,8 @@ def _load_migration(filename: str):
 
 
 @pytest.mark.asyncio
-async def test_majority_vote_marks_queued_song_skipped_in_database():
+@pytest.mark.parametrize("starting_status", ["queued", "played"])
+async def test_majority_vote_marks_queue_song_skipped_in_database(starting_status):
     database_url = os.environ.get("TEST_DATABASE_URL")
     if not database_url:
         pytest.skip("TEST_DATABASE_URL is required for PostgreSQL integration tests")
@@ -67,10 +68,11 @@ async def test_majority_vote_marks_queued_song_skipped_in_database():
                 "INSERT INTO session_participants (session_id, user_id) VALUES ($1, $2)", session_id, voter
             )
         await conn.execute(
-            "INSERT INTO queue_items (id, session_id, added_by_user_id, title, artist, status) VALUES ($1, $2, $3, 'Queued song', 'Artist', 'queued')",
+            "INSERT INTO queue_items (id, session_id, added_by_user_id, title, artist, status) VALUES ($1, $2, $3, 'Queue song', 'Artist', $4)",
             item_id,
             session_id,
             voters[0],
+            starting_status,
         )
 
         await conn.execute("SELECT set_config('app.current_user', $1, false)", str(voters[0]))
