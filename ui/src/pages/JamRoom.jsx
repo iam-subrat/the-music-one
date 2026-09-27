@@ -228,9 +228,8 @@ export default function JamRoom() {
         <div className={s.layout}>
           <div className={s.jamHeader}>
             <div>
-              <h2 style={{ fontSize: "1.1rem", fontWeight: 700 }}>
-                Jam Session
-              </h2>
+              <p className={s.roomKicker}>Listening together</p>
+              <h2 className={s.roomTitle}>Jam Session</h2>
             </div>
             <div
               style={{
@@ -275,7 +274,7 @@ export default function JamRoom() {
             </div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <div className={s.primaryColumn}>
             <NowPlaying
               nowPlaying={nowPlaying}
               sessionId={session.id}
