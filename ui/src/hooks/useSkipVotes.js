@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../lib/api';
 import { openSSE } from '../lib/sse';
 
-export function useSkipVotes(queueItemId, userId, sessionId) {
+export function useSkipVotes(queueItemId, userId, sessionId, subscribe = true) {
   const [count, setCount] = useState(0);
   const [hasVoted, setHasVoted] = useState(false);
   const activeIdRef = useRef(queueItemId);
@@ -28,7 +28,7 @@ export function useSkipVotes(queueItemId, userId, sessionId) {
   }, [fetchVotes]);
 
   useEffect(() => {
-    if (!queueItemId || !sessionId) return;
+    if (!subscribe || !queueItemId || !sessionId) return;
     return openSSE(sessionId, {
       votes_changed: ({ queue_item_id }) => {
         if (!queue_item_id || String(queue_item_id) === String(queueItemId)) {
@@ -37,7 +37,7 @@ export function useSkipVotes(queueItemId, userId, sessionId) {
       },
       onReconnect: fetchVotes,
     });
-  }, [queueItemId, sessionId, fetchVotes]);
+  }, [queueItemId, sessionId, fetchVotes, subscribe]);
 
-  return { count, hasVoted };
+  return { count, hasVoted, refresh: fetchVotes };
 }

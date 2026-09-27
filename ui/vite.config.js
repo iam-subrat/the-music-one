@@ -34,4 +34,7 @@ export default defineConfig({
     __FLAG_PLAYLIST_IMPORT__:     JSON.stringify(process.env.FLAG_PLAYLIST_IMPORT     ?? 'false'),
     __FLAG_SONG_SEARCH__:         JSON.stringify(process.env.FLAG_SONG_SEARCH         ?? 'false'),
   },
+  test: {
+    environment: 'jsdom',
+  },
 });

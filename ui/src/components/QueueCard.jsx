@@ -1,7 +1,21 @@
-import { playSpecificSong } from "../lib/queue";
+import { useState } from "react";
+import { FLAGS } from "../lib/flags";
+import { useSkipVotes } from "../hooks/useSkipVotes";
+import { castSkipVote, playSpecificSong, removeSkipVote } from "../lib/queue";
 import s from "../styles/jam.module.css";
 
-export default function QueueCard({ item, index, isDj, sessionId }) {
+export default function QueueCard({
+  item,
+  index,
+  isDj,
+  sessionId,
+  userId,
+  participantCount,
+  onQueueChange,
+}) {
+  const { count: skipVotes, hasVoted, refresh: refreshVotes } = useSkipVotes(item.id, userId, sessionId, false);
+  const [isVoting, setIsVoting] = useState(false);
+  const skipThreshold = Math.floor(participantCount / 2) + 1;
   const statusCls =
     item.status === "played"
       ? s.queueCardPlayed
@@ -38,6 +52,16 @@ export default function QueueCard({ item, index, isDj, sessionId }) {
         <span className={s.failedBadge}>Failed</span>
       )}
 
+      {FLAGS.VOTE_TO_SKIP && item.status === "queued" && (
+        <button
+          className={`${s.queueVoteBtn} ${hasVoted ? s.queueVoteBtnVoted : ""}`}
+          disabled={isVoting}
+          onClick={handleSkipVote}
+        >
+          {hasVoted ? "Unvote" : "Skip"} ({skipVotes}/{skipThreshold})
+        </button>
+      )}
+
       {isDj &&
         item.status !== "playing" &&
         item.status !== "skipped" &&
@@ -57,4 +81,22 @@ export default function QueueCard({ item, index, isDj, sessionId }) {
       {index != null && <div className={s.queuePos}>#{index}</div>}
     </div>
   );
+
+  async function handleSkipVote() {
+    setIsVoting(true);
+    try {
+      if (hasVoted) {
+        await removeSkipVote(item.id);
+        await refreshVotes();
+      } else {
+        const skipped = await castSkipVote(item.id);
+        if (skipped) onQueueChange?.();
+        else await refreshVotes();
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsVoting(false);
+    }
+  }
 }
