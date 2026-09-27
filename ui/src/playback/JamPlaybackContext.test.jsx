@@ -32,6 +32,11 @@ function CommandProbe() {
   return <button type="button" onClick={() => seek(42)}>seek</button>;
 }
 
+function EndSessionProbe() {
+  const { clearPlayback } = useJamPlayback();
+  return <button type="button" onClick={() => clearPlayback("session-a")}>end session</button>;
+}
+
 describe("JamPlaybackProvider", () => {
   test("keeps one player mounted when a TUI registration replaces the GUI registration for the same item", () => {
     const view = render(<JamPlaybackProvider><Registration descriptor={active} /></JamPlaybackProvider>);
@@ -69,5 +74,12 @@ describe("JamPlaybackProvider", () => {
     render(<JamPlaybackProvider><Registration descriptor={active} /><CommandProbe /></JamPlaybackProvider>);
     fireEvent.click(screen.getByRole("button", { name: "seek" }));
     expect(player.seek).toHaveBeenCalledWith(42);
+  });
+
+  test("stops the shared player when an active session is cleared remotely", () => {
+    render(<JamPlaybackProvider><Registration descriptor={active} /><EndSessionProbe /></JamPlaybackProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "end session" }));
+    expect(player.pause).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("youtube-player")).not.toBeInTheDocument();
   });
 });

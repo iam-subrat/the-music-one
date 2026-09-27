@@ -121,7 +121,7 @@ export default function TuiJamRoom() {
   );
   const skipThreshold = Math.floor(participants.length / 2) + 1;
   const { videoId: ytId } = useResolvedYouTubeVideo(nowPlaying, isDJ);
-  const { registerPlayback, play, pause, seek, getTime, getDuration, getState } = useJamPlayback();
+  const { registerPlayback, clearPlayback, play, pause, seek, getTime, getDuration, getState } = useJamPlayback();
 
   function append(...lines) {
     setLog((prev) => [...prev, ...lines]);
@@ -184,6 +184,10 @@ export default function TuiJamRoom() {
     }, 30_000);
     return () => clearInterval(id);
   }, [session?.id]);
+
+  useEffect(() => {
+    if (session?.status === "ended") clearPlayback(session.id);
+  }, [session?.id, session?.status, clearPlayback]);
 
   useEffect(() => {
     registerPlayback({

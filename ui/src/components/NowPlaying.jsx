@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import s from "../styles/jam.module.css";
 import {
   preferredLink,
@@ -44,7 +44,9 @@ export default function NowPlaying({
   const ytFeatureFiredRef = useRef(false);
 
   const { videoId: ytId, resolvedTitle: ytResolvedTitle } = useResolvedYouTubeVideo(nowPlaying, isDJ);
-  const { registerPlayback, play, seek, getTime } = useJamPlayback();
+  const { registerPlayback, play, pause, seek, getTime, getDuration, getState } = useJamPlayback();
+  const [transport, setTransport] = useState({ current: 0, duration: 0, state: -1 });
+  const [isSeeking, setIsSeeking] = useState(false);
 
   useEffect(() => {
     if (!nowPlaying || nowPlaying.id === prevNowPlayingIdRef.current) return;
@@ -235,6 +237,21 @@ export default function NowPlaying({
     });
   }, [sessionId, nowPlaying?.id, ytId, isDJ, repeatMode, registerPlayback, queueItems, onQueueChange]);
 
+  useEffect(() => {
+    if (!nowPlaying) return undefined;
+    const syncTransport = () => {
+      if (isSeeking) return;
+      setTransport({
+        current: getTime(),
+        duration: getDuration(),
+        state: getState(),
+      });
+    };
+    syncTransport();
+    const interval = window.setInterval(syncTransport, 500);
+    return () => window.clearInterval(interval);
+  }, [nowPlaying?.id, getTime, getDuration, getState, isSeeking]);
+
   if (!nowPlaying) {
     return (
       <div className={`${s.nowPlaying} ${s.nowPlayingIdle}`}>
@@ -263,6 +280,26 @@ export default function NowPlaying({
   const pref = preferredLink(nowPlaying.platform_links, preferredPlatform);
   const query = `${nowPlaying.title} ${nowPlaying.artist}`;
   const prefMeta = pref ? PLATFORM_META[pref.platform] : null;
+  const duration = Math.max(0, transport.duration || getDuration());
+  const current = Math.min(Math.max(0, transport.current), duration || 0);
+  const isPlaying = transport.state === 1 || getState() === 1;
+  const formatTime = (seconds) => {
+    const safe = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
+    return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, "0")}`;
+  };
+
+  function handleSeek(event) {
+    const next = Number(event.target.value);
+    setTransport((value) => ({ ...value, current: next }));
+    seek(next);
+  }
+
+  function handleTogglePlayback() {
+    if (!isDJ) return;
+    if (isPlaying) pause();
+    else play();
+    setTransport((value) => ({ ...value, state: isPlaying ? 2 : 1 }));
+  }
 
   return (
     <div className={s.nowPlaying}>
@@ -283,6 +320,39 @@ export default function NowPlaying({
             Added by {nowPlaying.profiles?.display_name || "someone"}
           </div>
         </div>
+      </div>
+
+      <div className={s.transport} aria-label="Playback controls">
+        <div className={s.timeRow}>
+          <span>{formatTime(current)}</span>
+          <span>{formatTime(duration)}</span>
+        </div>
+        <input
+          className={s.seekbar}
+          aria-label="Playback position"
+          type="range"
+          min="0"
+          max={duration}
+          value={current}
+          disabled={!isDJ || duration <= 0}
+          onPointerDown={() => setIsSeeking(true)}
+          onPointerUp={() => setIsSeeking(false)}
+          onBlur={() => setIsSeeking(false)}
+          onChange={handleSeek}
+        />
+        {isDJ && (
+          <div className={s.transportButtons}>
+            <button className={s.iconButton} type="button" aria-label="Previous track" onClick={handlePrevious}>
+              ⏮
+            </button>
+            <button className={`${s.playButton} ${isPlaying ? s.playButtonActive : ""}`} type="button" aria-label={isPlaying ? "Pause playback" : "Play playback"} onClick={handleTogglePlayback}>
+              {isPlaying ? "Ⅱ" : "▶"}
+            </button>
+            <button className={s.iconButton} type="button" aria-label="Next track" onClick={handleNext}>
+              ⏭
+            </button>
+          </div>
+        )}
       </div>
 
       {pref && (
@@ -337,16 +407,6 @@ export default function NowPlaying({
       )}
 
       <div className={s.djControls}>
-        {isDJ && (
-          <button className="btn" onClick={handlePrevious}>
-            ⏮ Prev
-          </button>
-        )}
-        {isDJ && (
-          <button className="btn" onClick={handleNext}>
-            Next ▶
-          </button>
-        )}
         {isDJ && (
           <button
             className={`${s.repeatBtn} ${repeatMode !== "none" ? s.repeatBtnActive : ""}`}

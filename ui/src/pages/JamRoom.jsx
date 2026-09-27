@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import AuthBar from "../components/AuthBar";
 import NowPlaying from "../components/NowPlaying";
 import QueueList from "../components/QueueList";
+import AddSongForm from "../components/AddSongForm";
 import QueueCard from "../components/QueueCard";
 import ParticipantList from "../components/ParticipantList";
 import InviteBadge from "../components/InviteBadge";
@@ -15,10 +16,12 @@ import { useAnalytics } from "../lib/analytics";
 import { API_BASE } from "../lib/api";
 import { ToastProvider } from "../components/Toast";
 import { useTui } from "../tui/TuiContext";
+import { useJamPlayback } from "../playback/JamPlaybackContext";
 import s from "../styles/jam.module.css";
 
 export default function JamRoom() {
   const { guiTheme, setGuiTheme } = useTui();
+  const { clearPlayback } = useJamPlayback();
   const { code } = useParams();
   const navigate = useNavigate();
   const {
@@ -72,6 +75,10 @@ export default function JamRoom() {
   useEffect(() => {
     sessionIdRef.current = session?.id ?? null;
   }, [session?.id]);
+
+  useEffect(() => {
+    if (session?.status === "ended") clearPlayback(session.id);
+  }, [session?.id, session?.status, clearPlayback]);
 
   // Leave on SPA nav (unmount) or actual tab/browser close (pagehide).
   // Do NOT leave on visibilitychange:hidden — tab-switching fires that and
@@ -226,19 +233,13 @@ export default function JamRoom() {
       <div className={`page ${s.jamRoom} ${s[guiTheme]}`} style={{ padding: 0 }}>
         <AuthBar />
         <div className={s.layout}>
-          <div className={s.jamHeader}>
-            <div>
+          <header className={s.jamHeader}>
+            <div className={s.roomIdentity}>
               <p className={s.roomKicker}>Listening together</p>
-              <h2 className={s.roomTitle}>Jam Session</h2>
+              <h1 className={s.roomTitle}>Jam Session</h1>
+              <p className={s.roomPresence}>{participants.length} listening now · {isDJ ? "You’re on deck" : "Live room"}</p>
             </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                alignItems: "center",
-                flexWrap: "wrap",
-              }}
-            >
+            <div className={s.roomActions}>
               <div className={s.themeSwitch} aria-label="Jam room theme">
                 <button type="button" aria-pressed={guiTheme === "pulse"} onClick={() => setGuiTheme("pulse")}>Pulse</button>
                 <button type="button" aria-pressed={guiTheme === "studio"} onClick={() => setGuiTheme("studio")}>Studio</button>
@@ -272,9 +273,9 @@ export default function JamRoom() {
                 </button>
               )}
             </div>
-          </div>
+          </header>
 
-          <div className={s.primaryColumn}>
+          <main className={s.primaryColumn} aria-label="Jam room">
             <NowPlaying
               nowPlaying={nowPlaying}
               sessionId={session.id}
@@ -306,16 +307,36 @@ export default function JamRoom() {
                 refreshQueue();
               }}
               onQueueChange={refreshQueue}
+              showAdd={false}
             />
-          </div>
+          </main>
 
-          <div className={s.sidebar}>
+          <aside className={s.sidebar} aria-label="Room details">
+            <section className={`${s.sidebarSection} ${s.addPanel}`} aria-labelledby="add-song-heading">
+              <div className={s.sectionHeading}>
+                <div>
+                  <p className={s.eyebrow}>Contribute</p>
+                  <h3 id="add-song-heading">Add a song</h3>
+                </div>
+              </div>
+              <p className={s.addHint}>Paste a song or playlist link, or search by title and artist.</p>
+              <AddSongForm
+                sessionId={session.id}
+                userId={user?.id}
+                profile={profile}
+                onPlatformDetected={setPreferredPlatform}
+                onAdded={(item) => {
+                  addItem(item);
+                  refreshQueue();
+                }}
+              />
+            </section>
             <ParticipantList
               participants={participants}
               session={session}
               currentUserId={user?.id}
             />
-          </div>
+          </aside>
         </div>
       </div>
     </ToastProvider>

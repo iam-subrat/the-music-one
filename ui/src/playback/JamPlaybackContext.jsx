@@ -25,7 +25,11 @@ function PersistentPlayer({ descriptor, playerRef }) {
 
   if (!enabled) return null;
   return (
-    <div className="jam-persistent-player" data-session-id={descriptor.sessionId}>
+    <div className="jam-persistent-player" data-session-id={descriptor.sessionId} aria-label="Shared Jam player">
+      <div className="jam-persistent-player__status" aria-hidden="true">
+        <span className="jam-persistent-player__dot" />
+        <span>Shared player · {descriptor.metadata?.title || "Now playing"}</span>
+      </div>
       <YouTubeAutoPlayer
         ref={playerRef}
         videoId={descriptor.videoId}
@@ -56,7 +60,11 @@ export function JamPlaybackProvider({ children }) {
     });
   }, []);
   const clearPlayback = useCallback((sessionId) => {
-    setDescriptor((current) => !sessionId || current?.sessionId === sessionId ? null : current);
+    setDescriptor((current) => {
+      if (sessionId && current?.sessionId !== sessionId) return current;
+      playerRef.current?.pause?.();
+      return null;
+    });
   }, []);
 
   const value = useMemo(() => ({
