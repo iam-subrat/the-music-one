@@ -58,6 +58,18 @@ describe("JamPlaybackProvider", () => {
     expect(screen.getByTestId("youtube-player")).toHaveAttribute("data-video-id", "video-a");
   });
 
+  test("keeps one player through repeated incomplete registrations for the same song", () => {
+    const view = render(<JamPlaybackProvider><Registration descriptor={active} /></JamPlaybackProvider>);
+    const mountedPlayer = screen.getByTestId("youtube-player");
+    const incomplete = { ...active, owner: "tui", videoId: null, enabled: false };
+
+    view.rerender(<JamPlaybackProvider><Registration descriptor={incomplete} /></JamPlaybackProvider>);
+    view.rerender(<JamPlaybackProvider><Registration descriptor={{ ...incomplete, onEnded: vi.fn() }} /></JamPlaybackProvider>);
+
+    expect(screen.getByTestId("youtube-player")).toBe(mountedPlayer);
+    expect(screen.getByTestId("youtube-player")).toHaveAttribute("data-video-id", "video-a");
+  });
+
   test("keeps playback alive during a TUI handoff before DJ identity resolves", () => {
     const view = render(<JamPlaybackProvider><Registration descriptor={active} /></JamPlaybackProvider>);
     const mountedPlayer = screen.getByTestId("youtube-player");

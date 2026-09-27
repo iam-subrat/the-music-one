@@ -73,7 +73,7 @@ export default function QueueList({
           >
             {repeatMode === "queue" && items?.length > 0
               ? "Looping all songs…"
-              : "Queue is empty. Add a song above!"}
+              : "No songs up next. Add one to keep the jam going."}
           </p>
         ) : (
           upcoming.map((item, i) => (

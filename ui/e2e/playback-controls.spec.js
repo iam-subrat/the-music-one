@@ -117,9 +117,9 @@ test("skip vote immediately becomes unvote and can be removed", async ({ page })
   const skip = nowPlayingControls.getByRole("button", { name: /skip \(0\/2\)/i });
   await expect(skip).toBeVisible();
   await skip.click();
-  await expect(nowPlayingControls.getByRole("button", { name: /skip \(1\/2\).*✓/i })).toBeVisible();
+  await expect(nowPlayingControls.getByRole("button", { name: /unvote \(1\/2\)/i })).toBeVisible();
 
-  await nowPlayingControls.getByRole("button", { name: /skip \(1\/2\).*✓/i }).click();
+  await nowPlayingControls.getByRole("button", { name: /unvote \(1\/2\)/i }).click();
   await expect(nowPlayingControls.getByRole("button", { name: /skip \(0\/2\)/i })).toBeVisible();
 });
 
@@ -142,9 +142,9 @@ test("DJ can advance, go back, and cycle repeat mode", async ({ page }) => {
 
   const repeat = page.getByRole("button", { name: /repeat/i });
   await repeat.click();
-  await expect(page.getByRole("button", { name: /song ✓/i })).toBeVisible();
-  await page.getByRole("button", { name: /song ✓/i }).click();
-  await expect(page.getByRole("button", { name: /queue ✓/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /repeat song/i })).toBeVisible();
+  await page.getByRole("button", { name: /repeat song/i }).click();
+  await expect(page.getByRole("button", { name: /repeat queue/i })).toBeVisible();
 });
 
 test("listener cannot access DJ-only transport or queue-play controls", async ({ page }) => {
@@ -155,5 +155,5 @@ test("listener cannot access DJ-only transport or queue-play controls", async ({
   await expect(page.getByRole("button", { name: /^next/i })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /repeat/i })).toHaveCount(0);
   await expect(page.locator('button[title="Play this song"]')).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /👎 Skip \(0\/2\)/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /skip \(0\/2\)/i }).first()).toBeVisible();
 });

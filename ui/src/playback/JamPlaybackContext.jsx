@@ -14,18 +14,6 @@ function PersistentPlayer({ descriptor, playerRef }) {
   const latestDescriptor = useRef(descriptor);
   useEffect(() => { latestDescriptor.current = descriptor; }, [descriptor]);
   const enabled = !!(descriptor?.enabled && descriptor?.videoId);
-  const [position, setPosition] = useState({ time: 0, duration: 0 });
-
-  useEffect(() => {
-    if (!enabled) return undefined;
-    const update = () => setPosition({
-      time: playerRef.current?.getTime?.() ?? 0,
-      duration: playerRef.current?.getDuration?.() ?? 0,
-    });
-    update();
-    const interval = window.setInterval(update, 1000);
-    return () => window.clearInterval(interval);
-  }, [enabled, descriptor?.queueItemId, playerRef]);
 
   useMediaSession({
     enabled,
@@ -46,8 +34,6 @@ function PersistentPlayer({ descriptor, playerRef }) {
           <strong>{descriptor.metadata?.title || "Now playing"}</strong>
           <small>{descriptor.metadata?.artist || "MusicOne Jam"}</small>
         </span>
-        <span className="jam-persistent-player__progress"><i style={{ width: `${position.duration > 0 ? Math.min(100, position.time / position.duration * 100) : 0}%` }} /></span>
-        <span className="jam-persistent-player__note">Shared player · GUI ↔ TUI</span>
       </div>
       <YouTubeAutoPlayer
         ref={playerRef}
@@ -68,10 +54,11 @@ export function JamPlaybackProvider({ children }) {
       if (next.ready === false) return current;
       if (
         current?.enabled
-        && current.owner !== next.owner
         && next.isDJ
         && current.sessionId === next.sessionId
         && current.queueItemId === next.queueItemId
+        && (current.owner !== next.owner || next.videoId == null)
+        && (next.enabled || next.videoId == null)
       ) {
         return {
           ...current,

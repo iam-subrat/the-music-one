@@ -107,15 +107,6 @@ html[data-gui-theme="studio"][data-tui="0"] .jam-persistent-player {
 .jam-persistent-player__copy strong, .jam-persistent-player__copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .jam-persistent-player__copy small { font-size: .7rem; color: #9499aa; }
 html[data-gui-theme="studio"] .jam-persistent-player__copy small { color: #687067; }
-.jam-persistent-player__progress { flex: 1; height: 4px; border-radius: 9px; background: #303443; overflow: hidden; }
-.jam-persistent-player__progress i { display: block; height: 100%; background: #a6ff5f; border-radius: inherit; }
-html[data-gui-theme="studio"] .jam-persistent-player__progress { background: #d3d1c7; }
-html[data-gui-theme="studio"] .jam-persistent-player__progress i { background: #263d2a; }
-.jam-persistent-player__note { color: #9499aa; font-size: .72rem; white-space: nowrap; }
-html[data-gui-theme="studio"] .jam-persistent-player__note { color: #687067; }
-@media (max-width: 1400px) {
-  .jam-persistent-player__note { display: none; }
-}
 @media (max-width: 700px) {
   .jam-persistent-player__status { padding: 9px 112px 9px 15px; }
   .jam-persistent-player__note { display: none; }

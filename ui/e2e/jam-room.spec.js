@@ -17,12 +17,67 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('preserves the Jam room while switching visual theme and terminal mode', async ({ page }) => {
+  await page.route('**/api/sessions/session-1/queue', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify([
+    song,
+    { ...song, id: 'song-2', position: 2, title: 'Midnight City', artist: 'M83', status: 'queued', profiles: { display_name: 'Alex' } },
+    { ...song, id: 'song-3', position: 3, title: 'Sunset Lover', artist: 'Petit Biscuit', status: 'queued', profiles: { display_name: 'Sam' } },
+  ]) }));
+  await page.route('**/api/sessions/session-1/participants', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify([
+    { id: 'dj-1', display_name: 'DJ' }, { id: 'listener-1', display_name: 'Alex' }, { id: 'listener-2', display_name: 'Sam' },
+  ]) }));
   await page.goto('/jam/room');
   await expect(page.locator('[class*="nowPlayingTitle"]')).toHaveText('E2E Song');
+  await expect(page.getByRole('main', { name: 'Jam room' }).getByText('Midnight City')).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'Room details' }).getByText('Alex')).toBeVisible();
   await page.getByRole('button', { name: 'Studio' }).click({ force: true });
   await expect(page.getByRole('button', { name: 'Studio' })).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => page.getByRole('button', { name: 'Play playback' }).evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(38, 61, 42)');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('button', { name: 'Copy invite link' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
   await expect(page.getByText(/now playing/i)).toBeVisible();
+});
+
+test('keeps one seekbar and accessible icon controls in the graphical room', async ({ page }) => {
+  await page.goto('/jam/room');
+  await expect(page.locator('[class*="nowPlayingTitle"]')).toHaveText('E2E Song');
+  await expect(page.getByRole('slider', { name: 'Playback position' })).toBeVisible();
+  const seekTarget = await page.getByRole('slider', { name: 'Playback position' }).boundingBox();
+  expect(seekTarget.height).toBeGreaterThanOrEqual(28);
+  expect(await page.getByRole('slider', { name: 'Playback position' }).evaluate(el => getComputedStyle(el).borderTopWidth)).toBe('0px');
+  await expect(page.locator('.jam-persistent-player__progress')).toHaveCount(0);
+  await expect(page.getByText('Song matching powered by')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Copy invite link' })).toBeVisible();
+  await expect(page.getByLabel('DJ avatar')).toHaveText('D');
+  await expect(page.getByRole('button', { name: 'Add', exact: true }).locator('svg')).toHaveCount(1);
+  for (const name of ['Previous track', 'Play playback', 'Next track']) {
+    const button = page.getByRole('button', { name });
+    await expect(button.locator('svg')).toHaveCount(1);
+    expect((await button.innerText()).trim()).toBe('');
+  }
+});
+
+test('places the room mode switch within the shared player bar', async ({ page }) => {
+  await page.goto('/jam/room');
+  await expect(page.locator('[class*="nowPlayingTitle"]')).toHaveText('E2E Song');
+  const bar = await page.locator('.jam-persistent-player').boundingBox();
+  const toggle = await page.getByRole('button', { name: 'Toggle terminal interface' }).boundingBox();
+  expect(bar).not.toBeNull();
+  expect(toggle).not.toBeNull();
+  expect(toggle.y).toBeGreaterThanOrEqual(bar.y);
+  expect(toggle.y + toggle.height).toBeLessThanOrEqual(bar.y + bar.height);
+  await expect(page.getByRole('button', { name: 'Toggle terminal interface' })).toHaveAttribute('aria-pressed', 'false');
+  await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
+  await expect(page.getByRole('button', { name: 'Toggle terminal interface' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('confirms the invite link after copying it', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/jam/room');
+  await page.getByRole('button', { name: 'Copy invite link' }).click();
+  await expect(page.getByRole('button', { name: 'Invite link copied' })).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('http://127.0.0.1:4173/jam/room');
 });
 
 test('keeps the same iframe and playback position across both mode switches', async ({ page }) => {

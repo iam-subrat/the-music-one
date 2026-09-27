@@ -19,6 +19,7 @@ import PlatformLinks from "./PlatformLinks";
 import { useAnalytics } from "../lib/analytics";
 import { useResolvedYouTubeVideo } from "../playback/useResolvedYouTubeVideo";
 import { useJamPlayback } from "../playback/JamPlaybackContext";
+import JamIcon from "./JamIcon";
 
 export default function NowPlaying({
   nowPlaying,
@@ -267,11 +268,11 @@ export default function NowPlaying({
           <div
             style={{ display: "flex", gap: "8px", justifyContent: "center" }}
           >
-            <button className="btn" onClick={handlePrevious}>
-              ⏮ Prev
+            <button className={s.idleTransportButton} onClick={handlePrevious}>
+              <JamIcon name="previous" size={17} /> Previous
             </button>
-            <button className="btn" onClick={handleNext}>
-              Play Next ▶
+            <button className={s.idleTransportButton} onClick={handleNext}>
+              <JamIcon name="play" size={16} /> Play next
             </button>
           </div>
         )}
@@ -331,6 +332,7 @@ export default function NowPlaying({
         </div>
         <input
           className={s.seekbar}
+          style={{ "--seek-progress": `${duration > 0 ? (current / duration) * 100 : 0}%` }}
           aria-label="Playback position"
           type="range"
           min="0"
@@ -345,71 +347,17 @@ export default function NowPlaying({
         {isDJ && (
           <div className={s.transportButtons}>
             <button className={s.iconButton} type="button" aria-label="Previous track" onClick={handlePrevious}>
-              ⏮
+              <JamIcon name="previous" size={20} />
             </button>
             <button className={`${s.playButton} ${isPlaying ? s.playButtonActive : ""}`} type="button" aria-label={isPlaying ? "Pause playback" : "Play playback"} onClick={handleTogglePlayback}>
-              {isPlaying ? "Ⅱ" : "▶"}
+              <JamIcon name={isPlaying ? "pause" : "play"} size={23} />
             </button>
             <button className={s.iconButton} type="button" aria-label="Next track" onClick={handleNext}>
-              ⏭
+              <JamIcon name="next" size={20} />
             </button>
           </div>
         )}
       </div>
-
-      <details className={s.listenDetails}>
-        <summary>Listen on other platforms</summary>
-      {pref && (
-        <a
-          className={s.preferredBtn}
-          href={pref.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ "--platform-color": prefMeta?.color }}
-        >
-          {prefMeta?.iconSvgUrl && (
-            <img
-              src={prefMeta.iconSvgUrl.replace(/\/[0-9A-Fa-f]{6}$/, "/ffffff")}
-              alt=""
-              width={16}
-              height={16}
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
-            />
-          )}
-          Open on {prefMeta?.name || pref.platform} ↗
-        </a>
-      )}
-
-      <div className={s.platformSection}>
-        <div className={s.platformSectionLabel}>Listen on all platforms</div>
-        <PlatformLinks
-          platformLinks={nowPlaying.platform_links}
-          query={query}
-          activePlatform={pref?.platform}
-        />
-      </div>
-
-      {FLAGS.AUTO_PLAY_QUEUE && ytId && isDJ && (
-        <>
-          {ytResolvedTitle && (
-            <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>
-              ▶ Playing via YouTube: {ytResolvedTitle}
-            </div>
-          )}
-        </>
-      )}
-
-      {FLAGS.YOUTUBE_EMBED && !FLAGS.AUTO_PLAY_QUEUE && ytId && (
-        <iframe
-          className={s.ytEmbed}
-          src={`https://www.youtube-nocookie.com/embed/${ytId}`}
-          allowFullScreen
-          title="YouTube preview"
-        />
-      )}
-      </details>
 
       <div className={s.djControls}>
         {isDJ && (
@@ -426,11 +374,8 @@ export default function NowPlaying({
               });
             }}
           >
-            {repeatMode === "queue"
-              ? "🔁 Queue ✓"
-              : repeatMode === "song"
-                ? "🔂 Song ✓"
-                : "🔁 Repeat"}
+            <JamIcon name="repeat" size={15} />
+            {repeatMode === "queue" ? "Repeat queue" : repeatMode === "song" ? "Repeat song" : "Repeat"}
           </button>
         )}
         {FLAGS.VOTE_TO_SKIP && (
@@ -438,10 +383,61 @@ export default function NowPlaying({
             className={`${s.skipBtn} ${hasVoted ? s.skipBtnVoted : ""}`}
             onClick={handleSkipVote}
           >
-            👎 Skip ({skipVotes}/{skipThreshold}){hasVoted ? " ✓" : ""}
+            <JamIcon name="skip" size={15} />
+            {hasVoted ? "Unvote" : "Skip"} ({skipVotes}/{skipThreshold})
           </button>
         )}
       </div>
+
+      <details className={s.listenDetails}>
+        <summary>Listen on other platforms</summary>
+        {pref && (
+          <a
+            className={s.preferredBtn}
+            href={pref.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ "--platform-color": prefMeta?.color }}
+          >
+            {prefMeta?.iconSvgUrl && (
+              <img
+                src={prefMeta.iconSvgUrl.replace(/\/[0-9A-Fa-f]{6}$/, "/ffffff")}
+                alt=""
+                width={16}
+                height={16}
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            )}
+            Open on {prefMeta?.name || pref.platform}
+          </a>
+        )}
+
+        <div className={s.platformSection}>
+          <div className={s.platformSectionLabel}>Listen on all platforms</div>
+          <PlatformLinks
+            platformLinks={nowPlaying.platform_links}
+            query={query}
+            activePlatform={pref?.platform}
+          />
+        </div>
+
+        {FLAGS.AUTO_PLAY_QUEUE && ytId && isDJ && ytResolvedTitle && (
+          <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>
+            Playing via YouTube: {ytResolvedTitle}
+          </div>
+        )}
+
+        {FLAGS.YOUTUBE_EMBED && !FLAGS.AUTO_PLAY_QUEUE && ytId && (
+          <iframe
+            className={s.ytEmbed}
+            src={`https://www.youtube-nocookie.com/embed/${ytId}`}
+            allowFullScreen
+            title="YouTube preview"
+          />
+        )}
+      </details>
     </div>
   );
 

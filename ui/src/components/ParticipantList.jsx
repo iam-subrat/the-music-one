@@ -18,7 +18,7 @@ export default function ParticipantList({ participants, session, currentUserId }
         <div key={p.id} className={s.participant}>
           {p.avatar_url
             ? <img className={s.pAvatar} src={p.avatar_url} alt="" />
-            : <div className={s.pAvatar} />}
+            : <div className={s.pAvatar} role="img" aria-label={`${p.display_name || 'Guest'} avatar`}>{(p.display_name || 'G').trim().charAt(0).toUpperCase()}</div>}
           <span className={s.pName}>{p.display_name || 'Guest'}</span>
           {p.id === session.host_user_id && <span className={s.pRole}>Host</span>}
           {p.id === session.dj_user_id && <span className={s.pDj}>DJ</span>}

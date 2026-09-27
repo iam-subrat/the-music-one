@@ -41,6 +41,8 @@ function JamNew({ tuiMode }) {
 
 export default function App() {
   const { tuiMode } = useTui();
+  const { pathname } = useLocation();
+  const isJamRoom = pathname.startsWith('/jam/') && pathname !== '/jam/new';
 
   const HomeC    = tuiMode ? TuiHome    : Home;
   const LoginC   = tuiMode ? TuiLogin   : Login;
@@ -58,7 +60,7 @@ export default function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       {!tuiMode && <TuiToggle />}
-      {!tuiMode && <Footer />}
+      {!tuiMode && !isJamRoom && <Footer />}
     </JamPlaybackProvider>
   );
 }
