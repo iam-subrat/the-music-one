@@ -53,8 +53,8 @@ const HELP_LINES = [
   ["play <n>", "DJ only — play song n from queue directly"],
   ["prev | previous", "DJ only — play previous song"],
 
-  ["skip", "cast skip vote (DJ → force skip)"],
-  ["unvote", "remove your skip vote"],
+  ["skip [n]", "vote to skip current track or queue song n (DJ force-skips current)"],
+  ["unvote [n]", "remove your vote for current track or queue song n"],
   ["who | participants", "list participants with index/short-id"],
   ["dj <me|@name|N|prefix>", "host or DJ — pass DJ token (see `who`)"],
   ["repeat <none|song|queue>", "DJ only — set repeat mode"],
@@ -477,11 +477,22 @@ export default function TuiJamRoom() {
         break;
       }
       case "skip":
-        if (!nowPlaying) {
-          append({ kind: "warn", text: "~ nothing playing" });
+        const queueTarget = arg.trim()
+          ? getUpcoming(queueItems, session.repeat_mode ?? "none")[Number(arg) - 1]
+          : nowPlaying;
+        if (!queueTarget) {
+          append({ kind: "warn", text: arg.trim() ? "usage: skip <queue number>" : "~ nothing playing" });
           break;
         }
-        if (isDJ) {
+        if (arg.trim() && (!Number.isInteger(Number(arg)) || Number(arg) < 1)) {
+          append({ kind: "warn", text: "usage: skip <queue number>" });
+          break;
+        }
+        if (arg.trim() && queueTarget.status !== "queued") {
+          append({ kind: "warn", text: "~ only queued songs can be voted out" });
+          break;
+        }
+        if (isDJ && !arg.trim()) {
           try {
             await forceSkip(session.id);
             append({ kind: "ok", text: "✓ track skipped" });
@@ -491,30 +502,39 @@ export default function TuiJamRoom() {
           }
         } else {
           try {
-            const skipped = await castSkipVote(nowPlaying.id, skipThreshold);
+            const skipped = await castSkipVote(queueTarget.id, skipThreshold);
+            if (skipped) refreshQueue();
             append({
               kind: "ok",
               text: skipped
-                ? "✓ skip threshold reached — advancing"
-                : `✓ vote cast (${skipVotes + 1}/${skipThreshold})`,
+                ? `✓ skip threshold reached — removed: ${queueTarget.title}`
+                : `✓ vote cast for ${queueTarget.title}`,
             });
           } catch (e) {
             append({ kind: "err", text: `✗ ${e.message}` });
           }
         }
         break;
-      case "unvote":
-        if (!nowPlaying || !hasVoted) {
-          append({ kind: "warn", text: "~ no vote to remove" });
+      case "unvote": {
+        const queueTarget = arg.trim()
+          ? getUpcoming(queueItems, session.repeat_mode ?? "none")[Number(arg) - 1]
+          : nowPlaying;
+        if (!queueTarget) {
+          append({ kind: "warn", text: arg.trim() ? "usage: unvote <queue number>" : "~ no vote to remove" });
+          break;
+        }
+        if (arg.trim() && queueTarget.status !== "queued") {
+          append({ kind: "warn", text: "~ only queued songs have skip votes" });
           break;
         }
         try {
-          await removeSkipVote(nowPlaying.id);
-          append({ kind: "ok", text: "✓ vote removed" });
+          await removeSkipVote(queueTarget.id);
+          append({ kind: "ok", text: `✓ vote removed for ${queueTarget.title}` });
         } catch (e) {
           append({ kind: "err", text: `✗ ${e.message}` });
         }
         break;
+      }
       case "who":
       case "participants": {
         if (!participants.length) {

@@ -9,11 +9,57 @@ import {
   searchAndAddToQueue,
   playSpecificSong,
   playNext,
+  castSkipVote,
+  removeSkipVote,
 } from "../lib/queue";
+import { useSkipVotes } from "../hooks/useSkipVotes";
 import { endSession, setRepeatMode } from "../lib/session";
 import { isAuthError, promptSignIn } from "../lib/authPrompt";
 import PlayerControls from "../components/PlayerControls";
-import { Search, Users, Copy, Check, Music, ArrowLeft, X } from "lucide-react";
+import { Search, Users, Copy, Check, Music, ArrowLeft, X, ThumbsDown } from "lucide-react";
+
+function QueueVoteButton({ item, sessionId, userId, participantCount, refresh, code }) {
+  const { count, hasVoted } = useSkipVotes(item.id, userId, sessionId);
+  const [isVoting, setIsVoting] = useState(false);
+  const threshold = Math.floor(participantCount / 2) + 1;
+
+  const vote = async () => {
+    if (!userId) {
+      promptSignIn("Please sign in to vote to skip this song.", `/jam/${code}`);
+      return;
+    }
+    setIsVoting(true);
+    try {
+      if (hasVoted) {
+        await removeSkipVote(item.id);
+      } else {
+        const skipped = await castSkipVote(item.id, threshold);
+        if (skipped) await refresh();
+      }
+    } catch (error) {
+      if (isAuthError(error)) {
+        promptSignIn("Your session expired. Would you like to sign in again to vote to skip?", `/jam/${code}`);
+      } else {
+        alert(`Could not vote to skip: ${error.message}`);
+      }
+    } finally {
+      setIsVoting(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={vote}
+      disabled={isVoting}
+      className={`shrink-0 border-2 border-black rounded-lg px-2 py-2 text-xs font-black active:scale-95 ${hasVoted ? "bg-black text-lime-accent" : "bg-white"}`}
+      aria-label={`${hasVoted ? "Remove skip vote" : "Vote to skip"} ${item.title}`}
+    >
+      <ThumbsDown size={16} className="inline mr-1" />
+      {hasVoted ? "Unvote" : "Skip"} {count}/{threshold}
+    </button>
+  );
+}
 
 export default function JamRoom() {
   const { code } = useParams();
@@ -328,31 +374,35 @@ export default function JamRoom() {
         {/* Queue list — upcoming only (no played/skipped clutter) */}
         <div className="space-y-3">
           {upcomingItems.map((item, idx) => (
-            <button
+            <div
               key={item.id}
-              onClick={() =>
-                isDJ
-                  ? playSpecificSong(session.id, item.id)
-                      .then(() => refresh())
-                      .catch((e) => {
-                        if (isAuthError(e)) {
-                          promptSignIn(
-                            "Your session expired. Would you like to sign in again to control playback?",
-                            `/jam/${code}`,
-                          );
-                        } else {
-                          alert("Could not skip to this song: " + e.message);
-                        }
-                      })
-                  : null
-              }
-              disabled={!isDJ}
-              className={`w-full text-left brutal-card p-4 flex items-center gap-4 transition-transform ${
+              className={`w-full brutal-card p-4 flex items-center gap-4 transition-transform ${
                 item.status === "played"
                   ? "opacity-50 hover:-translate-y-1"
                   : "hover:-translate-y-1"
               }`}
             >
+              <button
+                type="button"
+                onClick={() =>
+                  isDJ
+                    ? playSpecificSong(session.id, item.id)
+                        .then(() => refresh())
+                        .catch((e) => {
+                          if (isAuthError(e)) {
+                            promptSignIn(
+                              "Your session expired. Would you like to sign in again to control playback?",
+                              `/jam/${code}`,
+                            );
+                          } else {
+                            alert("Could not skip to this song: " + e.message);
+                          }
+                        })
+                    : null
+                }
+                disabled={!isDJ}
+                className="min-w-0 flex-1 flex items-center gap-4 text-left disabled:cursor-default"
+              >
               <div className="w-8 h-8 flex items-center justify-center shrink-0 font-black text-gray-400 text-sm">
                 {idx + 1}
               </div>
@@ -373,7 +423,18 @@ export default function JamRoom() {
                   {item.artist || "Unknown Artist"}
                 </p>
               </div>
-            </button>
+              </button>
+              {item.status === "queued" && (
+                <QueueVoteButton
+                  item={item}
+                  sessionId={session.id}
+                  userId={user?.id}
+                  participantCount={participants.length}
+                  refresh={refresh}
+                  code={code}
+                />
+              )}
+            </div>
           ))}
 
           {upcomingItems.length === 0 && (

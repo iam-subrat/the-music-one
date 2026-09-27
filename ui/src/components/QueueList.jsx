@@ -35,10 +35,12 @@ export default function QueueList({
   repeatMode,
   sessionId,
   userId,
+  participantCount,
   profile,
   isDj,
   onPlatformDetected,
   onAdded,
+  onQueueChange,
 }) {
   const upcoming = getUpcoming(items, repeatMode);
   return (
@@ -74,6 +76,9 @@ export default function QueueList({
               index={i + 1}
               isDj={isDj}
               sessionId={sessionId}
+              userId={userId}
+              participantCount={participantCount}
+              onQueueChange={onQueueChange}
             />
           ))
         )}

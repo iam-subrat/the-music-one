@@ -289,6 +289,7 @@ export default function JamRoom() {
               repeatMode={session.repeat_mode ?? "none"}
               sessionId={session.id}
               userId={user?.id}
+              participantCount={participants.length}
               profile={profile}
               isDj={
                 session?.dj_user_id === user?.id ||
@@ -299,6 +300,7 @@ export default function JamRoom() {
                 addItem(item);
                 refreshQueue();
               }}
+              onQueueChange={refreshQueue}
             />
           </div>
 
