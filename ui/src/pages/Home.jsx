@@ -97,7 +97,7 @@ function HomeContent() {
 
   return (
     <div className={`page ${jamStyles.jamRoom} ${jamStyles[guiTheme]}`} style={{ padding: 0 }}>
-      <div className={jamStyles.layout} style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gridTemplateColumns: "1fr", maxWidth: 800, margin: "0 auto", padding: "0 20px" }}>
+      <div className={jamStyles.layout} style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gridTemplateColumns: "1fr" }}>
         
         <header className={jamStyles.jamHeader}>
           <a className={jamStyles.roomBrand} href="/" aria-label="MusicOne home">music<span>one</span></a>
@@ -111,7 +111,7 @@ function HomeContent() {
           </div>
         </header>
 
-      <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: "60px" }}>
+      <div style={{ width: "100%", maxWidth: 800, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: "60px", paddingLeft: 20, paddingRight: 20 }}>
         <header className={s.hero}>
         <h1 className={s.heroTitle}>music<span>one</span></h1>
         <p className={s.heroSub}>
