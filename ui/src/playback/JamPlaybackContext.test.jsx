@@ -1,0 +1,57 @@
+import { forwardRef, useEffect, useImperativeHandle } from "react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
+import { JamPlaybackProvider, useJamPlayback } from "./JamPlaybackContext";
+
+const player = { play: vi.fn(), pause: vi.fn(), seek: vi.fn(), getTime: () => 12, getDuration: () => 180, getState: () => 2, isReady: () => true };
+
+vi.mock("../components/YouTubeAutoPlayer", () => ({
+  default: forwardRef(({ videoId }, ref) => {
+    useImperativeHandle(ref, () => player);
+    return <div data-testid="youtube-player" data-video-id={videoId} />;
+  }),
+}));
+vi.mock("../hooks/useMediaSession", () => ({ useMediaSession: vi.fn() }));
+
+const active = { sessionId: "session-a", queueItemId: "item-a", videoId: "video-a", enabled: true, repeat: false, metadata: { title: "Song" }, onEnded: vi.fn() };
+
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
+
+function Registration({ descriptor }) {
+  const { registerPlayback } = useJamPlayback();
+  useEffect(() => registerPlayback(descriptor), [descriptor, registerPlayback]);
+  return null;
+}
+
+function CommandProbe() {
+  const { seek } = useJamPlayback();
+  return <button type="button" onClick={() => seek(42)}>seek</button>;
+}
+
+describe("JamPlaybackProvider", () => {
+  test("keeps one player mounted when a TUI registration replaces the GUI registration for the same item", () => {
+    const view = render(<JamPlaybackProvider><Registration descriptor={active} /></JamPlaybackProvider>);
+    const mountedPlayer = screen.getByTestId("youtube-player");
+
+    view.rerender(<JamPlaybackProvider><Registration descriptor={{ ...active, onEnded: vi.fn() }} /></JamPlaybackProvider>);
+
+    expect(screen.getByTestId("youtube-player")).toBe(mountedPlayer);
+    expect(screen.getAllByTestId("youtube-player")).toHaveLength(1);
+  });
+
+  test("changes the shared player when the active session changes", () => {
+    const view = render(<JamPlaybackProvider><Registration descriptor={active} /></JamPlaybackProvider>);
+    view.rerender(<JamPlaybackProvider><Registration descriptor={{ ...active, sessionId: "session-b", queueItemId: "item-b", videoId: "video-b" }} /></JamPlaybackProvider>);
+    expect(screen.getByTestId("youtube-player")).toHaveAttribute("data-video-id", "video-b");
+  });
+
+  test("exposes stable player commands after registration changes", () => {
+    render(<JamPlaybackProvider><Registration descriptor={active} /><CommandProbe /></JamPlaybackProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "seek" }));
+    expect(player.seek).toHaveBeenCalledWith(42);
+  });
+});

@@ -15,6 +15,7 @@ import TuiJamRoom from './tui/TuiJamRoom';
 import TuiLogin from './tui/TuiLogin';
 import TuiPageLoader from './tui/TuiPageLoader';
 import Footer from './components/Footer';
+import { JamPlaybackProvider } from './playback/JamPlaybackContext';
 
 function JamNew({ tuiMode }) {
   const { user, loading } = useAuth();
@@ -35,7 +36,7 @@ export default function App() {
   const JamRoomC = tuiMode ? TuiJamRoom : JamRoom;
 
   return (
-    <>
+    <JamPlaybackProvider>
       <Routes>
         <Route path="/"      element={<HomeC />} />
         <Route path="/login" element={<LoginC />} />
@@ -46,6 +47,6 @@ export default function App() {
       </Routes>
       {!tuiMode && <TuiToggle />}
       {!tuiMode && <Footer />}
-    </>
+    </JamPlaybackProvider>
   );
 }
