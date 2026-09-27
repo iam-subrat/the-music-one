@@ -15,14 +15,19 @@
 }
 
 .heroTitle {
-  font-size: clamp(2rem, 5vw, 2.6rem);
+  font-size: clamp(2.4rem, 6vw, 3.2rem);
   font-weight: 800;
-  letter-spacing: -0.03em;
-  background: linear-gradient(135deg, #fff 40%, var(--jam-accent) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  line-height: 1.1;
+  letter-spacing: -0.06em;
+  color: var(--jam-text);
+  line-height: 1;
+}
+
+.heroTitle span {
+  color: var(--jam-accent);
+}
+
+:global(.studio) .heroTitle span {
+  color: #5b8751;
 }
 
 .heroSub {

@@ -9,6 +9,7 @@ import { PLATFORM_META } from "../lib/platform";
 import s from "./home.module.css";
 import jamStyles from "../styles/jam.module.css";
 import { useAnalytics } from "../lib/analytics";
+import { useTui } from "../tui/TuiContext";
 
 export default function Home() {
   return (
@@ -28,14 +29,7 @@ function HomeContent() {
   const navigate = useNavigate();
   const toast = useToast();
   const { capture } = useAnalytics();
-
-  const [guiTheme, setGuiTheme] = useState(() => {
-    return localStorage.getItem("guiTheme") || "studio";
-  });
-
-  useEffect(() => {
-    localStorage.setItem("guiTheme", guiTheme);
-  }, [guiTheme]);
+  const { guiTheme, setGuiTheme } = useTui();
 
   // Pre-fill from ?url= query param
   useEffect(() => {
@@ -118,7 +112,7 @@ function HomeContent() {
 
       <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: "40px" }}>
         <header className={s.hero}>
-        <h1 className={s.heroTitle}>MusicOne</h1>
+        <h1 className={s.heroTitle}>music<span>one</span></h1>
         <p className={s.heroSub}>
           Paste any streaming link — listen on any platform
         </p>
