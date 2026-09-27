@@ -17,6 +17,8 @@ import TuiPageLoader from './tui/TuiPageLoader';
 import Footer from './components/Footer';
 import { JamPlaybackProvider, useJamPlayback } from './playback/JamPlaybackContext';
 
+import jamStyles from './styles/jam.module.css';
+
 function PlaybackRouteCleanup() {
   const { pathname } = useLocation();
   const { clearPlayback } = useJamPlayback();
@@ -31,12 +33,13 @@ function PlaybackRouteCleanup() {
 function JamNew({ tuiMode }) {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const { guiTheme } = useTui();
   useEffect(() => {
     if (loading) return;
     if (!user) { navigate('/login?next=/jam/new'); return; }
     createSession(user.id).then(s => navigate(`/jam/${s.invite_code}`, { replace: true }));
   }, [user, loading]);
-  return <div className="page" style={{ justifyContent: 'center' }}>{tuiMode ? <TuiPageLoader /> : <div className="spinner" />}</div>;
+  return <div className={`page ${tuiMode ? '' : `${jamStyles.jamRoom} ${jamStyles[guiTheme]}`}`} style={{ justifyContent: 'center' }}>{tuiMode ? <TuiPageLoader /> : <div className="spinner" />}</div>;
 }
 
 export default function App() {

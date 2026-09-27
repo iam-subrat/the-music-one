@@ -158,7 +158,7 @@ export default function JamRoom() {
 
   if (authLoading || sessionLoading) {
     return (
-      <div className="page" style={{ justifyContent: "center" }}>
+      <div className={`page ${s.jamRoom} ${s[guiTheme]}`} style={{ justifyContent: "center" }}>
         <div className="spinner" />
       </div>
     );
@@ -167,10 +167,10 @@ export default function JamRoom() {
   if (!session) {
     return (
       <div
-        className="page"
+        className={`page ${s.jamRoom} ${s[guiTheme]}`}
         style={{ justifyContent: "center", textAlign: "center" }}
       >
-        <p style={{ color: "var(--muted)" }}>Session not found.</p>
+        <p style={{ color: "var(--jam-muted)" }}>Session not found.</p>
         <a href="/" className="btn" style={{ marginTop: 20 }}>
           Go home
         </a>
@@ -183,11 +183,21 @@ export default function JamRoom() {
       ["played", "playing", "skipped"].includes(i.status),
     );
     return (
-      <div className="page">
-        <AuthBar />
-        <div className={s.layout}>
+      <div className={`page ${s.jamRoom} ${s[guiTheme]}`} style={{ padding: 0 }}>
+        <div className={s.layout} style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gridTemplateColumns: "1fr", maxWidth: 800, margin: "0 auto", padding: "0 20px" }}>
+          <header className={s.jamHeader}>
+            <a className={s.roomBrand} href="/" aria-label="MusicOne home">music<span>one</span></a>
+            <div className={s.roomIdentity}></div>
+            <div className={s.roomActions}>
+              <div className={s.themeSwitch} aria-label="Jam room theme">
+                <button type="button" aria-pressed={guiTheme === "pulse"} onClick={() => setGuiTheme("pulse")}>Pulse</button>
+                <button type="button" aria-pressed={guiTheme === "studio"} onClick={() => setGuiTheme("studio")}>Studio</button>
+              </div>
+               <AuthBar embedded />
+            </div>
+          </header>
           <div className={s.endedBanner}>
-            <p style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: 8 }}>
+            <p style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: 8, color: "var(--jam-text)" }}>
               Session ended
             </p>
             <p>
@@ -201,7 +211,7 @@ export default function JamRoom() {
             <div style={{ gridColumn: "1/-1" }}>
               <p
                 style={{
-                  color: "var(--muted)",
+                  color: "var(--jam-muted)",
                   fontSize: "0.85rem",
                   marginBottom: 12,
                 }}

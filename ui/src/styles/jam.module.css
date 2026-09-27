@@ -207,7 +207,7 @@
 .inviteCode { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 1.1rem; font-weight: 700; letter-spacing: 4px; color: var(--accent); }
 
 /* Ended */
-.endedBanner { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: clamp(24px, 5vw, 40px); text-align: center; color: var(--muted); grid-column: 1 / -1; }
+.endedBanner { background: var(--jam-surface); border: 1px solid var(--jam-border); border-radius: var(--radius); padding: clamp(24px, 5vw, 40px); text-align: center; color: var(--jam-muted); grid-column: 1 / -1; }
 
 /* PlaylistModal */
 .modalOverlay {

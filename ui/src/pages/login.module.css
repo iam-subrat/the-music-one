@@ -34,16 +34,26 @@
 }
 
 .appName {
-  font-size: clamp(2rem, 5vw, 2.6rem);
+  font-size: clamp(2.4rem, 6vw, 3.2rem);
   font-weight: 800;
-  letter-spacing: -0.03em;
-  background: linear-gradient(135deg, #fff 40%, var(--accent) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  letter-spacing: -0.06em;
+  color: var(--jam-text);
+  line-height: 1;
+}
+
+.appName span {
+  color: var(--jam-accent);
+}
+
+:global(.studio) .appName span {
+  color: #5b8751;
 }
 
 .card {
+  background: var(--jam-surface);
+  border: 1px solid var(--jam-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
   padding: clamp(28px, 6vw, 44px) clamp(24px, 5vw, 36px);
   max-width: 380px;
   width: 100%;
@@ -61,7 +71,7 @@
 }
 
 .subtitle {
-  color: var(--text-secondary);
+  color: var(--jam-muted);
   font-size: 0.88rem;
   line-height: 1.65;
 }
@@ -75,7 +85,7 @@
 }
 
 .backLink {
-  color: var(--muted);
+  color: var(--jam-muted);
   font-size: 0.83rem;
   text-decoration: none;
   transition: color 0.2s;
@@ -83,5 +93,5 @@
 }
 
 .backLink:hover {
-  color: var(--text-secondary);
+  color: var(--jam-muted);
 }
