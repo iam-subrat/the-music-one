@@ -126,19 +126,19 @@ test("skip vote immediately becomes unvote and can be removed", async ({ page })
 test("DJ can advance, go back, and cycle repeat mode", async ({ page }) => {
   await installJamFixture(page);
   await page.goto("/jam/room");
-  await expect(page.getByText("Current Track", { exact: true })).toBeVisible();
+  await expect(page.getByRole("main", { name: "Jam room" }).getByText("Current Track", { exact: true })).toBeVisible();
 
   await Promise.all([
     page.waitForRequest((request) => request.url().endsWith("/api/sessions/session-1/queue/next") && request.method() === "POST"),
     page.getByRole("button", { name: /next/i }).click(),
   ]);
-  await expect(page.getByText("Next Track", { exact: true })).toBeVisible();
+  await expect(page.getByRole("main", { name: "Jam room" }).getByText("Next Track", { exact: true })).toBeVisible();
 
   await Promise.all([
     page.waitForRequest((request) => request.url().endsWith("/api/sessions/session-1/queue/previous") && request.method() === "POST"),
     page.getByRole("button", { name: /prev/i }).click(),
   ]);
-  await expect(page.getByText("Previous Track", { exact: true })).toBeVisible();
+  await expect(page.getByRole("main", { name: "Jam room" }).getByText("Previous Track", { exact: true })).toBeVisible();
 
   const repeat = page.getByRole("button", { name: /repeat/i });
   await repeat.click();

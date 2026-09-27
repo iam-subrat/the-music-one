@@ -33,6 +33,7 @@ export default function JamRoom() {
   const { session, loading: sessionLoading, setSession } = useSession(code);
   const {
     items: queueItems,
+    ready: queueReady,
     refresh: refreshQueue,
     addItem,
   } = useQueue(session?.id);
@@ -231,13 +232,13 @@ export default function JamRoom() {
   return (
     <ToastProvider>
       <div className={`page ${s.jamRoom} ${s[guiTheme]}`} style={{ padding: 0 }}>
-        <AuthBar />
         <div className={s.layout}>
           <header className={s.jamHeader}>
+            <a className={s.roomBrand} href="/" aria-label="MusicOne home">music<span>one</span></a>
             <div className={s.roomIdentity}>
-              <p className={s.roomKicker}>Listening together</p>
+              <span className={s.liveIndicator} aria-hidden="true" />
               <h1 className={s.roomTitle}>Jam Session</h1>
-              <p className={s.roomPresence}>{participants.length} listening now · {isDJ ? "You’re on deck" : "Live room"}</p>
+              <p className={s.roomPresence}>· {participants.length} listening</p>
             </div>
             <div className={s.roomActions}>
               <div className={s.themeSwitch} aria-label="Jam room theme">
@@ -245,6 +246,7 @@ export default function JamRoom() {
                 <button type="button" aria-pressed={guiTheme === "studio"} onClick={() => setGuiTheme("studio")}>Studio</button>
               </div>
               <InviteBadge code={session.invite_code} />
+              <AuthBar embedded />
               {isHost && (
                 <button
                   className="btn btn-danger"
@@ -289,6 +291,7 @@ export default function JamRoom() {
                 setSession((prev) => ({ ...prev, repeat_mode: mode }))
               }
               queueItems={queueItems}
+              playbackReady={queueReady && !authLoading && !sessionLoading}
             />
             <QueueList
               items={queueItems}
@@ -312,6 +315,11 @@ export default function JamRoom() {
           </main>
 
           <aside className={s.sidebar} aria-label="Room details">
+            <ParticipantList
+              participants={participants}
+              session={session}
+              currentUserId={user?.id}
+            />
             <section className={`${s.sidebarSection} ${s.addPanel}`} aria-labelledby="add-song-heading">
               <div className={s.sectionHeading}>
                 <div>
@@ -331,11 +339,6 @@ export default function JamRoom() {
                 }}
               />
             </section>
-            <ParticipantList
-              participants={participants}
-              session={session}
-              currentUserId={user?.id}
-            />
           </aside>
         </div>
       </div>

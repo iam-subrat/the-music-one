@@ -74,6 +74,54 @@ html[data-tui="1"] .jam-persistent-player {
   overflow: hidden;
 }
 
+/* The player lives outside the mode-specific room tree. Its visible bar does not. */
+html[data-tui="0"] .jam-persistent-player {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transform: none;
+  width: 100%;
+  height: 70px;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 0;
+  background: #121520;
+  color: #eef0f4;
+  box-shadow: none;
+}
+html[data-gui-theme="studio"][data-tui="0"] .jam-persistent-player {
+  background: #eeece5;
+  border-color: #dedbd2;
+  color: #20231f;
+}
+.jam-persistent-player__status {
+  width: min(100%, 1380px);
+  margin: 0 auto;
+  padding: 9px 170px 9px 30px;
+  justify-content: flex-start;
+  gap: 12px;
+}
+.jam-persistent-player__cover { width: 42px; height: 42px; flex: 0 0 auto; background: linear-gradient(140deg, #641d5b, #ffbc76); border-radius: 7px; overflow: hidden; }
+.jam-persistent-player__cover img { width: 100%; height: 100%; object-fit: cover; }
+.jam-persistent-player__copy { display: grid; min-width: 120px; max-width: 230px; font-size: .78rem; line-height: 1.3; }
+.jam-persistent-player__copy strong, .jam-persistent-player__copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jam-persistent-player__copy small { font-size: .7rem; color: #9499aa; }
+html[data-gui-theme="studio"] .jam-persistent-player__copy small { color: #687067; }
+.jam-persistent-player__progress { flex: 1; height: 4px; border-radius: 9px; background: #303443; overflow: hidden; }
+.jam-persistent-player__progress i { display: block; height: 100%; background: #a6ff5f; border-radius: inherit; }
+html[data-gui-theme="studio"] .jam-persistent-player__progress { background: #d3d1c7; }
+html[data-gui-theme="studio"] .jam-persistent-player__progress i { background: #263d2a; }
+.jam-persistent-player__note { color: #9499aa; font-size: .72rem; white-space: nowrap; }
+html[data-gui-theme="studio"] .jam-persistent-player__note { color: #687067; }
+@media (max-width: 1400px) {
+  .jam-persistent-player__note { display: none; }
+}
+@media (max-width: 700px) {
+  .jam-persistent-player__status { padding: 9px 112px 9px 15px; }
+  .jam-persistent-player__note { display: none; }
+  .jam-persistent-player__copy { min-width: 0; max-width: 150px; }
+}
+
 a { color: inherit; }
 
 /* ── Buttons ──────────────────────────────────────────────── */

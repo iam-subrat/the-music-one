@@ -89,6 +89,7 @@ export default function TuiJamRoom() {
   const { session, loading: sessionLoading, setSession } = useSession(code);
   const {
     items: queueItems,
+    ready: queueReady,
     refresh: refreshQueue,
     addItem,
   } = useQueue(session?.id);
@@ -192,6 +193,7 @@ export default function TuiJamRoom() {
   useEffect(() => {
     registerPlayback({
       owner: "tui",
+      ready: queueReady && !authLoading && !sessionLoading,
       isDJ,
       sessionId: session?.id ?? null,
       queueItemId: nowPlaying?.id ?? null,
@@ -214,7 +216,7 @@ export default function TuiJamRoom() {
         }
       },
     });
-  }, [session?.id, nowPlaying?.id, ytId, isDJ, session?.repeat_mode, registerPlayback, refreshQueue]);
+  }, [session?.id, nowPlaying?.id, ytId, isDJ, session?.repeat_mode, registerPlayback, refreshQueue, queueReady, authLoading, sessionLoading]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });

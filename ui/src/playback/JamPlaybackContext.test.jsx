@@ -62,10 +62,13 @@ describe("JamPlaybackProvider", () => {
     const view = render(<JamPlaybackProvider><Registration descriptor={active} /></JamPlaybackProvider>);
     const mountedPlayer = screen.getByTestId("youtube-player");
 
-    view.rerender(<JamPlaybackProvider><Registration descriptor={{ ...active, owner: "tui", isDJ: false, videoId: null, enabled: false }} /></JamPlaybackProvider>);
+    view.rerender(<JamPlaybackProvider><Registration descriptor={{ ...active, owner: "tui", isDJ: false, sessionId: null, queueItemId: null, videoId: null, enabled: false, ready: false }} /></JamPlaybackProvider>);
 
     expect(screen.getByTestId("youtube-player")).toBe(mountedPlayer);
     expect(screen.getByTestId("youtube-player")).toHaveAttribute("data-video-id", "video-a");
+
+    view.rerender(<JamPlaybackProvider><Registration descriptor={{ ...active, owner: "tui", ready: true }} /></JamPlaybackProvider>);
+    expect(screen.getByTestId("youtube-player")).toBe(mountedPlayer);
   });
 
   test("keeps the active video when the replacement mode resolves the same queue item differently", () => {

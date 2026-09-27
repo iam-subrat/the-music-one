@@ -24,3 +24,53 @@ test('preserves the Jam room while switching visual theme and terminal mode', as
   await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
   await expect(page.getByText(/now playing/i)).toBeVisible();
 });
+
+test('keeps the same iframe and playback position across both mode switches', async ({ page }) => {
+  await page.route('**/api/sessions/session-1/queue', async route => {
+    await new Promise(resolve => setTimeout(resolve, 120));
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify([song]) });
+  });
+  await page.route('https://www.youtube.com/iframe_api', route => route.fulfill({
+    contentType: 'text/javascript',
+    body: `window.__jamPlayers = [];
+      window.YT = { PlayerState: { ENDED: 0 }, Player: class {
+        constructor(element, options) {
+          this.time = 87;
+          this.state = 2;
+          this.iframe = document.createElement('iframe');
+          this.iframe.dataset.instance = String(window.__jamPlayers.length + 1);
+          element.replaceWith(this.iframe);
+          window.__jamPlayers.push(this);
+          options.events.onReady?.();
+        }
+        playVideo() { this.state = 1; }
+        pauseVideo() { this.state = 2; }
+        seekTo(seconds) { this.time = seconds; }
+        getCurrentTime() { return this.time; }
+        getDuration() { return 180; }
+        getPlayerState() { return this.state; }
+        loadVideoById() { this.time = 0; }
+        destroy() { this.iframe.remove(); }
+      }};
+      window.onYouTubeIframeAPIReady?.();`,
+  }));
+
+  await page.goto('/jam/room');
+  const iframe = page.locator('.jam-persistent-player iframe');
+  await expect(iframe).toHaveAttribute('data-instance', '1');
+  const playerState = () => page.evaluate(() => ({
+    instances: window.__jamPlayers.length,
+    time: window.__jamPlayers.at(-1)?.getCurrentTime(),
+  }));
+  expect(await playerState()).toEqual({ instances: 1, time: 87 });
+
+  await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
+  await expect(page.getByText(/now playing/i)).toBeVisible();
+  await expect(iframe).toHaveAttribute('data-instance', '1');
+  expect(await playerState()).toEqual({ instances: 1, time: 87 });
+
+  await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
+  await expect(page.locator('[class*="nowPlayingTitle"]')).toHaveText('E2E Song');
+  await expect(iframe).toHaveAttribute('data-instance', '1');
+  expect(await playerState()).toEqual({ instances: 1, time: 87 });
+});

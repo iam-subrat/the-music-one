@@ -14,6 +14,18 @@ function PersistentPlayer({ descriptor, playerRef }) {
   const latestDescriptor = useRef(descriptor);
   useEffect(() => { latestDescriptor.current = descriptor; }, [descriptor]);
   const enabled = !!(descriptor?.enabled && descriptor?.videoId);
+  const [position, setPosition] = useState({ time: 0, duration: 0 });
+
+  useEffect(() => {
+    if (!enabled) return undefined;
+    const update = () => setPosition({
+      time: playerRef.current?.getTime?.() ?? 0,
+      duration: playerRef.current?.getDuration?.() ?? 0,
+    });
+    update();
+    const interval = window.setInterval(update, 1000);
+    return () => window.clearInterval(interval);
+  }, [enabled, descriptor?.queueItemId, playerRef]);
 
   useMediaSession({
     enabled,
@@ -27,8 +39,15 @@ function PersistentPlayer({ descriptor, playerRef }) {
   return (
     <div className="jam-persistent-player" data-session-id={descriptor.sessionId} aria-label="Shared Jam player">
       <div className="jam-persistent-player__status" aria-hidden="true">
-        <span className="jam-persistent-player__dot" />
-        <span>Shared player · {descriptor.metadata?.title || "Now playing"}</span>
+        <span className="jam-persistent-player__cover">
+          {descriptor.metadata?.artwork && <img src={descriptor.metadata.artwork} alt="" />}
+        </span>
+        <span className="jam-persistent-player__copy">
+          <strong>{descriptor.metadata?.title || "Now playing"}</strong>
+          <small>{descriptor.metadata?.artist || "MusicOne Jam"}</small>
+        </span>
+        <span className="jam-persistent-player__progress"><i style={{ width: `${position.duration > 0 ? Math.min(100, position.time / position.duration * 100) : 0}%` }} /></span>
+        <span className="jam-persistent-player__note">Shared player · GUI ↔ TUI</span>
       </div>
       <YouTubeAutoPlayer
         ref={playerRef}
@@ -46,9 +65,11 @@ export function JamPlaybackProvider({ children }) {
 
   const registerPlayback = useCallback((next) => {
     setDescriptor((current) => {
+      if (next.ready === false) return current;
       if (
         current?.enabled
         && current.owner !== next.owner
+        && next.isDJ
         && current.sessionId === next.sessionId
         && current.queueItemId === next.queueItemId
       ) {

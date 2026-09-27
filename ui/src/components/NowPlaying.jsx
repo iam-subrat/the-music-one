@@ -31,6 +31,7 @@ export default function NowPlaying({
   repeatMode,
   onRepeatModeChange,
   queueItems,
+  playbackReady = true,
 }) {
   const toast = useToast();
   const {
@@ -222,6 +223,7 @@ export default function NowPlaying({
   useEffect(() => {
     registerPlayback({
       owner: "gui",
+      ready: playbackReady,
       isDJ,
       sessionId,
       queueItemId: nowPlaying?.id ?? null,
@@ -235,7 +237,7 @@ export default function NowPlaying({
       },
       onEnded: handleEnded,
     });
-  }, [sessionId, nowPlaying?.id, ytId, isDJ, repeatMode, registerPlayback, queueItems, onQueueChange]);
+  }, [sessionId, nowPlaying?.id, ytId, isDJ, repeatMode, registerPlayback, queueItems, onQueueChange, playbackReady]);
 
   useEffect(() => {
     if (!nowPlaying) return undefined;
@@ -355,6 +357,8 @@ export default function NowPlaying({
         )}
       </div>
 
+      <details className={s.listenDetails}>
+        <summary>Listen on other platforms</summary>
       {pref && (
         <a
           className={s.preferredBtn}
@@ -405,6 +409,7 @@ export default function NowPlaying({
           title="YouTube preview"
         />
       )}
+      </details>
 
       <div className={s.djControls}>
         {isDJ && (

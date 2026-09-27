@@ -16,6 +16,16 @@
   border-bottom: 1px solid rgba(36, 36, 54, 0.6);
 }
 
+.embedded {
+  position: static;
+  inset: auto;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 .avatar {
   width: 30px;
   height: 30px;

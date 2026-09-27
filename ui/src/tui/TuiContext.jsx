@@ -22,6 +22,7 @@ export function TuiProvider({ children }) {
 
   useEffect(() => {
     try { localStorage.setItem(GUI_THEME_KEY, guiTheme); } catch {}
+    document.documentElement.dataset.guiTheme = guiTheme;
   }, [guiTheme]);
 
   const toggleTui = useCallback(() => setTuiMode(v => !v), []);

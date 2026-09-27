@@ -5,6 +5,7 @@ import { openSSE } from '../lib/sse';
 
 export function useQueue(sessionId) {
   const [items, setItems] = useState([]);
+  const [loadedSessionId, setLoadedSessionId] = useState(null);
 
   const refresh = useCallback(async () => {
     if (!sessionId) return;
@@ -14,6 +15,7 @@ export function useQueue(sessionId) {
     const playing = data.find((i) => i.status === 'playing');
     console.log('[useQueue] refresh', { count: data.length, playingId: playing?.id, title: playing?.title });
     setItems(data);
+    setLoadedSessionId(sessionId);
   }, [sessionId]);
 
   useEffect(() => {
@@ -30,5 +32,5 @@ export function useQueue(sessionId) {
     setItems(prev => [...prev, item]);
   }, []);
 
-  return { items, refresh, addItem };
+  return { items, ready: !!sessionId && loadedSessionId === sessionId, refresh, addItem };
 }
