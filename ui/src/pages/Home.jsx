@@ -97,10 +97,11 @@ function HomeContent() {
 
   return (
     <div className={`page ${jamStyles.jamRoom} ${jamStyles[guiTheme]}`} style={{ padding: 0 }}>
-      <div className={jamStyles.layout} style={{ display: "flex", flexDirection: "column", alignItems: "center", gridTemplateColumns: "1fr", maxWidth: 800, margin: "0 auto" }}>
+      <div className={jamStyles.layout} style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gridTemplateColumns: "1fr", maxWidth: 800, margin: "0 auto", padding: "0 20px" }}>
         
-        <header className={jamStyles.jamHeader} style={{ width: "100%", justifyContent: "space-between", borderBottom: "none", paddingBottom: 0 }}>
+        <header className={jamStyles.jamHeader}>
           <a className={jamStyles.roomBrand} href="/" aria-label="MusicOne home">music<span>one</span></a>
+          <div className={jamStyles.roomIdentity}></div>
           <div className={jamStyles.roomActions}>
              <div className={jamStyles.themeSwitch} aria-label="Jam room theme">
                 <button type="button" aria-pressed={guiTheme === "pulse"} onClick={() => setGuiTheme("pulse")}>Pulse</button>
@@ -110,7 +111,7 @@ function HomeContent() {
           </div>
         </header>
 
-      <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: "40px" }}>
+      <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: "60px" }}>
         <header className={s.hero}>
         <h1 className={s.heroTitle}>music<span>one</span></h1>
         <p className={s.heroSub}>
