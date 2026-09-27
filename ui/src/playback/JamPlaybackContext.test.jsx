@@ -58,6 +58,16 @@ describe("JamPlaybackProvider", () => {
     expect(screen.getByTestId("youtube-player")).toHaveAttribute("data-video-id", "video-a");
   });
 
+  test("keeps playback alive during a TUI handoff before DJ identity resolves", () => {
+    const view = render(<JamPlaybackProvider><Registration descriptor={active} /></JamPlaybackProvider>);
+    const mountedPlayer = screen.getByTestId("youtube-player");
+
+    view.rerender(<JamPlaybackProvider><Registration descriptor={{ ...active, owner: "tui", isDJ: false, videoId: null, enabled: false }} /></JamPlaybackProvider>);
+
+    expect(screen.getByTestId("youtube-player")).toBe(mountedPlayer);
+    expect(screen.getByTestId("youtube-player")).toHaveAttribute("data-video-id", "video-a");
+  });
+
   test("clears playback when the current DJ loses control", () => {
     const view = render(<JamPlaybackProvider><Registration descriptor={active} /></JamPlaybackProvider>);
     view.rerender(<JamPlaybackProvider><Registration descriptor={{ ...active, isDJ: false, videoId: null, enabled: false }} /></JamPlaybackProvider>);

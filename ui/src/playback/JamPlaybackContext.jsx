@@ -49,12 +49,18 @@ export function JamPlaybackProvider({ children }) {
       if (
         current?.enabled
         && current.owner !== next.owner
-        && next.isDJ
         && current.sessionId === next.sessionId
         && current.queueItemId === next.queueItemId
         && !next.videoId
       ) {
-        return { ...current, ...next, videoId: current.videoId, enabled: true };
+        return {
+          ...current,
+          ...next,
+          isDJ: current.isDJ,
+          videoId: current.videoId,
+          enabled: true,
+          metadata: next.metadata ?? current.metadata,
+        };
       }
       return samePlayback(current, next) ? { ...current, ...next } : next;
     });
