@@ -385,7 +385,11 @@
   --jam-border: rgba(49, 93, 59, 0.2);
 }
 .jamRoom :global(.btn) { background: var(--jam-accent); color: var(--jam-canvas); box-shadow: none; }
-.jamRoom :global(.btn:hover) { filter: brightness(1.06); }
+.jamRoom :global(.btn:hover) {
+  background: var(--jam-accent);
+  box-shadow: none;
+  filter: brightness(1.06);
+}
 .jamRoom .nowPlaying, .jamRoom .queueSection, .jamRoom .sidebar { background: var(--jam-surface); border-color: var(--jam-border); }
 .jamRoom .nowPlaying { border-color: var(--jam-border); box-shadow: none; }
 .jamRoom .nowPlayingLabel { color: var(--jam-accent); }
@@ -702,6 +706,12 @@
 }
 .jamRoom .roomActions :global(.btn-danger) { color: var(--jam-danger); border-color: color-mix(in srgb, var(--jam-danger) 35%, transparent); }
 .jamRoom .roomActions :global(.btn-danger:hover) { background: color-mix(in srgb, var(--jam-danger) 11%, transparent); }
+.jamRoom :global(.btn-ghost:hover) {
+  background: var(--jam-control-hover);
+  border-color: var(--jam-control-border);
+  color: var(--jam-text);
+  transform: none;
+}
 
 .nowPlayingLabel { text-transform: none; letter-spacing: .01em; font-size: .82rem; font-weight: 650; color: var(--jam-muted); }
 .nowPlayingTitle { font-weight: 750; letter-spacing: -.045em; }
