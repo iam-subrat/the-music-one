@@ -26,6 +26,10 @@
 - A delayed YouTube resolution for an old queue item cannot replace a newer active item.
 - Paused playback remains paused through GUI dark ↔ Studio theme switches and GUI ↔ TUI switches.
 - A fresh browser load uses the stored GUI theme but never applies GUI theming to TUI.
+- Skip-vote state and its majority-triggered queue refresh remain correct after every GUI/TUI/theme transition.
+- DJ transfer revokes the former DJ's player controls and enables the recipient's controls without replacing an active player for the same song.
+- GUI seekbar dragging and TUI `seek`/`seekend` issue exactly one shared-player seek, retain the requested position through a mode switch, and never alter queue status.
+- GUI and TUI retain URL adds, title/artist search adds, and playlist import selection without recreating the shared player or losing the active queue item.
 
 ## File structure
 
@@ -421,6 +425,12 @@ With an active DJ session and a direct YouTube queue item, start playback and ve
 3. TUI → GUI Pulse keeps the same audible position and play/pause state.
 4. Pausing before any transition remains paused after all transitions.
 5. Selecting a new queue item changes the shared player video exactly once.
+6. Cast and remove a skip vote before and after GUI Pulse → TUI; verify the vote count and threshold state refresh correctly.
+7. Transfer DJ to a second participant while a song is playing; verify the former DJ cannot pause, seek, advance, or force-skip, and the new DJ can do so without a player remount.
+8. Drag the GUI seekbar and run TUI `seek +15` and `seekend 10`; verify each action seeks the shared player once and leaves the queue item in `playing` status.
+9. In GUI, add one track by streaming URL and one by title plus artist; verify both appear in the queue while the current player remains mounted.
+10. In TUI, add one track by URL and one by `add "title" artist`; verify both route through the existing queue API and refresh the queue.
+11. Import a playlist in each surface, select a subset of tracks, confirm the add, and verify only that subset is queued while current playback continues.
 
 - [ ] **Step 4: Inspect the final diff and report verification-only corrections**
 

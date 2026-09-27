@@ -43,6 +43,16 @@ describe("JamPlaybackProvider", () => {
     expect(screen.getAllByTestId("youtube-player")).toHaveLength(1);
   });
 
+  test("keeps the current player alive while the replacement mode resolves the same song", () => {
+    const view = render(<JamPlaybackProvider><Registration descriptor={active} /></JamPlaybackProvider>);
+    const mountedPlayer = screen.getByTestId("youtube-player");
+
+    view.rerender(<JamPlaybackProvider><Registration descriptor={{ ...active, videoId: null, enabled: false }} /></JamPlaybackProvider>);
+
+    expect(screen.getByTestId("youtube-player")).toBe(mountedPlayer);
+    expect(screen.getByTestId("youtube-player")).toHaveAttribute("data-video-id", "video-a");
+  });
+
   test("changes the shared player when the active session changes", () => {
     const view = render(<JamPlaybackProvider><Registration descriptor={active} /></JamPlaybackProvider>);
     view.rerender(<JamPlaybackProvider><Registration descriptor={{ ...active, sessionId: "session-b", queueItemId: "item-b", videoId: "video-b" }} /></JamPlaybackProvider>);

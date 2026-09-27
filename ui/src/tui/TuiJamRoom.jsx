@@ -29,17 +29,12 @@ import {
   fetchPlaylistPreview,
   addPlaylistBatch,
 } from "../lib/playlist";
-import { API_BASE, api } from "../lib/api";
+import { API_BASE } from "../lib/api";
 import { useAnalytics } from "../lib/analytics";
 import { FLAGS } from "../lib/flags";
-import YouTubeAutoPlayer from "../components/YouTubeAutoPlayer";
-import { useMediaSession } from "../hooks/useMediaSession";
 import { getUpcoming } from "../components/QueueList";
-import {
-  extractYouTubeId,
-  isYouTubeSearchUrl,
-  extractSearchQuery,
-} from "../lib/platform";
+import { useResolvedYouTubeVideo } from "../playback/useResolvedYouTubeVideo";
+import { useJamPlayback } from "../playback/JamPlaybackContext";
 import s from "./tui.module.css";
 
 const HELP_LINES = [
@@ -108,7 +103,6 @@ export default function TuiJamRoom() {
   const [input, setInput] = useState("");
   const [cmdHistory, setCmdHistory] = useState([]);
   const [histIdx, setHistIdx] = useState(-1);
-  const [ytId, setYtId] = useState(null);
   const [pendingConfirm, setPendingConfirm] = useState(null);
   const [playlistPicker, setPlaylistPicker] = useState(null);
 
@@ -116,8 +110,6 @@ export default function TuiJamRoom() {
   const inputRef = useRef(null);
   const didJoinRef = useRef(false);
   const sessionIdRef = useRef(null);
-  const ytResolveKey = useRef(null);
-  const ytPlayerRef = useRef(null);
 
   const nowPlaying = queueItems.find((i) => i.status === "playing") ?? null;
   const isDJ = !!session && session.dj_user_id === user?.id;
@@ -128,33 +120,12 @@ export default function TuiJamRoom() {
     session?.id,
   );
   const skipThreshold = Math.floor(participants.length / 2) + 1;
+  const { videoId: ytId } = useResolvedYouTubeVideo(nowPlaying, isDJ);
+  const { registerPlayback, play, pause, seek, getTime, getDuration, getState } = useJamPlayback();
 
   function append(...lines) {
     setLog((prev) => [...prev, ...lines]);
   }
-
-  useMediaSession({
-    enabled: !!(FLAGS.AUTO_PLAY_QUEUE && isDJ && ytId && nowPlaying),
-    playerRef: ytPlayerRef,
-    metadata: nowPlaying
-      ? {
-          title: nowPlaying.title,
-          artist: nowPlaying.artist,
-          artwork: nowPlaying.thumbnail_url,
-        }
-      : null,
-    onNext: async () => {
-      if (!session?.id) return;
-      try {
-        const next = await playNext(session.id);
-        refreshQueue();
-        if (!next) append({ kind: "warn", text: "~ queue empty" });
-      } catch (e) {
-        append({ kind: "err", text: `✗ media-key next failed: ${e.message}` });
-      }
-    },
-    onPrev: () => ytPlayerRef.current?.seek?.(0),
-  });
 
   useEffect(() => {
     if (!authLoading && !user) navigate(`/login?next=/jam/${code}`);
@@ -215,58 +186,29 @@ export default function TuiJamRoom() {
   }, [session?.id]);
 
   useEffect(() => {
-    if (!FLAGS.AUTO_PLAY_QUEUE || !nowPlaying || !isDJ) {
-      setYtId(null);
-      return;
-    }
-
-    const key = nowPlaying.id;
-    ytResolveKey.current = key;
-    // Don't null ytId here — keeping player mounted preserves iOS autoplay unlock.
-
-    // 1. Direct YouTube video link
-    const ytUrl =
-      nowPlaying.platform_links?.youtube ||
-      nowPlaying.platform_links?.youtubemusic;
-    const directId = extractYouTubeId(ytUrl);
-    if (directId) {
-      setYtId(directId);
-      return;
-    }
-
-    // 2. YouTube search-results URL → resolve query via backend
-    if (ytUrl && isYouTubeSearchUrl(ytUrl)) {
-      const q = extractSearchQuery(ytUrl);
-      if (q) {
-        api(`/youtube/?q=${encodeURIComponent(q)}`)
-          .then((r) => (r.ok ? r.json() : { id: null }))
-          .then(({ id }) => {
-            if (ytResolveKey.current !== key) return;
-            if (id) setYtId(id);
-          });
-        return;
-      }
-    }
-
-    // 3. Fallback: title + artist search; persist result so other clients benefit.
-    api(
-      `/youtube/?q=${encodeURIComponent(`${nowPlaying.title} ${nowPlaying.artist}`)}`,
-    )
-      .then((r) => (r.ok ? r.json() : { id: null }))
-      .then(({ id }) => {
-        if (ytResolveKey.current !== key) return;
-        if (id) {
-          setYtId(id);
-          patchYouTubeLink(
-            nowPlaying.id,
-            `https://www.youtube.com/watch?v=${id}`,
-          );
+    registerPlayback({
+      sessionId: session?.id ?? null,
+      queueItemId: nowPlaying?.id ?? null,
+      videoId: ytId,
+      enabled: !!(FLAGS.AUTO_PLAY_QUEUE && isDJ && nowPlaying && ytId),
+      repeat: session?.repeat_mode === "song",
+      metadata: nowPlaying && {
+        title: nowPlaying.title,
+        artist: nowPlaying.artist,
+        artwork: nowPlaying.thumbnail_url,
+      },
+      onEnded: async () => {
+        if (!session?.id || !isDJ) return;
+        try {
+          const next = await playNext(session.id);
+          refreshQueue();
+          if (!next) append({ kind: "warn", text: "~ queue empty" });
+        } catch (e) {
+          append({ kind: "err", text: `✗ auto-advance failed: ${e.message}` });
         }
-      });
-    // Re-resolve only when the song or DJ status changes; other nowPlaying
-    // fields are read at resolve time, not tracked.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nowPlaying?.id, isDJ]);
+      },
+    });
+  }, [session?.id, nowPlaying?.id, ytId, isDJ, session?.repeat_mode, registerPlayback, refreshQueue]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
@@ -329,10 +271,10 @@ export default function TuiJamRoom() {
         }
         if (
           session.repeat_mode === "song" ||
-          (ytPlayerRef.current?.getTime?.() ?? 0) > 3
+          getTime() > 3
         ) {
-          ytPlayerRef.current?.seek(0);
-          ytPlayerRef.current?.play();
+          seek(0);
+          play();
           append({ kind: "ok", text: "⏮ restarted song from beginning" });
           break;
         }
@@ -342,8 +284,8 @@ export default function TuiJamRoom() {
             append({ kind: "ok", text: "⏮ previous song" });
             refreshQueue();
           } else {
-            ytPlayerRef.current?.seek(0);
-            ytPlayerRef.current?.play();
+            seek(0);
+            play();
             append({ kind: "warn", text: "~ no previous song" });
           }
         } catch (e) {
@@ -357,8 +299,8 @@ export default function TuiJamRoom() {
           break;
         }
         if (session.repeat_mode === "song") {
-          ytPlayerRef.current?.seek(0);
-          ytPlayerRef.current?.play();
+          seek(0);
+          play();
           append({ kind: "ok", text: "↺ replaying song (repeat mode: song)" });
           break;
         }
@@ -376,11 +318,11 @@ export default function TuiJamRoom() {
           append({ kind: "err", text: "✗ DJ only" });
           break;
         }
-        if (!ytPlayerRef.current?.isReady?.()) {
+        if (getState() === -1) {
           append({ kind: "warn", text: "~ no player active" });
           break;
         }
-        ytPlayerRef.current.pause();
+        pause();
         append({ kind: "ok", text: "⏸ paused" });
         break;
       case "play":
@@ -412,11 +354,11 @@ export default function TuiJamRoom() {
           append({ kind: "err", text: "✗ DJ only" });
           break;
         }
-        if (!ytPlayerRef.current?.isReady?.()) {
+        if (getState() === -1) {
           append({ kind: "warn", text: "~ no player active" });
           break;
         }
-        ytPlayerRef.current.play();
+        play();
         append({ kind: "ok", text: "▶ resumed" });
         break;
       case "seekend": {
@@ -424,7 +366,7 @@ export default function TuiJamRoom() {
           append({ kind: "err", text: "✗ DJ only" });
           break;
         }
-        if (!ytPlayerRef.current?.isReady?.()) {
+        if (getState() === -1) {
           append({ kind: "warn", text: "~ no player active" });
           break;
         }
@@ -433,13 +375,13 @@ export default function TuiJamRoom() {
           append({ kind: "warn", text: "usage: seekend <sec>" });
           break;
         }
-        const duration = ytPlayerRef.current.getDuration() ?? 0;
+        const duration = getDuration();
         if (!duration) {
           append({ kind: "warn", text: "~ duration not available yet" });
           break;
         }
         const target = Math.max(0, duration - n);
-        ytPlayerRef.current.seek(target);
+        seek(target);
         append({
           kind: "ok",
           text: `⇥ seekend -${n}s → ${target.toFixed(1)}s / ${duration.toFixed(1)}s`,
@@ -451,7 +393,7 @@ export default function TuiJamRoom() {
           append({ kind: "err", text: "✗ DJ only" });
           break;
         }
-        if (!ytPlayerRef.current?.isReady?.()) {
+        if (getState() === -1) {
           append({ kind: "warn", text: "~ no player active" });
           break;
         }
@@ -465,9 +407,9 @@ export default function TuiJamRoom() {
           break;
         }
         const isRelative = /^[+-]/.test(trimmed);
-        const current = ytPlayerRef.current.getTime() ?? 0;
+        const current = getTime();
         const target = Math.max(0, isRelative ? current + delta : delta);
-        ytPlayerRef.current.seek(target);
+        seek(target);
         append({
           kind: "ok",
           text: isRelative
@@ -763,36 +705,6 @@ export default function TuiJamRoom() {
       onScreenClick={() => inputRef.current?.focus()}
       auth={auth}
     >
-      {ytId && isDJ && (
-        <div
-          style={{
-            position: "fixed",
-            width: 1,
-            height: 1,
-            opacity: 0,
-            pointerEvents: "none",
-            overflow: "hidden",
-          }}
-        >
-          <YouTubeAutoPlayer
-            ref={ytPlayerRef}
-            videoId={ytId}
-            repeat={session.repeat_mode === "song"}
-            onEnded={async () => {
-              try {
-                const next = await playNext(session.id);
-                refreshQueue();
-                if (!next) append({ kind: "warn", text: "~ queue empty" });
-              } catch (e) {
-                append({
-                  kind: "err",
-                  text: `✗ auto-advance failed: ${e.message}`,
-                });
-              }
-            }}
-          />
-        </div>
-      )}
 
       <div className={s.jamGrid}>
         <div className={`${s.panel} ${s.panelSpan2}`}>

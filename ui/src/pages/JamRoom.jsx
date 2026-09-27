@@ -14,9 +14,11 @@ import { joinSession, endSession } from "../lib/session";
 import { useAnalytics } from "../lib/analytics";
 import { API_BASE } from "../lib/api";
 import { ToastProvider } from "../components/Toast";
+import { useTui } from "../tui/TuiContext";
 import s from "../styles/jam.module.css";
 
 export default function JamRoom() {
+  const { guiTheme, setGuiTheme } = useTui();
   const { code } = useParams();
   const navigate = useNavigate();
   const {
@@ -221,7 +223,7 @@ export default function JamRoom() {
 
   return (
     <ToastProvider>
-      <div className="page" style={{ padding: 0 }}>
+      <div className={`page ${s.jamRoom} ${s[guiTheme]}`} style={{ padding: 0 }}>
         <AuthBar />
         <div className={s.layout}>
           <div className={s.jamHeader}>
@@ -238,6 +240,10 @@ export default function JamRoom() {
                 flexWrap: "wrap",
               }}
             >
+              <div className={s.themeSwitch} aria-label="Jam room theme">
+                <button type="button" aria-pressed={guiTheme === "pulse"} onClick={() => setGuiTheme("pulse")}>Pulse</button>
+                <button type="button" aria-pressed={guiTheme === "studio"} onClick={() => setGuiTheme("studio")}>Studio</button>
+              </div>
               <InviteBadge code={session.invite_code} />
               {isHost && (
                 <button

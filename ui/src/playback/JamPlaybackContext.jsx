@@ -42,6 +42,14 @@ export function JamPlaybackProvider({ children }) {
 
   const registerPlayback = useCallback((next) => {
     setDescriptor((current) => {
+      if (
+        current?.enabled
+        && current.sessionId === next.sessionId
+        && current.queueItemId === next.queueItemId
+        && !next.videoId
+      ) {
+        return { ...current, ...next, videoId: current.videoId, enabled: true };
+      }
       return samePlayback(current, next) ? { ...current, ...next } : next;
     });
   }, []);

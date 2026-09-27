@@ -1,14 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import s from "../styles/jam.module.css";
 import {
   preferredLink,
-  extractYouTubeId,
-  isYouTubeSearchUrl,
-  extractSearchQuery,
   PLATFORM_META,
 } from "../lib/platform";
 import { FLAGS } from "../lib/flags";
-import { api } from "../lib/api";
 import { useSkipVotes } from "../hooks/useSkipVotes";
 import {
   castSkipVote,
@@ -16,14 +12,13 @@ import {
   playNext,
   playPrevious,
   playSpecificSong,
-  patchYouTubeLink,
 } from "../lib/queue";
 import { setRepeatMode } from "../lib/session";
 import { useToast } from "./Toast";
 import PlatformLinks from "./PlatformLinks";
-import YouTubeAutoPlayer from "./YouTubeAutoPlayer";
 import { useAnalytics } from "../lib/analytics";
-import { useMediaSession } from "../hooks/useMediaSession";
+import { useResolvedYouTubeVideo } from "../playback/useResolvedYouTubeVideo";
+import { useJamPlayback } from "../playback/JamPlaybackContext";
 
 export default function NowPlaying({
   nowPlaying,
@@ -48,84 +43,8 @@ export default function NowPlaying({
   const prevNowPlayingIdRef = useRef(null);
   const ytFeatureFiredRef = useRef(false);
 
-  const [ytId, setYtId] = useState(null);
-  const [ytResolvedTitle, setYtResolvedTitle] = useState(null);
-  const resolveKey = useRef(null);
-  const ytPlayerRef = useRef(null);
-
-  useMediaSession({
-    enabled: !!(FLAGS.AUTO_PLAY_QUEUE && isDJ && ytId && nowPlaying),
-    playerRef: ytPlayerRef,
-    metadata: nowPlaying
-      ? {
-          title: nowPlaying.title,
-          artist: nowPlaying.artist,
-          artwork: nowPlaying.thumbnail_url,
-        }
-      : null,
-    onNext: () => {
-      handleEnded();
-    },
-    onPrev: () => ytPlayerRef.current?.seek?.(0),
-  });
-
-  useEffect(() => {
-    if (!FLAGS.AUTO_PLAY_QUEUE || !nowPlaying || !isDJ) {
-      setYtId(null);
-      setYtResolvedTitle(null);
-      return;
-    }
-
-    const key = nowPlaying.id;
-    resolveKey.current = key;
-    setYtResolvedTitle(null);
-    // Don't null ytId here — keeping the player mounted preserves the iOS media
-    // element "activation" so subsequent songs autoplay after the first user tap.
-
-    // 1. Direct YouTube link
-    const ytUrl =
-      nowPlaying.platform_links?.youtube ||
-      nowPlaying.platform_links?.youtubemusic;
-    const directId = extractYouTubeId(ytUrl);
-    if (directId) {
-      setYtId(directId);
-      return;
-    }
-
-    // 2. YouTube search URL → resolve via SearXNG
-    if (ytUrl && isYouTubeSearchUrl(ytUrl)) {
-      const q = extractSearchQuery(ytUrl);
-      if (q) {
-        api(`/youtube/?q=${encodeURIComponent(q)}`)
-          .then((res) => (res.ok ? res.json() : { id: null, title: null }))
-          .then(({ id, title }) => {
-            if (resolveKey.current !== key) return;
-            if (id) {
-              setYtId(id);
-              setYtResolvedTitle(title);
-            }
-          });
-        return;
-      }
-    }
-
-    // 3. Fallback: title + artist search — persist result so all clients benefit
-    api(
-      `/youtube/?q=${encodeURIComponent(`${nowPlaying.title} ${nowPlaying.artist}`)}`,
-    )
-      .then((res) => (res.ok ? res.json() : { id: null, title: null }))
-      .then(({ id, title }) => {
-        if (resolveKey.current !== key) return;
-        if (id) {
-          setYtId(id);
-          setYtResolvedTitle(title);
-          patchYouTubeLink(
-            nowPlaying.id,
-            `https://www.youtube.com/watch?v=${id}`,
-          );
-        }
-      });
-  }, [nowPlaying?.id, isDJ]);
+  const { videoId: ytId, resolvedTitle: ytResolvedTitle } = useResolvedYouTubeVideo(nowPlaying, isDJ);
+  const { registerPlayback, play, seek, getTime } = useJamPlayback();
 
   useEffect(() => {
     if (!nowPlaying || nowPlaying.id === prevNowPlayingIdRef.current) return;
@@ -151,8 +70,8 @@ export default function NowPlaying({
   const handleNext = async () => {
     if (!isDJ) return;
     if (repeatMode === "song") {
-      ytPlayerRef.current?.seek(0);
-      ytPlayerRef.current?.play();
+      seek(0);
+      play();
       return;
     }
     const playing = queueItems?.find((i) => i.status === "playing");
@@ -199,10 +118,10 @@ export default function NowPlaying({
 
   const handlePrevious = async () => {
     if (!isDJ) return;
-    const currentTime = ytPlayerRef.current?.getTime?.() ?? 0;
+    const currentTime = getTime();
     if (repeatMode === "song" || currentTime > 3) {
-      ytPlayerRef.current?.seek(0);
-      ytPlayerRef.current?.play();
+      seek(0);
+      play();
       return;
     }
 
@@ -231,8 +150,8 @@ export default function NowPlaying({
           await playSpecificSong(sessionId, prevItem.id);
           onQueueChange?.();
         } else {
-          ytPlayerRef.current?.seek(0);
-          ytPlayerRef.current?.play();
+          seek(0);
+          play();
           toast("No previous song!");
         }
       }
@@ -245,7 +164,7 @@ export default function NowPlaying({
           toast(err.message);
         }
       } else {
-        ytPlayerRef.current?.seek(0);
+        seek(0);
         toast(e.message);
       }
     }
@@ -254,8 +173,8 @@ export default function NowPlaying({
   async function handleEnded() {
     if (!isDJ) return;
     if (repeatMode === "song") {
-      ytPlayerRef.current?.seek(0);
-      ytPlayerRef.current?.play();
+      seek(0);
+      play();
       return;
     }
     const playing = queueItems?.find((i) => i.status === "playing");
@@ -298,19 +217,25 @@ export default function NowPlaying({
     }
   }
 
+  useEffect(() => {
+    registerPlayback({
+      sessionId,
+      queueItemId: nowPlaying?.id ?? null,
+      videoId: ytId,
+      enabled: !!(FLAGS.AUTO_PLAY_QUEUE && isDJ && nowPlaying && ytId),
+      repeat: repeatMode === "song",
+      metadata: nowPlaying && {
+        title: nowPlaying.title,
+        artist: nowPlaying.artist,
+        artwork: nowPlaying.thumbnail_url,
+      },
+      onEnded: handleEnded,
+    });
+  }, [sessionId, nowPlaying?.id, ytId, isDJ, repeatMode, registerPlayback, queueItems, onQueueChange]);
+
   if (!nowPlaying) {
     return (
       <div className={`${s.nowPlaying} ${s.nowPlayingIdle}`}>
-        {FLAGS.AUTO_PLAY_QUEUE && ytId && isDJ && (
-          <div style={{ display: "none" }}>
-            <YouTubeAutoPlayer
-              ref={ytPlayerRef}
-              videoId={ytId}
-              onEnded={handleEnded}
-              repeat={repeatMode === "song"}
-            />
-          </div>
-        )}
         <div className={s.nowPlayingLabel}>Now Playing</div>
         <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
           {isDJ
@@ -397,12 +322,6 @@ export default function NowPlaying({
               ▶ Playing via YouTube: {ytResolvedTitle}
             </div>
           )}
-          <YouTubeAutoPlayer
-            ref={ytPlayerRef}
-            videoId={ytId}
-            onEnded={handleEnded}
-            repeat={repeatMode === "song"}
-          />
         </>
       )}
 

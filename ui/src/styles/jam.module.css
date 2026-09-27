@@ -356,3 +356,30 @@
 .queuePlayBtn:hover {
   color: var(--accent);
 }
+.jamRoom {
+  min-height: 100vh;
+  --jam-canvas: #090b10;
+  --jam-surface: #131722;
+  --jam-text: #f1f5ea;
+  --jam-muted: #98a39a;
+  --jam-accent: #b8ff67;
+  --jam-border: rgba(184, 255, 103, 0.2);
+  background: var(--jam-canvas);
+  color: var(--jam-text);
+}
+.studio {
+  --jam-canvas: #f3f2eb;
+  --jam-surface: #fbfaf5;
+  --jam-text: #202b21;
+  --jam-muted: #687267;
+  --jam-accent: #315d3b;
+  --jam-border: rgba(49, 93, 59, 0.2);
+}
+.jamRoom :global(.btn) { background: var(--jam-accent); color: var(--jam-canvas); box-shadow: none; }
+.jamRoom :global(.btn:hover) { filter: brightness(1.06); }
+.jamRoom .nowPlaying, .jamRoom .queueSection, .jamRoom .sidebar { background: var(--jam-surface); border-color: var(--jam-border); }
+.jamRoom .nowPlaying { border-color: var(--jam-border); box-shadow: none; }
+.jamRoom .nowPlayingLabel, .jamRoom .pulse { color: var(--jam-accent); background-color: var(--jam-accent); }
+.themeSwitch { display: inline-flex; padding: 3px; border: 1px solid var(--jam-border); border-radius: 999px; }
+.themeSwitch button { border: 0; background: transparent; color: var(--jam-muted); padding: 5px 9px; border-radius: 999px; font: inherit; font-size: .75rem; }
+.themeSwitch button[aria-pressed="true"] { color: var(--jam-canvas); background: var(--jam-accent); }
