@@ -51,7 +51,6 @@ export function JamPlaybackProvider({ children }) {
         && current.owner !== next.owner
         && current.sessionId === next.sessionId
         && current.queueItemId === next.queueItemId
-        && !next.videoId
       ) {
         return {
           ...current,
