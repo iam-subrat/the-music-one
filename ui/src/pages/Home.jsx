@@ -7,6 +7,7 @@ import { FLAGS } from "../lib/flags";
 import { useToast, ToastProvider } from "../components/Toast";
 import { PLATFORM_META } from "../lib/platform";
 import s from "./home.module.css";
+import jamStyles from "../styles/jam.module.css";
 import { useAnalytics } from "../lib/analytics";
 
 export default function Home() {
@@ -26,6 +27,14 @@ function HomeContent() {
   const navigate = useNavigate();
   const toast = useToast();
   const { capture } = useAnalytics();
+
+  const [guiTheme, setGuiTheme] = useState(() => {
+    return localStorage.getItem("guiTheme") || "studio";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("guiTheme", guiTheme);
+  }, [guiTheme]);
 
   // Pre-fill from ?url= query param
   useEffect(() => {
@@ -86,10 +95,22 @@ function HomeContent() {
   const q = song ? `${song.title} ${song.artist}` : "";
 
   return (
-    <div className="page">
-      <AuthBar />
+    <div className={`page ${jamStyles.jamRoom} ${jamStyles[guiTheme]}`} style={{ padding: 0 }}>
+      <div className={jamStyles.layout} style={{ display: "flex", flexDirection: "column", alignItems: "center", gridTemplateColumns: "1fr", maxWidth: 800, margin: "0 auto" }}>
+        
+        <header className={jamStyles.jamHeader} style={{ width: "100%", justifyContent: "space-between", borderBottom: "none", paddingBottom: 0 }}>
+          <a className={jamStyles.roomBrand} href="/" aria-label="MusicOne home">music<span>one</span></a>
+          <div className={jamStyles.roomActions}>
+             <div className={jamStyles.themeSwitch} aria-label="Jam room theme">
+                <button type="button" aria-pressed={guiTheme === "pulse"} onClick={() => setGuiTheme("pulse")}>Pulse</button>
+                <button type="button" aria-pressed={guiTheme === "studio"} onClick={() => setGuiTheme("studio")}>Studio</button>
+              </div>
+             <AuthBar embedded />
+          </div>
+        </header>
 
-      <header className={s.hero}>
+      <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: "40px" }}>
+        <header className={s.hero}>
         <h1 className={s.heroTitle}>MusicOne</h1>
         <p className={s.heroSub}>
           Paste any streaming link — listen on any platform
@@ -253,6 +274,8 @@ function HomeContent() {
           </button>
         </div>
       )}
+      </div>
+      </div>
     </div>
   );
 }
