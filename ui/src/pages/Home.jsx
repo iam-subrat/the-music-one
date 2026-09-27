@@ -20,6 +20,7 @@ export default function Home() {
 
 function HomeContent() {
   const [inputUrl, setInputUrl] = useState("");
+  const [joinCode, setJoinCode] = useState("");
   const [song, setSong] = useState(null); // { title, artist }
   const [status, setStatus] = useState("idle"); // idle | loading | done | error
   const [errorMsg, setErrorMsg] = useState("");
@@ -84,6 +85,12 @@ function HomeContent() {
     setStatus("idle");
     setInputUrl("");
     history.replaceState({}, "", "/");
+  }
+
+  function handleJoin(e) {
+    e.preventDefault();
+    if (!joinCode.trim()) return;
+    navigate(`/jam/${joinCode.trim().toUpperCase()}`);
   }
 
   function copyPageLink() {
@@ -267,11 +274,29 @@ function HomeContent() {
           <p className={s.jamCtaText}>Want to listen together?</p>
           <button
             className="btn"
-            style={{ width: "100%" }}
+            style={{ width: "100%", marginBottom: "24px" }}
             onClick={() => navigate("/jam/new")}
           >
             Start a Jam Session
           </button>
+          
+          <p className={s.jamCtaText} style={{ marginBottom: "12px" }}>Or join an existing session</p>
+          <form onSubmit={handleJoin} style={{ display: "flex", gap: "8px", width: "100%" }}>
+            <input
+              type="text"
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+              placeholder="Jam code (e.g. ABCD)"
+              className={s.searchInput}
+              style={{ paddingLeft: "16px", flex: 1 }}
+              autoComplete="off"
+              spellCheck="false"
+              maxLength={6}
+            />
+            <button type="submit" className="btn btn-ghost" style={{ padding: "0 24px" }}>
+              Join
+            </button>
+          </form>
         </div>
       )}
       </div>
