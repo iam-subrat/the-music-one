@@ -13,9 +13,10 @@ import TuiToggle from './tui/TuiToggle';
 import TuiHome from './tui/TuiHome';
 import TuiJamRoom from './tui/TuiJamRoom';
 import TuiLogin from './tui/TuiLogin';
+import TuiPageLoader from './tui/TuiPageLoader';
 import Footer from './components/Footer';
 
-function JamNew() {
+function JamNew({ tuiMode }) {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   useEffect(() => {
@@ -23,7 +24,7 @@ function JamNew() {
     if (!user) { navigate('/login?next=/jam/new'); return; }
     createSession(user.id).then(s => navigate(`/jam/${s.invite_code}`, { replace: true }));
   }, [user, loading]);
-  return <div className="page" style={{ justifyContent: 'center' }}><div className="spinner" /></div>;
+  return <div className="page" style={{ justifyContent: 'center' }}>{tuiMode ? <TuiPageLoader /> : <div className="spinner" />}</div>;
 }
 
 export default function App() {
@@ -38,7 +39,7 @@ export default function App() {
       <Routes>
         <Route path="/"      element={<HomeC />} />
         <Route path="/login" element={<LoginC />} />
-        {FLAGS.JAM_SESSION && <Route path="/jam/new"   element={<JamNew />} />}
+        {FLAGS.JAM_SESSION && <Route path="/jam/new"   element={<JamNew tuiMode={tuiMode} />} />}
         {FLAGS.JAM_SESSION && <Route path="/jam/:code" element={<JamRoomC />} />}
         <Route path="/bridge" element={<BridgePlayer />} />
         <Route path="*" element={<NotFound />} />
