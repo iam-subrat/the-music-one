@@ -43,6 +43,29 @@ body {
     radial-gradient(ellipse 80% 50% at 50% -10%, rgba(124, 106, 247, 0.08) 0%, transparent 60%);
 }
 
+.jam-persistent-player {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 20;
+  width: min(320px, calc(100vw - 36px));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+html[data-tui="1"] .jam-persistent-player {
+  width: 1px;
+  height: 1px;
+  right: 0;
+  bottom: 0;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
 a { color: inherit; }
 
 /* ── Buttons ──────────────────────────────────────────────── */
