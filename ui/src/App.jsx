@@ -1,4 +1,4 @@
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -15,7 +15,19 @@ import TuiJamRoom from './tui/TuiJamRoom';
 import TuiLogin from './tui/TuiLogin';
 import TuiPageLoader from './tui/TuiPageLoader';
 import Footer from './components/Footer';
-import { JamPlaybackProvider } from './playback/JamPlaybackContext';
+import { JamPlaybackProvider, useJamPlayback } from './playback/JamPlaybackContext';
+
+function PlaybackRouteCleanup() {
+  const { pathname } = useLocation();
+  const { clearPlayback, pause } = useJamPlayback();
+  useEffect(() => {
+    if (!pathname.startsWith('/jam/')) {
+      pause();
+      clearPlayback();
+    }
+  }, [pathname, clearPlayback, pause]);
+  return null;
+}
 
 function JamNew({ tuiMode }) {
   const { user, loading } = useAuth();
@@ -37,6 +49,7 @@ export default function App() {
 
   return (
     <JamPlaybackProvider>
+      <PlaybackRouteCleanup />
       <Routes>
         <Route path="/"      element={<HomeC />} />
         <Route path="/login" element={<LoginC />} />

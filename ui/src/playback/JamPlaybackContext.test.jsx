@@ -14,7 +14,7 @@ vi.mock("../components/YouTubeAutoPlayer", () => ({
 }));
 vi.mock("../hooks/useMediaSession", () => ({ useMediaSession: vi.fn() }));
 
-const active = { sessionId: "session-a", queueItemId: "item-a", videoId: "video-a", enabled: true, repeat: false, metadata: { title: "Song" }, onEnded: vi.fn() };
+const active = { owner: "gui", isDJ: true, sessionId: "session-a", queueItemId: "item-a", videoId: "video-a", enabled: true, repeat: false, metadata: { title: "Song" }, onEnded: vi.fn() };
 
 afterEach(() => {
   cleanup();
@@ -47,10 +47,16 @@ describe("JamPlaybackProvider", () => {
     const view = render(<JamPlaybackProvider><Registration descriptor={active} /></JamPlaybackProvider>);
     const mountedPlayer = screen.getByTestId("youtube-player");
 
-    view.rerender(<JamPlaybackProvider><Registration descriptor={{ ...active, videoId: null, enabled: false }} /></JamPlaybackProvider>);
+    view.rerender(<JamPlaybackProvider><Registration descriptor={{ ...active, owner: "tui", videoId: null, enabled: false }} /></JamPlaybackProvider>);
 
     expect(screen.getByTestId("youtube-player")).toBe(mountedPlayer);
     expect(screen.getByTestId("youtube-player")).toHaveAttribute("data-video-id", "video-a");
+  });
+
+  test("clears playback when the current DJ loses control", () => {
+    const view = render(<JamPlaybackProvider><Registration descriptor={active} /></JamPlaybackProvider>);
+    view.rerender(<JamPlaybackProvider><Registration descriptor={{ ...active, isDJ: false, videoId: null, enabled: false }} /></JamPlaybackProvider>);
+    expect(screen.queryByTestId("youtube-player")).not.toBeInTheDocument();
   });
 
   test("changes the shared player when the active session changes", () => {

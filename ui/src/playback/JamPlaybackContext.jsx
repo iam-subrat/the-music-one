@@ -44,6 +44,8 @@ export function JamPlaybackProvider({ children }) {
     setDescriptor((current) => {
       if (
         current?.enabled
+        && current.owner !== next.owner
+        && next.isDJ
         && current.sessionId === next.sessionId
         && current.queueItemId === next.queueItemId
         && !next.videoId
@@ -54,7 +56,7 @@ export function JamPlaybackProvider({ children }) {
     });
   }, []);
   const clearPlayback = useCallback((sessionId) => {
-    setDescriptor((current) => current?.sessionId === sessionId ? null : current);
+    setDescriptor((current) => !sessionId || current?.sessionId === sessionId ? null : current);
   }, []);
 
   const value = useMemo(() => ({

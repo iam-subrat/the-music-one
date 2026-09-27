@@ -219,6 +219,8 @@ export default function NowPlaying({
 
   useEffect(() => {
     registerPlayback({
+      owner: "gui",
+      isDJ,
       sessionId,
       queueItemId: nowPlaying?.id ?? null,
       videoId: ytId,

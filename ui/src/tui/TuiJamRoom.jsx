@@ -187,6 +187,8 @@ export default function TuiJamRoom() {
 
   useEffect(() => {
     registerPlayback({
+      owner: "tui",
+      isDJ,
       sessionId: session?.id ?? null,
       queueItemId: nowPlaying?.id ?? null,
       videoId: ytId,
