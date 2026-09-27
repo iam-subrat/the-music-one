@@ -418,7 +418,7 @@
 .addInput { background: color-mix(in srgb, var(--jam-surface) 90%, var(--jam-canvas)); border-radius: 12px; }
 .modeBtn { border-radius: 999px; }.modeBtnActive { background: color-mix(in srgb, var(--jam-accent) 15%, transparent); }
 .sidebar { gap: 18px; }.inviteBadge { border-color: var(--jam-border); background: color-mix(in srgb, var(--jam-surface) 88%, var(--jam-accent)); box-shadow: none; }
-.studio { background: linear-gradient(160deg, #f6f3e9 0%, #e9eee2 100%); }.studio .nowPlaying { background: #fbfaf4; box-shadow: 0 18px 44px rgba(40,57,41,.09); }.studio .queueCard { background: #f1f3eb; }.studio .thumb { box-shadow: 0 14px 28px rgba(44,61,44,.16); }
+.studio { background: linear-gradient(160deg, #f6f3e9 0%, #e9eee2 100%); }.studio .nowPlaying { background: #fbfaf4; box-shadow: 0 18px 44px rgba(40,57,41,.09); }.studio .queueCard { background: transparent; }.studio .thumb { box-shadow: 0 14px 28px rgba(44,61,44,.16); }
 @media (max-width:700px){ .layout { padding: 28px 14px 84px; gap: 18px; }.jamHeader { align-items: flex-start; }.nowPlayingMeta { align-items: flex-start; }.thumb { width: 80px; height:80px; }.sidebar { order: initial; } }
 
 /* Full graphical room composition. The source order is the mobile reading order. */
@@ -572,7 +572,7 @@
 .jamRoom .roomActions :global(.btn-danger) { min-height: 34px; padding: 5px 8px !important; }
 .jamRoom .roomActions :global(.btn-ghost) { min-height: 34px; padding: 5px 8px !important; }
 
-.primaryColumn, .sidebar { min-width: 0; background: var(--jam-surface); }
+.primaryColumn, .jamRoom .sidebar, .sidebar { min-width: 0; background: transparent; }
 .primaryColumn { display: block; padding: 30px 32px 36px; }
 .sidebar { position: static; display: block; align-self: stretch; padding: 30px 28px; border-left: 1px solid var(--jam-border); }
 .nowPlaying, .studio .nowPlaying, .jamRoom .nowPlaying { border: 0; border-radius: 0; padding: 0; gap: 14px; background: transparent; box-shadow: none; overflow: visible; }
@@ -605,7 +605,7 @@
 .listenDetails .platformSection { border: 0; padding-top: 0; }
 .preferredBtn { font-size: .78rem; padding: 8px 12px; }
 
-.queueSection, .jamRoom .queueSection { border: 0; border-top: 1px solid var(--jam-border); border-radius: 0; padding: 22px 0 0; margin-top: 28px; background: transparent; gap: 0; }
+.queueSection, .jamRoom .queueSection { border: 0; border-top: 1px solid var(--jam-border); border-radius: 0; padding: 22px 0 0; margin-top: 28px; background: transparent; box-shadow: none; gap: 0; }
 .sectionHeading { margin-bottom: 6px; }
 .sectionHeading .eyebrow { display: none; }
 .sectionHeading h3 { font-size: 1.06rem; }
