@@ -53,7 +53,9 @@ export default function QueueCard({
         <span className={s.failedBadge}>Failed</span>
       )}
 
-      {FLAGS.VOTE_TO_SKIP && item.status === "queued" && (
+      {FLAGS.VOTE_TO_SKIP &&
+        item.status !== "playing" &&
+        item.status !== "skipped" && (
         <button
           className={`${s.queueVoteBtn} ${hasVoted ? s.queueVoteBtnVoted : ""}`}
           disabled={isVoting}

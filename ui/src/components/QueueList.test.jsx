@@ -1,7 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import QueueList from "./QueueList";
+
+afterEach(cleanup);
 
 vi.mock("./AddSongForm", () => ({ default: () => null }));
 vi.mock("../hooks/useSkipVotes", () => ({
@@ -18,11 +20,11 @@ const queuedSong = {
   profiles: { display_name: "Student" },
 };
 
-function renderQueue(items) {
+function renderQueue(items, repeatMode = "none") {
   return render(
     <QueueList
       items={items}
-      repeatMode="none"
+      repeatMode={repeatMode}
       sessionId="session-1"
       userId="student-1"
       participantCount={3}
@@ -36,6 +38,12 @@ function renderQueue(items) {
 }
 
 describe("QueueList", () => {
+  test("offers Skip for a previously played song when repeating the queue", () => {
+    renderQueue([{ ...queuedSong, status: "played" }], "queue");
+
+    expect(screen.getByRole("button", { name: /skip/i })).toBeInTheDocument();
+  });
+
   test("removes a majority-skipped queued song from the rendered queue", () => {
     const view = renderQueue([queuedSong]);
 
