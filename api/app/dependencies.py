@@ -1,7 +1,8 @@
 from uuid import UUID
 import httpx
+import jwt
 from fastapi import Depends, HTTPException, Request, status
-from jose import jwk, jwt
+from jwt import PyJWK
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
@@ -23,12 +24,12 @@ async def _public_key(kid: str):
         await _refresh_jwks()
     for key in (_JWKS_CACHE or {}).get("keys", []):
         if key.get("kid") == kid:
-            return jwk.construct(key)
+            return PyJWK.from_dict(key)
     # kid not found — rotated key; refresh once and retry
     await _refresh_jwks()
     for key in (_JWKS_CACHE or {}).get("keys", []):
         if key.get("kid") == kid:
-            return jwk.construct(key)
+            return PyJWK.from_dict(key)
     raise ValueError(f"kid {kid!r} not in JWKS")
 
 
