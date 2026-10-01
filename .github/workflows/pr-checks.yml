@@ -8,31 +8,37 @@ permissions:
   contents: read
 
 jobs:
-  # test-api:
-  #   name: API Tests
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v4
+  test-api:
+    name: API Tests
+    runs-on: ubuntu-latest
+    # Tests mock external services, but importing the FastAPI app requires these settings.
+    # Keep placeholders here rather than exposing deployment secrets to pull requests.
+    env:
+      DATABASE_URL: postgresql://localhost:5432/musicone_test
+      SUPABASE_URL: https://example.test
+      SUPABASE_ANON_KEY: test-anon-key
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-  #     - name: Install uv
-  #       uses: astral-sh/setup-uv@v5
-  #       with:
-  #         enable-cache: true
-  #         version: "latest"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          version: "latest"
 
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v5
-  #       with:
-  #         python-version: "3.12"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-  #     - name: Install dependencies
-  #       working-directory: api
-  #       run: uv sync --frozen
+      - name: Install dependencies
+        working-directory: api
+        run: uv sync --frozen
 
-  #     - name: Run Pytest
-  #       working-directory: api
-  #       run: uv run pytest
+      - name: Run Pytest
+        working-directory: api
+        run: uv run pytest
 
   test-ui:
     name: UI Tests
