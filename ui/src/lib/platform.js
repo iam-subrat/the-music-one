@@ -68,8 +68,10 @@ export function isYouTubeSearchUrl(url) {
   if (!url) return false;
   try {
     const { hostname, pathname, searchParams } = new URL(url);
-    if (hostname.includes('music.youtube.com') && pathname === '/search') return true;
-    if ((hostname.includes('youtube.com') || hostname.includes('youtu.be')) &&
+    const host = hostname.toLowerCase();
+    if (host === 'music.youtube.com' && pathname === '/search') return true;
+    const youtubeHosts = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be']);
+    if (youtubeHosts.has(host) &&
         (pathname === '/results' || pathname === '/search') &&
         (searchParams.has('q') || searchParams.has('search_query'))) return true;
     return false;
