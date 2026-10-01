@@ -6,6 +6,7 @@ import base64
 import json
 import pytest
 from unittest.mock import MagicMock, patch
+from cryptography.hazmat.primitives.asymmetric import ec
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -56,6 +57,32 @@ async def test_decode_always_uses_rs256_not_header_alg(monkeypatch):
         f"Expected algorithms=['ES256'], got {captured[0]}. "
         "Server must not trust the unverified header's alg field."
     )
+
+
+@pytest.mark.asyncio
+async def test_public_key_returns_a_pyjwt_jwk_for_the_matching_kid(monkeypatch):
+    """JWKS keys are adapted by PyJWT, avoiding python-jose and python-ecdsa."""
+    import app.dependencies as deps
+
+    public_numbers = ec.generate_private_key(ec.SECP256R1()).public_key().public_numbers()
+
+    def coordinate(value: int) -> str:
+        return base64.urlsafe_b64encode(value.to_bytes(32, "big")).rstrip(b"=").decode()
+
+    monkeypatch.setattr(deps, "_JWKS_CACHE", {
+        "keys": [{
+            "kty": "EC",
+            "kid": "test-kid",
+            "alg": "ES256",
+            "crv": "P-256",
+            "x": coordinate(public_numbers.x),
+            "y": coordinate(public_numbers.y),
+        }]
+    })
+
+    key = await deps._public_key("test-kid")
+
+    assert isinstance(key, deps.PyJWK)
 
 
 # ── Fix 2: Client-controlled skip threshold ──────────────────────────────────

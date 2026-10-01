@@ -31,13 +31,13 @@ async def test_jwks_cache_uses_cache_on_subsequent_calls():
     mock_get = AsyncMock(return_value=fake_response)
 
     with patch("httpx.AsyncClient") as mock_client_cls, \
-         patch("app.dependencies.jwk") as mock_jwk:
+         patch("app.dependencies.PyJWK") as mock_jwk:
 
         mock_client_cls.return_value.__aenter__ = AsyncMock(
             return_value=MagicMock(get=mock_get)
         )
         mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-        mock_jwk.construct.return_value = fake_key
+        mock_jwk.from_dict.return_value = fake_key
 
         # First call — fetches
         result1 = await deps._public_key("kid-a")
@@ -68,7 +68,7 @@ async def test_jwks_cache_refetches_on_unknown_kid():
     mock_get = AsyncMock(side_effect=[old_response, new_response])
 
     with patch("httpx.AsyncClient") as mock_client_cls, \
-         patch("app.dependencies.jwk") as mock_jwk:
+         patch("app.dependencies.PyJWK") as mock_jwk:
 
         mock_client_cls.return_value.__aenter__ = AsyncMock(
             return_value=MagicMock(get=mock_get)
@@ -79,7 +79,7 @@ async def test_jwks_cache_refetches_on_unknown_kid():
         def construct_side_effect(key_data):
             return fake_old_key if key_data.get("kid") == "old-kid" else fake_new_key
 
-        mock_jwk.construct.side_effect = construct_side_effect
+        mock_jwk.from_dict.side_effect = construct_side_effect
 
         # First call with old-kid — fetches once
         result1 = await deps._public_key("old-kid")
@@ -105,7 +105,7 @@ async def test_jwks_cache_raises_after_refetch_if_kid_still_missing():
     mock_get = AsyncMock(return_value=always_wrong_response)
 
     with patch("httpx.AsyncClient") as mock_client_cls, \
-         patch("app.dependencies.jwk"):
+         patch("app.dependencies.PyJWK"):
 
         mock_client_cls.return_value.__aenter__ = AsyncMock(
             return_value=MagicMock(get=mock_get)
