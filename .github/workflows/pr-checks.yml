@@ -8,31 +8,31 @@ permissions:
   contents: read
 
 jobs:
-  # test-api:
-  #   name: API Tests
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v4
+  test-api:
+    name: API Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-  #     - name: Install uv
-  #       uses: astral-sh/setup-uv@v5
-  #       with:
-  #         enable-cache: true
-  #         version: "latest"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          version: "latest"
 
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v5
-  #       with:
-  #         python-version: "3.12"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-  #     - name: Install dependencies
-  #       working-directory: api
-  #       run: uv sync --frozen
+      - name: Install dependencies
+        working-directory: api
+        run: uv sync --frozen
 
-  #     - name: Run Pytest
-  #       working-directory: api
-  #       run: uv run pytest
+      - name: Run Pytest
+        working-directory: api
+        run: uv run pytest
 
   test-ui:
     name: UI Tests
