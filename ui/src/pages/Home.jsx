@@ -7,7 +7,9 @@ import { FLAGS } from "../lib/flags";
 import { useToast, ToastProvider } from "../components/Toast";
 import { PLATFORM_META } from "../lib/platform";
 import s from "./home.module.css";
+import jamStyles from "../styles/jam.module.css";
 import { useAnalytics } from "../lib/analytics";
+import { useTui } from "../tui/TuiContext";
 
 export default function Home() {
   return (
@@ -19,6 +21,7 @@ export default function Home() {
 
 function HomeContent() {
   const [inputUrl, setInputUrl] = useState("");
+  const [joinCode, setJoinCode] = useState("");
   const [song, setSong] = useState(null); // { title, artist }
   const [status, setStatus] = useState("idle"); // idle | loading | done | error
   const [errorMsg, setErrorMsg] = useState("");
@@ -26,6 +29,7 @@ function HomeContent() {
   const navigate = useNavigate();
   const toast = useToast();
   const { capture } = useAnalytics();
+  const { guiTheme, setGuiTheme } = useTui();
 
   // Pre-fill from ?url= query param
   useEffect(() => {
@@ -77,6 +81,12 @@ function HomeContent() {
     history.replaceState({}, "", "/");
   }
 
+  function handleJoin(e) {
+    e.preventDefault();
+    if (!joinCode.trim()) return;
+    navigate(`/jam/${joinCode.trim().toUpperCase()}`);
+  }
+
   function copyPageLink() {
     navigator.clipboard
       .writeText(location.href)
@@ -86,11 +96,24 @@ function HomeContent() {
   const q = song ? `${song.title} ${song.artist}` : "";
 
   return (
-    <div className="page">
-      <AuthBar />
+    <div className={`page ${jamStyles.jamRoom} ${jamStyles[guiTheme]}`} style={{ padding: 0 }}>
+      <div className={jamStyles.layout} style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gridTemplateColumns: "1fr" }}>
+        
+        <header className={jamStyles.jamHeader}>
+          <a className={jamStyles.roomBrand} href="/" aria-label="MusicOne home">music<span>one</span></a>
+          <div className={jamStyles.roomIdentity}></div>
+          <div className={jamStyles.roomActions}>
+             <div className={jamStyles.themeSwitch} aria-label="Jam room theme">
+                <button type="button" aria-pressed={guiTheme === "pulse"} onClick={() => setGuiTheme("pulse")}>Pulse</button>
+                <button type="button" aria-pressed={guiTheme === "studio"} onClick={() => setGuiTheme("studio")}>Studio</button>
+              </div>
+             <AuthBar embedded />
+          </div>
+        </header>
 
-      <header className={s.hero}>
-        <h1 className={s.heroTitle}>MusicOne</h1>
+      <div style={{ width: "100%", maxWidth: 800, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: "60px", paddingLeft: 20, paddingRight: 20 }}>
+        <header className={s.hero}>
+        <h1 className={s.heroTitle}>music<span>one</span></h1>
         <p className={s.heroSub}>
           Paste any streaming link — listen on any platform
         </p>
@@ -246,13 +269,33 @@ function HomeContent() {
           <p className={s.jamCtaText}>Want to listen together?</p>
           <button
             className="btn"
-            style={{ width: "100%" }}
+            style={{ width: "100%", marginBottom: "24px" }}
             onClick={() => navigate("/jam/new")}
           >
             Start a Jam Session
           </button>
+          
+          <p className={s.jamCtaText} style={{ marginBottom: "12px" }}>Or join an existing session</p>
+          <form onSubmit={handleJoin} style={{ display: "flex", gap: "8px", width: "100%" }}>
+            <input
+              type="text"
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+              placeholder="Jam code (e.g. ABCD)"
+              className={s.searchInput}
+              style={{ paddingLeft: "16px", flex: 1 }}
+              autoComplete="off"
+              spellCheck="false"
+              maxLength={6}
+            />
+            <button type="submit" className="btn btn-ghost" style={{ padding: "0 24px" }}>
+              Join
+            </button>
+          </form>
         </div>
       )}
+      </div>
+      </div>
     </div>
   );
 }

@@ -1,14 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import s from "../styles/jam.module.css";
 import {
   preferredLink,
-  extractYouTubeId,
-  isYouTubeSearchUrl,
-  extractSearchQuery,
   PLATFORM_META,
 } from "../lib/platform";
 import { FLAGS } from "../lib/flags";
-import { api } from "../lib/api";
 import { useSkipVotes } from "../hooks/useSkipVotes";
 import {
   castSkipVote,
@@ -16,14 +12,14 @@ import {
   playNext,
   playPrevious,
   playSpecificSong,
-  patchYouTubeLink,
 } from "../lib/queue";
 import { setRepeatMode } from "../lib/session";
 import { useToast } from "./Toast";
 import PlatformLinks from "./PlatformLinks";
-import YouTubeAutoPlayer from "./YouTubeAutoPlayer";
 import { useAnalytics } from "../lib/analytics";
-import { useMediaSession } from "../hooks/useMediaSession";
+import { useResolvedYouTubeVideo } from "../playback/useResolvedYouTubeVideo";
+import { useJamPlayback } from "../playback/JamPlaybackContext";
+import JamIcon from "./JamIcon";
 
 export default function NowPlaying({
   nowPlaying,
@@ -36,96 +32,23 @@ export default function NowPlaying({
   repeatMode,
   onRepeatModeChange,
   queueItems,
+  playbackReady = true,
 }) {
   const toast = useToast();
-  const { count: skipVotes, hasVoted } = useSkipVotes(
-    nowPlaying?.id,
-    userId,
-    sessionId,
-  );
+  const {
+    count: skipVotes,
+    hasVoted,
+    refresh: refreshSkipVotes,
+  } = useSkipVotes(nowPlaying?.id, userId, sessionId);
   const skipThreshold = Math.floor(participantCount / 2) + 1;
   const { capture } = useAnalytics();
   const prevNowPlayingIdRef = useRef(null);
   const ytFeatureFiredRef = useRef(false);
 
-  const [ytId, setYtId] = useState(null);
-  const [ytResolvedTitle, setYtResolvedTitle] = useState(null);
-  const resolveKey = useRef(null);
-  const ytPlayerRef = useRef(null);
-
-  useMediaSession({
-    enabled: !!(FLAGS.AUTO_PLAY_QUEUE && isDJ && ytId && nowPlaying),
-    playerRef: ytPlayerRef,
-    metadata: nowPlaying
-      ? {
-          title: nowPlaying.title,
-          artist: nowPlaying.artist,
-          artwork: nowPlaying.thumbnail_url,
-        }
-      : null,
-    onNext: () => {
-      handleEnded();
-    },
-    onPrev: () => ytPlayerRef.current?.seek?.(0),
-  });
-
-  useEffect(() => {
-    if (!FLAGS.AUTO_PLAY_QUEUE || !nowPlaying || !isDJ) {
-      setYtId(null);
-      setYtResolvedTitle(null);
-      return;
-    }
-
-    const key = nowPlaying.id;
-    resolveKey.current = key;
-    setYtResolvedTitle(null);
-    // Don't null ytId here — keeping the player mounted preserves the iOS media
-    // element "activation" so subsequent songs autoplay after the first user tap.
-
-    // 1. Direct YouTube link
-    const ytUrl =
-      nowPlaying.platform_links?.youtube ||
-      nowPlaying.platform_links?.youtubemusic;
-    const directId = extractYouTubeId(ytUrl);
-    if (directId) {
-      setYtId(directId);
-      return;
-    }
-
-    // 2. YouTube search URL → resolve via SearXNG
-    if (ytUrl && isYouTubeSearchUrl(ytUrl)) {
-      const q = extractSearchQuery(ytUrl);
-      if (q) {
-        api(`/youtube/?q=${encodeURIComponent(q)}`)
-          .then((res) => (res.ok ? res.json() : { id: null, title: null }))
-          .then(({ id, title }) => {
-            if (resolveKey.current !== key) return;
-            if (id) {
-              setYtId(id);
-              setYtResolvedTitle(title);
-            }
-          });
-        return;
-      }
-    }
-
-    // 3. Fallback: title + artist search — persist result so all clients benefit
-    api(
-      `/youtube/?q=${encodeURIComponent(`${nowPlaying.title} ${nowPlaying.artist}`)}`,
-    )
-      .then((res) => (res.ok ? res.json() : { id: null, title: null }))
-      .then(({ id, title }) => {
-        if (resolveKey.current !== key) return;
-        if (id) {
-          setYtId(id);
-          setYtResolvedTitle(title);
-          patchYouTubeLink(
-            nowPlaying.id,
-            `https://www.youtube.com/watch?v=${id}`,
-          );
-        }
-      });
-  }, [nowPlaying?.id, isDJ]);
+  const { videoId: ytId, resolvedTitle: ytResolvedTitle } = useResolvedYouTubeVideo(nowPlaying, isDJ);
+  const { registerPlayback, play, pause, seek, getTime, getDuration, getState } = useJamPlayback();
+  const [transport, setTransport] = useState({ current: 0, duration: 0, state: -1 });
+  const [isSeeking, setIsSeeking] = useState(false);
 
   useEffect(() => {
     if (!nowPlaying || nowPlaying.id === prevNowPlayingIdRef.current) return;
@@ -151,8 +74,8 @@ export default function NowPlaying({
   const handleNext = async () => {
     if (!isDJ) return;
     if (repeatMode === "song") {
-      ytPlayerRef.current?.seek(0);
-      ytPlayerRef.current?.play();
+      seek(0);
+      play();
       return;
     }
     const playing = queueItems?.find((i) => i.status === "playing");
@@ -199,10 +122,10 @@ export default function NowPlaying({
 
   const handlePrevious = async () => {
     if (!isDJ) return;
-    const currentTime = ytPlayerRef.current?.getTime?.() ?? 0;
+    const currentTime = getTime();
     if (repeatMode === "song" || currentTime > 3) {
-      ytPlayerRef.current?.seek(0);
-      ytPlayerRef.current?.play();
+      seek(0);
+      play();
       return;
     }
 
@@ -231,8 +154,8 @@ export default function NowPlaying({
           await playSpecificSong(sessionId, prevItem.id);
           onQueueChange?.();
         } else {
-          ytPlayerRef.current?.seek(0);
-          ytPlayerRef.current?.play();
+          seek(0);
+          play();
           toast("No previous song!");
         }
       }
@@ -245,7 +168,7 @@ export default function NowPlaying({
           toast(err.message);
         }
       } else {
-        ytPlayerRef.current?.seek(0);
+        seek(0);
         toast(e.message);
       }
     }
@@ -254,8 +177,8 @@ export default function NowPlaying({
   async function handleEnded() {
     if (!isDJ) return;
     if (repeatMode === "song") {
-      ytPlayerRef.current?.seek(0);
-      ytPlayerRef.current?.play();
+      seek(0);
+      play();
       return;
     }
     const playing = queueItems?.find((i) => i.status === "playing");
@@ -298,19 +221,43 @@ export default function NowPlaying({
     }
   }
 
+  useEffect(() => {
+    registerPlayback({
+      owner: "gui",
+      ready: playbackReady,
+      isDJ,
+      sessionId,
+      queueItemId: nowPlaying?.id ?? null,
+      videoId: ytId,
+      enabled: !!(FLAGS.AUTO_PLAY_QUEUE && isDJ && nowPlaying && ytId),
+      repeat: repeatMode === "song",
+      metadata: nowPlaying && {
+        title: nowPlaying.title,
+        artist: nowPlaying.artist,
+        artwork: nowPlaying.thumbnail_url,
+      },
+      onEnded: handleEnded,
+    });
+  }, [sessionId, nowPlaying?.id, ytId, isDJ, repeatMode, registerPlayback, queueItems, onQueueChange, playbackReady]);
+
+  useEffect(() => {
+    if (!nowPlaying) return undefined;
+    const syncTransport = () => {
+      if (isSeeking) return;
+      setTransport({
+        current: getTime(),
+        duration: getDuration(),
+        state: getState(),
+      });
+    };
+    syncTransport();
+    const interval = window.setInterval(syncTransport, 500);
+    return () => window.clearInterval(interval);
+  }, [nowPlaying?.id, getTime, getDuration, getState, isSeeking]);
+
   if (!nowPlaying) {
     return (
       <div className={`${s.nowPlaying} ${s.nowPlayingIdle}`}>
-        {FLAGS.AUTO_PLAY_QUEUE && ytId && isDJ && (
-          <div style={{ display: "none" }}>
-            <YouTubeAutoPlayer
-              ref={ytPlayerRef}
-              videoId={ytId}
-              onEnded={handleEnded}
-              repeat={repeatMode === "song"}
-            />
-          </div>
-        )}
         <div className={s.nowPlayingLabel}>Now Playing</div>
         <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
           {isDJ
@@ -321,11 +268,11 @@ export default function NowPlaying({
           <div
             style={{ display: "flex", gap: "8px", justifyContent: "center" }}
           >
-            <button className="btn" onClick={handlePrevious}>
-              ⏮ Prev
+            <button className={s.idleTransportButton} onClick={handlePrevious}>
+              <JamIcon name="previous" size={17} /> Previous
             </button>
-            <button className="btn" onClick={handleNext}>
-              Play Next ▶
+            <button className={s.idleTransportButton} onClick={handleNext}>
+              <JamIcon name="play" size={16} /> Play next
             </button>
           </div>
         )}
@@ -336,11 +283,31 @@ export default function NowPlaying({
   const pref = preferredLink(nowPlaying.platform_links, preferredPlatform);
   const query = `${nowPlaying.title} ${nowPlaying.artist}`;
   const prefMeta = pref ? PLATFORM_META[pref.platform] : null;
+  const duration = Math.max(0, transport.duration || getDuration());
+  const current = Math.min(Math.max(0, transport.current), duration || 0);
+  const isPlaying = transport.state === 1 || getState() === 1;
+  const formatTime = (seconds) => {
+    const safe = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
+    return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, "0")}`;
+  };
+
+  function handleSeek(event) {
+    const next = Number(event.target.value);
+    setTransport((value) => ({ ...value, current: next }));
+    seek(next);
+  }
+
+  function handleTogglePlayback() {
+    if (!isDJ) return;
+    if (isPlaying) pause();
+    else play();
+    setTransport((value) => ({ ...value, state: isPlaying ? 2 : 1 }));
+  }
 
   return (
     <div className={s.nowPlaying}>
       <div className={s.nowPlayingLabel}>
-        <div className={s.pulse} /> Now Playing
+        <div className={s.pulseDot} /> Now Playing
       </div>
 
       <div className={s.nowPlayingMeta}>
@@ -358,74 +325,41 @@ export default function NowPlaying({
         </div>
       </div>
 
-      {pref && (
-        <a
-          className={s.preferredBtn}
-          href={pref.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ "--platform-color": prefMeta?.color }}
-        >
-          {prefMeta?.iconSvgUrl && (
-            <img
-              src={prefMeta.iconSvgUrl.replace(/\/[0-9A-Fa-f]{6}$/, "/ffffff")}
-              alt=""
-              width={16}
-              height={16}
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
-            />
-          )}
-          Open on {prefMeta?.name || pref.platform} ↗
-        </a>
-      )}
-
-      <div className={s.platformSection}>
-        <div className={s.platformSectionLabel}>Listen on all platforms</div>
-        <PlatformLinks
-          platformLinks={nowPlaying.platform_links}
-          query={query}
-          activePlatform={pref?.platform}
+      <div className={s.transport} aria-label="Playback controls">
+        <div className={s.timeRow}>
+          <span>{formatTime(current)}</span>
+          <span>{formatTime(duration)}</span>
+        </div>
+        <input
+          className={s.seekbar}
+          style={{ "--seek-progress": `${duration > 0 ? (current / duration) * 100 : 0}%` }}
+          aria-label="Playback position"
+          type="range"
+          min="0"
+          max={duration}
+          value={current}
+          disabled={!isDJ || duration <= 0}
+          onPointerDown={() => setIsSeeking(true)}
+          onPointerUp={() => setIsSeeking(false)}
+          onBlur={() => setIsSeeking(false)}
+          onChange={handleSeek}
         />
+        {isDJ && (
+          <div className={s.transportButtons}>
+            <button className={s.iconButton} type="button" aria-label="Previous track" onClick={handlePrevious}>
+              <JamIcon name="previous" size={20} />
+            </button>
+            <button className={`${s.playButton} ${isPlaying ? s.playButtonActive : ""}`} type="button" aria-label={isPlaying ? "Pause playback" : "Play playback"} onClick={handleTogglePlayback}>
+              <JamIcon name={isPlaying ? "pause" : "play"} size={23} />
+            </button>
+            <button className={s.iconButton} type="button" aria-label="Next track" onClick={handleNext}>
+              <JamIcon name="next" size={20} />
+            </button>
+          </div>
+        )}
       </div>
 
-      {FLAGS.AUTO_PLAY_QUEUE && ytId && isDJ && (
-        <>
-          {ytResolvedTitle && (
-            <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>
-              ▶ Playing via YouTube: {ytResolvedTitle}
-            </div>
-          )}
-          <YouTubeAutoPlayer
-            ref={ytPlayerRef}
-            videoId={ytId}
-            onEnded={handleEnded}
-            repeat={repeatMode === "song"}
-          />
-        </>
-      )}
-
-      {FLAGS.YOUTUBE_EMBED && !FLAGS.AUTO_PLAY_QUEUE && ytId && (
-        <iframe
-          className={s.ytEmbed}
-          src={`https://www.youtube-nocookie.com/embed/${ytId}`}
-          allowFullScreen
-          title="YouTube preview"
-        />
-      )}
-
       <div className={s.djControls}>
-        {isDJ && (
-          <button className="btn" onClick={handlePrevious}>
-            ⏮ Prev
-          </button>
-        )}
-        {isDJ && (
-          <button className="btn" onClick={handleNext}>
-            Next ▶
-          </button>
-        )}
         {isDJ && (
           <button
             className={`${s.repeatBtn} ${repeatMode !== "none" ? s.repeatBtnActive : ""}`}
@@ -440,11 +374,8 @@ export default function NowPlaying({
               });
             }}
           >
-            {repeatMode === "queue"
-              ? "🔁 Queue ✓"
-              : repeatMode === "song"
-                ? "🔂 Song ✓"
-                : "🔁 Repeat"}
+            <JamIcon name="repeat" size={15} />
+            {repeatMode === "queue" ? "Repeat queue" : repeatMode === "song" ? "Repeat song" : "Repeat"}
           </button>
         )}
         {FLAGS.VOTE_TO_SKIP && (
@@ -452,10 +383,61 @@ export default function NowPlaying({
             className={`${s.skipBtn} ${hasVoted ? s.skipBtnVoted : ""}`}
             onClick={handleSkipVote}
           >
-            👎 Skip ({skipVotes}/{skipThreshold}){hasVoted ? " ✓" : ""}
+            <JamIcon name="skip" size={15} />
+            {hasVoted ? "Unvote" : "Skip"} ({skipVotes}/{skipThreshold})
           </button>
         )}
       </div>
+
+      <details className={s.listenDetails}>
+        <summary>Listen on other platforms</summary>
+        {pref && (
+          <a
+            className={s.preferredBtn}
+            href={pref.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ "--platform-color": prefMeta?.color }}
+          >
+            {prefMeta?.iconSvgUrl && (
+              <img
+                src={prefMeta.iconSvgUrl.replace(/\/[0-9A-Fa-f]{6}$/, "/ffffff")}
+                alt=""
+                width={16}
+                height={16}
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            )}
+            Open on {prefMeta?.name || pref.platform}
+          </a>
+        )}
+
+        <div className={s.platformSection}>
+          <div className={s.platformSectionLabel}>Listen on all platforms</div>
+          <PlatformLinks
+            platformLinks={nowPlaying.platform_links}
+            query={query}
+            activePlatform={pref?.platform}
+          />
+        </div>
+
+        {FLAGS.AUTO_PLAY_QUEUE && ytId && isDJ && ytResolvedTitle && (
+          <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>
+            Playing via YouTube: {ytResolvedTitle}
+          </div>
+        )}
+
+        {FLAGS.YOUTUBE_EMBED && !FLAGS.AUTO_PLAY_QUEUE && ytId && (
+          <iframe
+            className={s.ytEmbed}
+            src={`https://www.youtube-nocookie.com/embed/${ytId}`}
+            allowFullScreen
+            title="YouTube preview"
+          />
+        )}
+      </details>
     </div>
   );
 
@@ -463,6 +445,7 @@ export default function NowPlaying({
     try {
       if (hasVoted) {
         await removeSkipVote(nowPlaying.id, userId);
+        refreshSkipVotes?.();
       } else {
         capture("skip_vote_cast", {
           votes_so_far: skipVotes + 1,
@@ -470,6 +453,7 @@ export default function NowPlaying({
         });
         const skipped = await castSkipVote(nowPlaying.id, skipThreshold);
         if (skipped) onQueueChange?.();
+        else refreshSkipVotes?.();
       }
     } catch (e) {
       toast(e.message);

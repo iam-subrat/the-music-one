@@ -7,6 +7,7 @@ import { FLAGS } from '../lib/flags';
 import { useToast } from './Toast';
 import { useAnalytics } from '../lib/analytics';
 import PlaylistModal from './PlaylistModal';
+import JamIcon from './JamIcon';
 
 export default function AddSongForm({ sessionId, userId, profile, onPlatformDetected, onAdded }) {
   const [url, setUrl] = useState('');
@@ -112,7 +113,7 @@ export default function AddSongForm({ sessionId, userId, profile, onPlatformDete
             disabled={busy}
           />
           <button type="submit" className="btn" disabled={busy || !songName.trim()}>
-            {busy ? '…' : 'Search & Add'}
+            {busy ? '…' : <><JamIcon name="plus" size={16} /> Search & Add</>}
           </button>
         </form>
       ) : (
@@ -130,7 +131,7 @@ export default function AddSongForm({ sessionId, userId, profile, onPlatformDete
             disabled={busy}
           />
           <button type="submit" className="btn" disabled={busy}>
-            {busy ? '…' : 'Add'}
+            {busy ? '…' : <><JamIcon name="plus" size={16} /> Add</>}
           </button>
         </form>
       )}

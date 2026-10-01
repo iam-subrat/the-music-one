@@ -47,7 +47,7 @@
   align-items: center;
   gap: 6px;
 }
-.pulse {
+.pulseDot {
   width: 8px; height: 8px;
   background: var(--accent);
   border-radius: 50%;
@@ -199,14 +199,15 @@
 .participant { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 0.85rem; }
 .pAvatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: var(--border); flex-shrink: 0; }
 .pName { flex: 1; }
-.pDj { font-size: 0.7rem; color: var(--accent); }
+.pDj, .pRole { font-size: 0.66rem; font-weight: 800; border-radius: 999px; padding: 2px 6px; color: var(--jam-accent, var(--accent)); background: color-mix(in srgb, var(--jam-accent, var(--accent)) 13%, transparent); }
+.pRole { color: var(--jam-muted, var(--muted)); background: transparent; border: 1px solid var(--jam-border, var(--border)); }
 
 /* Invite badge */
 .inviteBadge { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; font-size: 0.85rem; flex-wrap: wrap; box-shadow: var(--shadow-sm, 0 1px 4px rgba(0,0,0,0.4)); }
 .inviteCode { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 1.1rem; font-weight: 700; letter-spacing: 4px; color: var(--accent); }
 
 /* Ended */
-.endedBanner { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: clamp(24px, 5vw, 40px); text-align: center; color: var(--muted); grid-column: 1 / -1; }
+.endedBanner { background: var(--jam-surface); border: 1px solid var(--jam-border); border-radius: var(--radius); padding: clamp(24px, 5vw, 40px); text-align: center; color: var(--jam-muted); grid-column: 1 / -1; }
 
 /* PlaylistModal */
 .modalOverlay {
@@ -356,3 +357,482 @@
 .queuePlayBtn:hover {
   color: var(--accent);
 }
+.jamRoom {
+  min-height: 100vh;
+  --jam-canvas: #090b10;
+  --jam-surface: #131722;
+  --jam-text: #f1f5ea;
+  --jam-muted: #98a39a;
+  --jam-accent: #b8ff67;
+  --jam-border: rgba(184, 255, 103, 0.2);
+  background: var(--jam-canvas);
+  color: var(--jam-text);
+}
+.pulse {
+  --jam-canvas: #090b10;
+  --jam-surface: #131722;
+  --jam-text: #f1f5ea;
+  --jam-muted: #98a39a;
+  --jam-accent: #b8ff67;
+  --jam-border: rgba(184, 255, 103, 0.2);
+}
+.studio {
+  --jam-canvas: #f3f2eb;
+  --jam-surface: #fbfaf5;
+  --jam-text: #202b21;
+  --jam-muted: #687267;
+  --jam-accent: #315d3b;
+  --jam-border: rgba(49, 93, 59, 0.2);
+}
+.jamRoom :global(.btn) { background: var(--jam-accent); color: var(--jam-canvas); box-shadow: none; }
+.jamRoom :global(.btn:hover) {
+  background: var(--jam-accent);
+  box-shadow: none;
+  filter: brightness(1.06);
+}
+.jamRoom .nowPlaying, .jamRoom .queueSection, .jamRoom .sidebar { background: var(--jam-surface); border-color: var(--jam-border); }
+.jamRoom .nowPlaying { border-color: var(--jam-border); box-shadow: none; }
+.jamRoom .nowPlayingLabel { color: var(--jam-accent); }
+.jamRoom .pulseDot { background-color: var(--jam-accent); }
+.themeSwitch { display: inline-flex; padding: 3px; border: 1px solid var(--jam-border); border-radius: 999px; }
+.themeSwitch button { border: 0; background: transparent; color: var(--jam-muted); padding: 5px 9px; border-radius: 999px; font: inherit; font-size: .75rem; }
+.themeSwitch button[aria-pressed="true"] { color: var(--jam-canvas); background: var(--jam-accent); }
+
+/* Visual Jam Room: Pulse is nocturnal and kinetic; Studio is tactile and calm. */
+.jamRoom { --bg: var(--jam-canvas); --surface: var(--jam-surface); --text: var(--jam-text); --muted: var(--jam-muted); --accent: var(--jam-accent); --border: var(--jam-border); background: radial-gradient(ellipse 68% 45% at 15% -10%, color-mix(in srgb, var(--jam-accent) 18%, transparent), transparent 70%), var(--jam-canvas); }
+.layout { max-width: 1240px; grid-template-columns: minmax(0, 1fr) 310px; gap: 28px; padding: 44px 28px 110px; }
+.jamHeader { margin: 0; padding: 4px 2px 10px; }
+.roomKicker { margin: 0 0 4px; color: var(--jam-muted); font-size: .78rem; letter-spacing: .04em; }
+.roomTitle { margin: 0; font-size: clamp(1.7rem, 3vw, 2.5rem); letter-spacing: -.06em; line-height: 1; }
+.primaryColumn { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.nowPlaying { border: 1px solid var(--jam-border); border-radius: 22px; padding: clamp(22px, 4vw, 38px); gap: 22px; background: linear-gradient(135deg, color-mix(in srgb, var(--jam-surface) 94%, var(--jam-accent)), var(--jam-surface)); }
+.nowPlayingMeta { gap: 22px; align-items: center; }
+.thumb { width: clamp(92px, 13vw, 152px); height: clamp(92px, 13vw, 152px); border-radius: 16px; box-shadow: 0 18px 34px rgba(0,0,0,.22); }
+.nowPlayingTitle { font-size: clamp(1.6rem, 3vw, 2.7rem); letter-spacing: -.055em; line-height: 1; }
+.nowPlayingArtist { font-size: 1rem; margin-top: 7px; }.nowPlayingAdded { margin-top: 9px; }
+.nowPlayingLabel, .platformSectionLabel, .sidebarTitle { text-transform: none; letter-spacing: .02em; font-weight: 650; }
+.djControls { padding-top: 6px; }.djControls :global(.btn) { border-radius: 999px; padding-inline: 18px; }
+.queueSection, .sidebarSection { border: 1px solid var(--jam-border); border-radius: 18px; padding: 18px; background: var(--jam-surface); }
+.queueSection { position: static; max-height: none; }.queueList { max-height: 460px; }
+.queueCard { border-color: transparent; border-radius: 12px; background: color-mix(in srgb, var(--jam-surface) 88%, var(--jam-accent)); }.queueCard:hover { border-color: var(--jam-border); }
+.addInput { background: color-mix(in srgb, var(--jam-surface) 90%, var(--jam-canvas)); border-radius: 12px; }
+.modeBtn { border-radius: 999px; }.modeBtnActive { background: color-mix(in srgb, var(--jam-accent) 15%, transparent); }
+.sidebar { gap: 18px; }.inviteBadge { border-color: var(--jam-border); background: color-mix(in srgb, var(--jam-surface) 88%, var(--jam-accent)); box-shadow: none; }
+.studio { background: linear-gradient(160deg, #f6f3e9 0%, #e9eee2 100%); }.studio .nowPlaying { background: #fbfaf4; box-shadow: 0 18px 44px rgba(40,57,41,.09); }.studio .queueCard { background: transparent; }.studio .thumb { box-shadow: 0 14px 28px rgba(44,61,44,.16); }
+@media (max-width:700px){ .layout { padding: 28px 14px 84px; gap: 18px; }.jamHeader { align-items: flex-start; }.nowPlayingMeta { align-items: flex-start; }.thumb { width: 80px; height:80px; }.sidebar { order: initial; } }
+
+/* Full graphical room composition. The source order is the mobile reading order. */
+.jamRoom {
+  --jam-panel: color-mix(in srgb, var(--jam-surface) 92%, transparent);
+  --jam-control: color-mix(in srgb, var(--jam-accent) 11%, var(--jam-surface));
+  --jam-focus: color-mix(in srgb, var(--jam-accent) 68%, white);
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--jam-accent) 17%, transparent), transparent 30rem),
+    radial-gradient(circle at 90% 25%, color-mix(in srgb, var(--jam-accent) 7%, transparent), transparent 25rem),
+    var(--jam-canvas);
+}
+
+.layout { max-width: 1320px; grid-template-columns: minmax(0, 1fr) 330px; gap: 30px; padding: 48px 30px 142px; }
+.jamHeader { align-items: flex-end; border-bottom: 1px solid var(--jam-border); padding: 0 0 24px; }
+.roomIdentity { display: grid; gap: 5px; }
+.roomKicker, .eyebrow { color: var(--jam-accent); font-size: .69rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.roomTitle { font-size: clamp(2rem, 4.1vw, 3.65rem); font-weight: 800; letter-spacing: -.075em; line-height: .96; }
+.roomPresence { color: var(--jam-muted); font-size: .86rem; }
+.roomActions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 9px; }
+.jamRoom :global(.btn), .themeSwitch button { min-height: 38px; border-radius: 999px; font-size: .77rem; }
+.jamRoom :global(.btn-danger) { color: #d84848; border-color: color-mix(in srgb, #d84848 48%, transparent); background: transparent; }
+.jamRoom :global(.btn-ghost) { color: var(--jam-text); border-color: var(--jam-border); background: transparent; }
+.themeSwitch { background: color-mix(in srgb, var(--jam-surface) 68%, transparent); }
+.themeSwitch button:focus-visible, .jamRoom button:focus-visible, .jamRoom input:focus-visible, .jamRoom a:focus-visible { outline: 3px solid var(--jam-focus); outline-offset: 3px; }
+
+.primaryColumn { gap: 24px; }
+.nowPlaying { position: relative; overflow: hidden; isolation: isolate; border-radius: 26px; padding: clamp(24px, 4.2vw, 44px); }
+.nowPlaying::before { content: ""; position: absolute; z-index: -1; inset: auto -12% -42% auto; width: 320px; aspect-ratio: 1; border-radius: 50%; background: color-mix(in srgb, var(--jam-accent) 13%, transparent); filter: blur(14px); }
+.nowPlayingLabel { color: var(--jam-accent); font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.nowPlayingMeta { gap: clamp(18px, 3vw, 28px); }
+.thumb { width: clamp(116px, 17vw, 190px); height: clamp(116px, 17vw, 190px); border-radius: 18px; }
+.nowPlayingText { display: grid; gap: 2px; align-content: center; }
+.nowPlayingTitle { font-size: clamp(1.85rem, 4vw, 3.35rem); white-space: normal; }
+.nowPlayingArtist { font-size: clamp(.96rem, 1.6vw, 1.12rem); }
+.nowPlayingAdded { font-size: .8rem; }
+
+.transport { display: grid; gap: 10px; }
+.timeRow { display: flex; justify-content: space-between; color: var(--jam-muted); font-variant-numeric: tabular-nums; font-size: .75rem; }
+.seekbar { width: 100%; height: 24px; accent-color: var(--jam-accent); cursor: pointer; }
+.seekbar:disabled { cursor: not-allowed; opacity: .66; }
+.transportButtons { display: flex; align-items: center; justify-content: center; gap: 15px; }
+.iconButton, .playButton { display: inline-grid; place-items: center; border: 1px solid var(--jam-border); border-radius: 50%; background: transparent; color: var(--jam-text); cursor: pointer; transition: transform .16s ease, background .16s ease, color .16s ease; }
+.iconButton { width: 42px; height: 42px; font-size: 1.05rem; }
+.playButton { width: 58px; height: 58px; border-color: transparent; background: var(--jam-accent); color: var(--jam-canvas); font-size: 1.16rem; font-weight: 900; }
+.iconButton:hover { background: var(--jam-control); color: var(--jam-accent); transform: translateY(-1px); }
+.playButton:hover { transform: scale(1.04); }
+.playButtonActive { box-shadow: 0 0 0 7px color-mix(in srgb, var(--jam-accent) 15%, transparent); }
+.preferredBtn { border-radius: 999px; box-shadow: none; }
+.platformSection { border-top: 1px solid var(--jam-border); padding-top: 16px; }
+.djControls { align-items: center; border-top: 1px solid var(--jam-border); padding-top: 16px; }
+.repeatBtn, .skipBtn { border-radius: 999px; color: var(--jam-text); background: transparent; }
+
+.queueSection, .sidebarSection { background: var(--jam-panel); border-radius: 20px; }
+.sectionHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.sectionHeading h3 { color: var(--jam-text); font-size: 1.05rem; letter-spacing: -.02em; }
+.sectionHeading .eyebrow { margin-bottom: 3px; }
+.queueCount { color: var(--jam-muted); font-size: .78rem; }
+.queueList { max-height: 500px; padding-right: 3px; }
+.queueCard { padding: 11px; border: 1px solid transparent; background: color-mix(in srgb, var(--jam-surface) 88%, var(--jam-accent)); }
+.queueCard:hover { border-color: var(--jam-border); }
+.queuePlayBtn { color: var(--jam-accent); }
+.queueVoteBtn { color: var(--jam-text); border-radius: 999px; }
+
+.sidebar { gap: 20px; align-self: start; position: sticky; top: 78px; }
+.addPanel { display: grid; gap: 12px; }
+.addHint { color: var(--jam-muted); font-size: .8rem; line-height: 1.45; }
+.addForm { align-items: stretch; }
+.addInput { min-height: 44px; color: var(--jam-text); }
+.searchForm .addInput { width: 100%; }
+.modeBtn { color: var(--jam-text); }
+.sidebarSection { padding: 19px; }
+.sidebarTitle { color: var(--jam-text); font-size: .94rem; text-transform: none; letter-spacing: -.015em; }
+.inviteBadge { padding: 8px 12px; }
+
+.studio .nowPlaying::before { background: color-mix(in srgb, var(--jam-accent) 10%, transparent); }
+.studio .nowPlaying { background: #fbfaf4; }
+.studio .queueSection, .studio .sidebarSection { box-shadow: 0 10px 30px rgba(37, 56, 40, .06); }
+
+@media (max-width: 980px) {
+  .layout { grid-template-columns: minmax(0, 1fr) 285px; gap: 22px; padding-inline: 20px; }
+  .roomActions { justify-content: flex-start; }
+  .sidebar { position: static; }
+}
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; gap: 20px; padding: 30px 14px 108px; }
+  .jamHeader { align-items: flex-start; padding-bottom: 18px; }
+  .roomActions { width: 100%; justify-content: flex-start; }
+  .sidebar { grid-row: auto; }
+  .nowPlaying { border-radius: 21px; }
+  .thumb { width: 94px; height: 94px; }
+  .nowPlayingTitle { font-size: clamp(1.65rem, 9vw, 2.4rem); }
+  .addForm { flex-direction: column; }
+  .addForm :global(.btn) { width: 100%; }
+  .queueList { max-height: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulseDot, .iconButton, .playButton, .queueCard, .preferredBtn { animation: none; transition: none; }
+}
+
+/* Pulse and Studio share the mockup's room shell; color and artwork treatment vary. */
+.jamRoom {
+  --jam-canvas: #0b0c13;
+  --jam-surface: #0b0c13;
+  --jam-text: #ebedf3;
+  --jam-muted: #a9adbb;
+  --jam-accent: #a6ff5f;
+  --jam-border: rgba(255, 255, 255, .09);
+  --text-secondary: var(--jam-muted);
+  background: var(--jam-canvas);
+}
+.studio {
+  --jam-canvas: #f5f3ed;
+  --jam-surface: #f5f3ed;
+  --jam-text: #20231f;
+  --jam-muted: #687067;
+  --jam-accent: #263d2a;
+  --jam-border: #dedbd2;
+  background: var(--jam-canvas);
+}
+.layout {
+  width: min(100%, 1380px);
+  max-width: none;
+  min-height: calc(100vh - 68px);
+  grid-template-columns: minmax(0, 1.45fr) minmax(315px, .85fr);
+  grid-template-rows: auto 1fr;
+  gap: 0;
+  padding: 0 0 90px;
+}
+.jamHeader {
+  min-height: 72px;
+  margin: 0;
+  padding: 11px 30px;
+  gap: 16px;
+  align-items: center;
+  border-bottom: 1px solid var(--jam-border);
+}
+.roomBrand { font-size: 1.26rem; font-weight: 800; letter-spacing: -.06em; line-height: 1; text-decoration: none; white-space: nowrap; }
+.roomBrand span { color: var(--jam-accent); }
+.studio .roomBrand span { color: #5b8751; }
+.roomIdentity { display: flex; align-items: center; gap: 7px; margin-right: auto; min-width: 0; }
+.liveIndicator { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: #ff5f76; box-shadow: 0 0 0 4px rgba(255, 95, 118, .12); }
+.roomTitle, .roomPresence { font-size: .83rem; font-weight: 500; letter-spacing: 0; line-height: 1.2; white-space: nowrap; }
+.roomPresence { color: var(--jam-muted); }
+.roomActions { gap: 10px; flex-wrap: nowrap; }
+.themeSwitch { border-radius: 9px; padding: 2px; }
+.themeSwitch button { border-radius: 7px; padding: 6px 8px; min-height: 32px; }
+.inviteBadge { border: 0; border-radius: 9px; padding: 6px 8px 6px 12px; background: var(--jam-accent); color: var(--jam-canvas); gap: 6px; box-shadow: none; white-space: nowrap; }
+.inviteCode { color: inherit; font-size: .76rem; letter-spacing: .1em; }
+.jamRoom .inviteBadge :global(.btn-ghost) { border-color: color-mix(in srgb, var(--jam-canvas) 28%, transparent); color: inherit; min-height: 30px; padding: 3px 9px !important; }
+.jamRoom .roomActions :global(.btn-danger) { min-height: 34px; padding: 5px 8px !important; }
+.jamRoom .roomActions :global(.btn-ghost) { min-height: 34px; padding: 5px 8px !important; }
+
+.primaryColumn, .jamRoom .sidebar, .sidebar { min-width: 0; background: transparent; }
+.primaryColumn { display: block; padding: 30px 32px 36px; }
+.sidebar { position: static; display: block; align-self: stretch; padding: 30px 28px; border-left: 1px solid var(--jam-border); }
+.nowPlaying, .studio .nowPlaying, .jamRoom .nowPlaying { border: 0; border-radius: 0; padding: 0; gap: 14px; background: transparent; box-shadow: none; overflow: visible; }
+.nowPlaying::before { display: none; }
+.nowPlayingLabel { font-size: .69rem; color: var(--jam-muted); letter-spacing: .09em; }
+.pulseDot { background: #ff5f76; width: 7px; height: 7px; animation: none; }
+.nowPlayingMeta { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 25px; align-items: center; margin: 3px 0 10px; }
+.thumb { width: 170px; height: 170px; border-radius: 16px; box-shadow: none; }
+.thumb:not(img) {
+  background:
+    radial-gradient(circle at 69% 27%, #ffac6a 0 8%, transparent 9%),
+    radial-gradient(circle at 35% 40%, #ff5977 0 17%, transparent 18%),
+    linear-gradient(135deg, #641d5b, #d74a70 55%, #ffbc76);
+}
+.nowPlayingTitle { font-size: clamp(1.75rem, 3vw, 2.5rem); line-height: 1; }
+.nowPlayingArtist { color: var(--jam-muted); font-size: 1rem; }
+.nowPlayingAdded { color: var(--jam-muted); font-size: .8rem; margin-top: 14px; }
+.transport { gap: 3px; }
+.timeRow { order: 0; font-size: .7rem; }
+.seekbar { order: 1; height: 16px; margin: 3px 0; }
+.transportButtons { order: 2; gap: 13px; margin: 4px 0 1px; }
+.iconButton { width: 38px; height: 38px; border: 0; font-size: 1rem; }
+.playButton { width: 48px; height: 48px; }
+.playButtonActive { box-shadow: none; }
+.djControls { border: 0; padding: 0; justify-content: center; gap: 8px; }
+.repeatBtn, .skipBtn { min-height: 32px; padding: 5px 10px; font-size: .72rem; }
+.listenDetails { margin-top: 2px; color: var(--jam-muted); font-size: .75rem; }
+.listenDetails summary { width: fit-content; cursor: pointer; }
+.listenDetails[open] { padding: 14px 0 4px; display: grid; gap: 12px; }
+.listenDetails .platformSection { border: 0; padding-top: 0; }
+.preferredBtn { font-size: .78rem; padding: 8px 12px; }
+
+.queueSection, .jamRoom .queueSection { border: 0; border-top: 1px solid var(--jam-border); border-radius: 0; padding: 22px 0 0; margin-top: 28px; background: transparent; box-shadow: none; gap: 0; }
+.sectionHeading { margin-bottom: 6px; }
+.sectionHeading .eyebrow { display: none; }
+.sectionHeading h3 { font-size: 1.06rem; }
+.queueList { max-height: none; overflow: visible; padding: 0; }
+.queueCard, .studio .queueCard { border: 0; border-top: 1px solid var(--jam-border); border-radius: 0; background: transparent; padding: 9px 0; }
+.queueCard:hover, .studio .queueCard:hover { background: color-mix(in srgb, var(--jam-accent) 7%, transparent); }
+.queuePos { order: -1; width: 25px; text-align: center; }
+.queueThumb { border-radius: 7px; }
+.queueTitle { font-size: .84rem; }
+.queueArtist, .queueBy { font-size: .73rem; }
+.queueVoteBtn { margin-left: 0; }
+.queuePlayBtn { min-width: 32px; }
+
+.sidebarSection, .studio .sidebarSection { border: 0; border-radius: 0; padding: 0; background: transparent; box-shadow: none; }
+.sidebarTitle { font-size: 1.05rem; margin-bottom: 16px; }
+.participant { margin-bottom: 10px; }
+.pAvatar { width: 32px; height: 32px; background: color-mix(in srgb, var(--jam-accent) 24%, var(--jam-surface)); }
+.addPanel { border-top: 1px solid var(--jam-border) !important; padding-top: 23px !important; margin-top: 26px; }
+.addHint { line-height: 1.4; }
+.searchModeToggle { margin: 0; }
+.modeBtn { border-radius: 8px; }
+.addInput { border-radius: 8px; }
+.addForm { flex-wrap: wrap; }
+.jamRoom .addForm :global(.btn), .jamRoom .searchForm :global(.btn) { min-height: 42px; border-radius: 8px; }
+.studio .inviteBadge { color: #fff; }
+.studio .roomActions :global(.btn-danger) { color: #9c3636; }
+.studio .nowPlayingMeta { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.studio .thumb { width: 100%; height: 190px; border-radius: 15px; object-fit: cover; box-shadow: none; }
+.studio .thumb:not(img) {
+  background:
+    radial-gradient(circle at 25% 23%, #f7e482 0 5%, transparent 6%),
+    linear-gradient(112deg, #1c3627, #51734f 50%, #b9d69e);
+}
+
+@media (max-width: 1020px) {
+  .jamHeader { flex-wrap: wrap; }
+  .roomActions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+  .layout { grid-template-columns: minmax(0, 1fr) minmax(270px, .75fr); }
+}
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; padding-bottom: 100px; }
+  .jamHeader { padding: 16px 18px; }
+  .roomIdentity { margin-right: 0; }
+  .primaryColumn { padding: 24px 20px; }
+  .sidebar { border-left: 0; border-top: 1px solid var(--jam-border); padding: 24px 20px; }
+  .nowPlayingMeta { grid-template-columns: 112px minmax(0, 1fr); gap: 16px; }
+  .thumb { width: 112px; height: 112px; }
+  .studio .thumb { height: 160px; }
+  .nowPlayingTitle { font-size: clamp(1.5rem, 6vw, 2rem); }
+  .addForm { flex-direction: row; }
+}
+
+/* Shared control language for Pulse and Studio. */
+.jamRoom {
+  --jam-control-border: color-mix(in srgb, var(--jam-text) 13%, transparent);
+  --jam-control-fill: color-mix(in srgb, var(--jam-text) 5%, transparent);
+  --jam-control-hover: color-mix(in srgb, var(--jam-text) 9%, transparent);
+  --jam-danger: #e77b82;
+}
+.studio { --jam-danger: #a34248; }
+.jamHeader { min-height: 74px; }
+.roomActions { gap: 12px; }
+.themeSwitch { border: 1px solid var(--jam-control-border); background: var(--jam-control-fill); padding: 3px; border-radius: 10px; }
+.themeSwitch button { min-width: 56px; min-height: 32px; padding: 5px 10px; border-radius: 7px; font-weight: 600; cursor: pointer; }
+.themeSwitch button[aria-pressed="true"] { color: var(--jam-canvas); background: var(--jam-accent); }
+.studio .themeSwitch button[aria-pressed="true"] { color: #fff; }
+.themeSwitch button:not([aria-pressed="true"]):hover { color: var(--jam-text); background: var(--jam-control-hover); }
+.inviteBadge {
+  min-height: 40px;
+  padding: 3px 3px 3px 12px;
+  border: 1px solid var(--jam-control-border);
+  border-radius: 10px;
+  background: var(--jam-control-fill);
+  color: var(--jam-text);
+  gap: 8px;
+}
+.inviteLabel { color: var(--jam-muted); font-size: .72rem; font-weight: 500; }
+.inviteCode { color: var(--jam-text); font: 700 .78rem/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; }
+.inviteCopy {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-left: 1px solid var(--jam-control-border);
+  border-radius: 0 7px 7px 0;
+  background: transparent;
+  color: var(--jam-text);
+  cursor: pointer;
+}
+.inviteCopy:hover { background: var(--jam-control-hover); color: var(--jam-accent); }
+.jamRoom .roomActions :global(.btn-ghost), .jamRoom .roomActions :global(.btn-danger) {
+  min-height: 39px;
+  padding: 8px 12px !important;
+  border-radius: 9px;
+  font-size: .78rem;
+  font-weight: 600;
+}
+.jamRoom .roomActions :global(.btn-danger) { color: var(--jam-danger); border-color: color-mix(in srgb, var(--jam-danger) 35%, transparent); }
+.jamRoom .roomActions :global(.btn-danger:hover) { background: color-mix(in srgb, var(--jam-danger) 11%, transparent); }
+.jamRoom :global(.btn-ghost:hover) {
+  background: var(--jam-control-hover);
+  border-color: var(--jam-control-border);
+  color: var(--jam-text);
+  transform: none;
+}
+
+.nowPlayingLabel { text-transform: none; letter-spacing: .01em; font-size: .82rem; font-weight: 650; color: var(--jam-muted); }
+.nowPlayingTitle { font-weight: 750; letter-spacing: -.045em; }
+.transport { gap: 8px; }
+.timeRow { color: var(--jam-muted); font-size: .76rem; }
+.jamRoom .seekbar {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 30px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+}
+.jamRoom .seekbar::-webkit-slider-runnable-track {
+  height: 4px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--jam-accent) var(--seek-progress), var(--jam-control-border) var(--seek-progress));
+}
+.jamRoom .seekbar::-moz-range-track { height: 4px; border: 0; border-radius: 999px; background: var(--jam-control-border); }
+.jamRoom .seekbar::-moz-range-progress { height: 4px; border: 0; border-radius: 999px; background: var(--jam-accent); }
+.jamRoom .seekbar::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -4.5px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--jam-accent);
+}
+.jamRoom .seekbar::-moz-range-thumb { width: 13px; height: 13px; border: 0; border-radius: 50%; background: var(--jam-accent); }
+.jamRoom .seekbar:focus { box-shadow: none; }
+.jamRoom .seekbar:focus-visible { outline: 2px solid var(--jam-accent); outline-offset: 3px; }
+.jamRoom .seekbar:disabled { opacity: .6; cursor: default; }
+.transportButtons { gap: 8px; margin: 0; }
+.iconButton, .playButton { transition: background .15s ease, color .15s ease, transform .15s ease; }
+.iconButton { width: 44px; height: 44px; border: 0; border-radius: 50%; color: var(--jam-muted); }
+.iconButton:hover { color: var(--jam-text); background: var(--jam-control-hover); transform: none; }
+.playButton { width: 54px; height: 54px; color: var(--jam-canvas); }
+.studio .playButton { color: #fff; }
+.studio .playButton { background: #263d2a; }
+.playButton:hover { transform: scale(1.035); }
+.idleTransportButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 8px 14px;
+  border: 1px solid var(--jam-control-border);
+  border-radius: 9px;
+  background: var(--jam-control-fill);
+  color: var(--jam-text);
+  font-family: inherit;
+  font-size: .8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.idleTransportButton:hover { background: var(--jam-control-hover); }
+.djControls { gap: 8px; }
+.repeatBtn, .skipBtn, .queueVoteBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 7px 11px;
+  border: 1px solid var(--jam-control-border);
+  border-radius: 8px;
+  background: var(--jam-control-fill);
+  color: var(--jam-muted);
+  font-size: .77rem;
+  font-weight: 600;
+}
+.repeatBtn:hover, .repeatBtnActive { color: var(--jam-accent); border-color: color-mix(in srgb, var(--jam-accent) 42%, transparent); background: var(--jam-control-hover); }
+.skipBtn:hover, .skipBtnVoted, .queueVoteBtn:hover, .queueVoteBtnVoted { color: var(--jam-danger); border-color: color-mix(in srgb, var(--jam-danger) 38%, transparent); background: var(--jam-control-hover); }
+.listenDetails summary { padding: 3px 0; font-size: .78rem; }
+.queueCard, .studio .queueCard { min-height: 62px; gap: 12px; }
+.queueThumb:not(img) { background: linear-gradient(145deg, #493b72, #b688bb); }
+.queuePlayBtn { width: 36px; height: 36px; border-radius: 50%; color: var(--jam-accent); }
+.queuePlayBtn:hover { background: var(--jam-control-hover); }
+.queueVoteBtn { min-height: 32px; padding: 5px 8px; font-size: .72rem; }
+.participant { min-height: 46px; margin: 0; padding: 6px 0; border-bottom: 1px solid var(--jam-control-border); }
+.participant:last-child { border-bottom: 0; }
+.pAvatar { display: grid; place-items: center; width: 34px; height: 34px; color: var(--jam-text); font-size: .76rem; font-weight: 750; }
+.pName { font-weight: 550; }
+.pRole, .pDj { padding: 3px 7px; font-size: .66rem; font-weight: 700; }
+.searchModeToggle { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; border: 1px solid var(--jam-control-border); border-radius: 10px; background: var(--jam-control-fill); gap: 0; }
+.modeBtn { min-height: 35px; border: 0; border-radius: 7px; color: var(--jam-muted); font-weight: 600; }
+.modeBtnActive { color: var(--jam-text); background: var(--jam-control-hover); }
+.modeBtn:not(.modeBtnActive):hover { color: var(--jam-text); }
+.addInput { min-height: 44px; border: 1px solid var(--jam-control-border); background: var(--jam-control-fill); border-radius: 9px; }
+.jamRoom .addForm :global(.btn), .jamRoom .searchForm :global(.btn) { border-radius: 9px; font-weight: 700; }
+.jamRoom .addForm :global(.btn), .jamRoom .searchForm :global(.btn) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.jamRoom .participant :global(.btn-ghost) { min-height: 30px; padding: 5px 9px !important; border-color: var(--jam-control-border); border-radius: 8px; color: var(--jam-text); background: transparent; }
+.jamRoom .participant :global(.btn-ghost:hover) { background: var(--jam-control-hover); }
+.modal { border-color: var(--jam-control-border); border-radius: 16px; background: var(--jam-surface); color: var(--jam-text); box-shadow: 0 24px 64px rgba(0,0,0,.22); }
+.modalHeader { padding: 22px 24px 17px; border-color: var(--jam-control-border); }
+.modalTitle { font-size: 1.16rem; letter-spacing: -.03em; }
+.modalTrackRow { padding: 12px 24px; border-color: var(--jam-control-border); }
+.modalTrackThumb { width: 40px; height: 40px; border-radius: 7px; }
+.modalTrackThumb:not(img) { background: linear-gradient(145deg, #493b72, #b688bb); }
+.modalFooter { padding: 16px 24px; border-color: var(--jam-control-border); }
+.modalFooter :global(.btn) { border-radius: 9px; min-height: 40px; }
+.jamRoom button:focus-visible { outline: 2px solid var(--jam-accent); outline-offset: 3px; }
+
+@media (max-width: 760px) {
+  .jamHeader { gap: 10px; }
+  .roomActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .themeSwitch { display: flex; justify-content: stretch; }
+  .themeSwitch button { flex: 1; }
+  .inviteBadge { justify-content: space-between; }
+  .jamRoom .roomActions :global(.btn-ghost), .jamRoom .roomActions :global(.btn-danger) { width: 100%; }
+  .inviteLabel { display: none; }
+  .nowPlayingTitle { line-height: 1.06; }
+  .queueCard { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) { .iconButton, .playButton { transition: none; } }

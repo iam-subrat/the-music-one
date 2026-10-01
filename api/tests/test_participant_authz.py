@@ -5,7 +5,7 @@ Steps covered:
   2. SessionService.require_participant
   3. QueueService guards (add, add_batch, force_skip, play_next)
   4. Heartbeat router guard
-  5. SSE stream router guard
+  5. SSE stream auto-join
 """
 
 from __future__ import annotations
@@ -195,19 +195,13 @@ async def test_heartbeat_raises_403_when_not_participant():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Step 5 — SSE stream router guard
+# Step 5 — SSE stream auto-join
 # ═══════════════════════════════════════════════════════════════════════════
 
 
 @pytest.mark.asyncio
-async def test_sse_stream_raises_404_or_403_when_not_participant():
-    from fastapi.testclient import TestClient
-    from fastapi import FastAPI
-    from app.routers.events import router as events_router
-    from app.dependencies import get_current_user, get_session_service
-
-    app = FastAPI()
-    app.include_router(events_router, prefix="/sessions")
+async def test_sse_stream_auto_joins_non_participant(mocker):
+    from app.routers.events import session_stream
 
     session_id = uuid4()
     user_id = uuid4()
@@ -220,10 +214,17 @@ async def test_sse_stream_raises_404_or_403_when_not_participant():
     mock_svc.store.sessions = AsyncMock()
     mock_svc.store.sessions.is_participant = AsyncMock(return_value=False)
 
-    app.dependency_overrides[get_current_user] = lambda: user_id
-    app.dependency_overrides[get_session_service] = lambda: mock_svc
+    queue = AsyncMock()
+    mocker.patch("app.routers.events.bus.subscribe", new=AsyncMock(return_value=queue))
+    publish = mocker.patch("app.routers.events.bus.publish", new=AsyncMock())
 
-    client = TestClient(app, raise_server_exceptions=False)
-    response = client.get(f"/sessions/{session_id}/stream")
+    response = await session_stream(
+        session_id=session_id,
+        request=MagicMock(),
+        user_id=user_id,
+        svc=mock_svc,
+    )
 
-    assert response.status_code in {403, 404}
+    assert response.media_type == "text/event-stream"
+    mock_svc.join.assert_awaited_once_with(session_id, user_id)
+    publish.assert_awaited_once_with(str(session_id), "participants_changed", {})

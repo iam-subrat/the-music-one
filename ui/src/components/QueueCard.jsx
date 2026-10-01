@@ -3,6 +3,7 @@ import { FLAGS } from "../lib/flags";
 import { useSkipVotes } from "../hooks/useSkipVotes";
 import { castSkipVote, playSpecificSong, removeSkipVote } from "../lib/queue";
 import s from "../styles/jam.module.css";
+import JamIcon from "./JamIcon";
 
 export default function QueueCard({
   item,
@@ -52,7 +53,9 @@ export default function QueueCard({
         <span className={s.failedBadge}>Failed</span>
       )}
 
-      {FLAGS.VOTE_TO_SKIP && item.status === "queued" && (
+      {FLAGS.VOTE_TO_SKIP &&
+        item.status !== "playing" &&
+        item.status !== "skipped" && (
         <button
           className={`${s.queueVoteBtn} ${hasVoted ? s.queueVoteBtnVoted : ""}`}
           disabled={isVoting}
@@ -75,7 +78,7 @@ export default function QueueCard({
             }
             title="Play this song"
           >
-            ▶
+            <JamIcon name="play" size={15} />
           </button>
         )}
       {index != null && <div className={s.queuePos}>#{index}</div>}

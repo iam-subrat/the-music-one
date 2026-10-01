@@ -2,12 +2,15 @@ import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import s from './login.module.css';
+import jamStyles from '../styles/jam.module.css';
+import { useTui } from '../tui/TuiContext';
 
 export default function Login() {
   const { user, loading, signInWithGoogle } = useAuth();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const next = params.get('next') || '/';
+  const { guiTheme } = useTui();
 
   useEffect(() => {
     if (!loading && user) navigate(next, { replace: true });
@@ -18,10 +21,10 @@ export default function Login() {
   };
 
   return (
-    <div className={s.page}>
+    <div className={`${s.page} ${jamStyles.jamRoom} ${jamStyles[guiTheme]}`}>
       <div className={s.wrapper}>
         <header className={s.header}>
-          <h1 className={s.appName}>MusicOne</h1>
+          <h1 className={s.appName}>music<span>one</span></h1>
         </header>
 
         <div className={`card ${s.card}`}>

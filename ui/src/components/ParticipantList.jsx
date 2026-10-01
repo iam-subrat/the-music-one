@@ -18,19 +18,21 @@ export default function ParticipantList({ participants, session, currentUserId }
         <div key={p.id} className={s.participant}>
           {p.avatar_url
             ? <img className={s.pAvatar} src={p.avatar_url} alt="" />
-            : <div className={s.pAvatar} />}
+            : <div className={s.pAvatar} role="img" aria-label={`${p.display_name || 'Guest'} avatar`}>{(p.display_name || 'G').trim().charAt(0).toUpperCase()}</div>}
           <span className={s.pName}>{p.display_name || 'Guest'}</span>
-          {p.id === session.dj_user_id && <span className={s.pDj}>👑</span>}
+          {p.id === session.host_user_id && <span className={s.pRole}>Host</span>}
+          {p.id === session.dj_user_id && <span className={s.pDj}>DJ</span>}
           {FLAGS.DJ_TOKEN && canPassDJ && p.id !== currentUserId && p.id !== session.dj_user_id && (
             <button
               className="btn btn-ghost"
+              aria-label={`Make ${p.display_name || 'Guest'} the DJ`}
               style={{ fontSize: '0.72rem', padding: '3px 8px' }}
               onClick={() =>
                 passDjToken(session.id, p.id).then(() => {
                   capture('dj_token_passed', { session_id: session.id });
                   capture('feature_used', { feature: 'dj_token' });
                   toast('DJ token passed!');
-                })
+                }).catch((error) => toast(error.message || 'Could not pass DJ token.'))
               }
             >
               Make DJ

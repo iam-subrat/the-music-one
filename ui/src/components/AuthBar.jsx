@@ -2,13 +2,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import s from './AuthBar.module.css';
 
-export default function AuthBar() {
+export default function AuthBar({ embedded = false }) {
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
 
   if (!user) {
     return (
-      <div className={s.bar}>
+      <div className={`${s.bar} ${embedded ? s.embedded : ''}`}>
         <button
           className="btn btn-ghost"
           style={{ fontSize: '0.83rem', padding: '7px 14px' }}
@@ -21,7 +21,7 @@ export default function AuthBar() {
   }
 
   return (
-    <div className={s.bar}>
+    <div className={`${s.bar} ${embedded ? s.embedded : ''}`}>
       {profile?.avatar_url && (
         <img
           src={profile.avatar_url}

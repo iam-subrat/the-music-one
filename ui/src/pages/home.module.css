@@ -15,18 +15,23 @@
 }
 
 .heroTitle {
-  font-size: clamp(2rem, 5vw, 2.6rem);
+  font-size: clamp(2.4rem, 6vw, 3.2rem);
   font-weight: 800;
-  letter-spacing: -0.03em;
-  background: linear-gradient(135deg, #fff 40%, var(--accent) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  line-height: 1.1;
+  letter-spacing: -0.06em;
+  color: var(--jam-text);
+  line-height: 1;
+}
+
+.heroTitle span {
+  color: var(--jam-accent);
+}
+
+:global(.studio) .heroTitle span {
+  color: #5b8751;
 }
 
 .heroSub {
-  color: var(--muted);
+  color: var(--jam-muted);
   font-size: 0.95rem;
   font-weight: 400;
   letter-spacing: 0.01em;
@@ -53,7 +58,7 @@
 .inputIcon {
   position: absolute;
   left: 16px;
-  color: var(--muted);
+  color: var(--jam-muted);
   pointer-events: none;
   flex-shrink: 0;
 }
@@ -62,23 +67,23 @@
   width: 100%;
   padding: 15px 16px 15px 44px;
   border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
+  border: 1px solid var(--jam-border);
+  background: var(--jam-surface);
+  color: var(--jam-text);
   font-family: inherit;
   font-size: 0.95rem;
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
 .searchInput::placeholder {
-  color: var(--muted);
+  color: var(--jam-muted);
 }
 
 .searchInput:focus {
   outline: none;
-  border-color: var(--accent);
-  background: var(--surface-raised);
-  box-shadow: 0 0 0 3px var(--accent-glow);
+  border-color: var(--jam-accent);
+  background: color-mix(in srgb, var(--jam-surface) 90%, var(--jam-text));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--jam-accent) 20%, transparent);
 }
 
 .searchBtn {
@@ -92,7 +97,7 @@
   flex-direction: column;
   align-items: center;
   gap: 14px;
-  color: var(--muted);
+  color: var(--jam-muted);
   font-size: 0.88rem;
   margin-top: 40px;
 }
@@ -111,12 +116,12 @@
 
 .errorIcon {
   font-size: 1.6rem;
-  color: var(--muted);
+  color: var(--jam-muted);
   opacity: 0.6;
 }
 
 .errorMsg {
-  color: var(--text-secondary);
+  color: var(--jam-muted);
   font-size: 0.9rem;
   line-height: 1.65;
 }
@@ -125,8 +130,8 @@
 
 .songCard {
   width: 100%;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--jam-surface);
+  border: 1px solid var(--jam-border);
   border-radius: var(--radius-lg);
   padding: clamp(18px, 4vw, 28px);
   display: flex;
@@ -158,7 +163,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1.5px;
-  color: var(--accent);
+  color: var(--jam-accent);
   margin-bottom: 2px;
 }
 
@@ -173,7 +178,7 @@
 
 .songArtist {
   font-size: 0.95rem;
-  color: var(--text-secondary);
+  color: var(--jam-muted);
 }
 
 .songActions {
@@ -192,8 +197,8 @@
 }
 
 .platformCard {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--jam-surface);
+  border: 1px solid var(--jam-border);
   border-radius: var(--radius);
   padding: clamp(14px, 3vw, 20px) clamp(10px, 2.5vw, 16px);
   display: flex;
@@ -201,7 +206,7 @@
   align-items: center;
   gap: 8px;
   text-decoration: none;
-  color: var(--text);
+  color: var(--jam-text);
   transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s, background 0.2s;
   animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
   position: relative;
@@ -220,10 +225,10 @@
 }
 
 .platformCard:hover {
-  border-color: var(--platform-color, var(--accent));
+  border-color: var(--platform-color, var(--jam-accent));
   transform: translateY(-3px);
-  box-shadow: 0 6px 24px color-mix(in srgb, var(--platform-color, var(--accent)) 20%, transparent);
-  background: var(--surface-raised);
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--platform-color, var(--jam-accent)) 20%, transparent);
+  background: color-mix(in srgb, var(--jam-surface) 90%, var(--jam-text));
 }
 
 .platformCard:hover::before {
@@ -231,7 +236,7 @@
 }
 
 .platformCardDirect {
-  border-color: color-mix(in srgb, var(--platform-color, var(--border)) 45%, transparent);
+  border-color: color-mix(in srgb, var(--platform-color, var(--jam-border)) 45%, transparent);
   box-shadow: 0 2px 12px color-mix(in srgb, var(--platform-color, transparent) 12%, transparent);
 }
 
@@ -239,7 +244,7 @@
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--platform-color, var(--accent)) 14%, var(--surface-raised));
+  background: color-mix(in srgb, var(--platform-color, var(--jam-accent)) 14%, color-mix(in srgb, var(--jam-surface) 90%, var(--jam-text)));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -248,7 +253,7 @@
 }
 
 .platformCard:hover .platformIconWrap {
-  background: color-mix(in srgb, var(--platform-color, var(--accent)) 22%, var(--surface-raised));
+  background: color-mix(in srgb, var(--platform-color, var(--jam-accent)) 22%, color-mix(in srgb, var(--jam-surface) 90%, var(--jam-text)));
 }
 
 .platformImg {
@@ -285,13 +290,13 @@
 }
 
 .platformBadgeDirect {
-  background: color-mix(in srgb, var(--platform-color, var(--accent)) 18%, transparent);
-  color: var(--platform-color, var(--accent));
+  background: color-mix(in srgb, var(--platform-color, var(--jam-accent)) 18%, transparent);
+  color: var(--platform-color, var(--jam-accent));
 }
 
 .platformBadgeSearch {
   background: rgba(255, 255, 255, 0.05);
-  color: var(--muted);
+  color: var(--jam-muted);
 }
 
 /* ── Jam CTA ──────────────────────────────────────────────── */
@@ -299,7 +304,7 @@
 .jamCta {
   margin-top: 48px;
   padding-top: 32px;
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--jam-border);
   width: 100%;
   max-width: 560px;
   display: flex;
@@ -309,7 +314,7 @@
 }
 
 .jamCtaText {
-  color: var(--muted);
+  color: var(--jam-muted);
   font-size: 0.88rem;
 }
 

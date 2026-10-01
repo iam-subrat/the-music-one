@@ -26,74 +26,66 @@
   font-family: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
 }
 
-/* ── Floating toggle (visible in both modes) ─────────────── */
+/* ── Shared mode selector ─────────────────────────────────── */
 
 .toggle {
   position: fixed;
-  bottom: 18px;
-  right: 18px;
+  bottom: 15px;
+  right: 30px;
   z-index: 1000;
-  border: 1px solid var(--border, #242436);
-  background: var(--surface, #141420);
-  color: var(--text, #eeeef5);
-  border-radius: 999px;
-  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: #1b1f2a;
+  color: #a9adbb;
+  border-radius: 11px;
+  padding: 3px;
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  box-shadow: none;
 }
-.toggle:hover { transform: translateY(-1px); }
+.toggle:hover { border-color: rgba(255, 255, 255, .3); }
+.toggle:focus-visible { outline: 2px solid #a6ff5f; outline-offset: 3px; }
 .toggleOn {
-  border-color: var(--tui-accent);
-  background: #061a10;
-  color: var(--tui-accent);
-  box-shadow: 0 0 0 1px var(--tui-accent), 0 0 18px var(--tui-glow);
+  border-color: var(--tui-border);
+  background: #06130d;
+  color: var(--tui-fg-dim);
 }
 .toggleTrack {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  width: 92px;
-  height: 30px;
-  border-radius: 999px;
-  background: rgba(0,0,0,0.35);
-  overflow: hidden;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  width: 118px;
+  height: 32px;
+  border-radius: 8px;
 }
-.toggleLabel {
-  position: absolute;
-  top: 0;
-  bottom: 0;
+.toggleChoice {
+  position: relative;
+  z-index: 1;
   display: flex;
+  justify-content: center;
   align-items: center;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  font-family: 'JetBrains Mono', Menlo, monospace;
-  opacity: 0.55;
+  gap: 5px;
+  font: 650 11px/1 system-ui, sans-serif;
+  letter-spacing: .01em;
   pointer-events: none;
 }
-.toggleLabel[data-side="left"] { left: 10px; }
-.toggleLabel[data-side="right"] { right: 10px; }
+.toggle:not(.toggleOn) .toggleChoice:nth-of-type(2),
+.toggleOn .toggleChoice:last-of-type { color: #f2f4f0; }
 .toggleThumb {
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 40px;
-  height: 24px;
-  background: linear-gradient(180deg, #2a2a44, #1a1a2a);
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.25s cubic-bezier(.4,1.4,.6,1);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+  inset: 2px auto 2px 2px;
+  width: calc(50% - 2px);
+  border-radius: 6px;
+  background: #414a3b;
+  transition: transform .2s ease;
 }
 .toggleOn .toggleThumb {
-  transform: translateX(46px);
-  background: linear-gradient(180deg, #0c3a23, #051b10);
-  color: var(--tui-accent);
-  box-shadow: 0 0 12px var(--tui-glow), inset 0 1px 0 rgba(95,255,175,0.2);
+  transform: translateX(100%);
+  background: #184631;
 }
+:global(html[data-gui-theme="studio"][data-tui="0"]) .toggle { background: #e8e7de; border-color: #d3d3c9; color: #687067; }
+:global(html[data-gui-theme="studio"][data-tui="0"]) .toggleThumb { background: #263d2a; }
+:global(html[data-tui="1"]) .toggle { bottom: 18px; right: 18px; }
+@media (max-width: 700px) { .toggle { right: 12px; } }
+@media (prefers-reduced-motion: reduce) { .toggleThumb { transition: none; } }
 
 /* ── Shell ───────────────────────────────────────────────── */
 

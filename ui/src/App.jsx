@@ -1,4 +1,4 @@
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -15,27 +15,45 @@ import TuiJamRoom from './tui/TuiJamRoom';
 import TuiLogin from './tui/TuiLogin';
 import TuiPageLoader from './tui/TuiPageLoader';
 import Footer from './components/Footer';
+import { JamPlaybackProvider, useJamPlayback } from './playback/JamPlaybackContext';
+
+import jamStyles from './styles/jam.module.css';
+
+function PlaybackRouteCleanup() {
+  const { pathname } = useLocation();
+  const { clearPlayback } = useJamPlayback();
+  useEffect(() => {
+    if (!pathname.startsWith('/jam/')) {
+      clearPlayback();
+    }
+  }, [pathname, clearPlayback]);
+  return null;
+}
 
 function JamNew({ tuiMode }) {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const { guiTheme } = useTui();
   useEffect(() => {
     if (loading) return;
     if (!user) { navigate('/login?next=/jam/new'); return; }
     createSession(user.id).then(s => navigate(`/jam/${s.invite_code}`, { replace: true }));
   }, [user, loading]);
-  return <div className="page" style={{ justifyContent: 'center' }}>{tuiMode ? <TuiPageLoader /> : <div className="spinner" />}</div>;
+  return <div className={`page ${tuiMode ? '' : `${jamStyles.jamRoom} ${jamStyles[guiTheme]}`}`} style={{ justifyContent: 'center' }}>{tuiMode ? <TuiPageLoader /> : <div className="spinner" />}</div>;
 }
 
 export default function App() {
   const { tuiMode } = useTui();
+  const { pathname } = useLocation();
+  const isJamRoom = pathname.startsWith('/jam/') && pathname !== '/jam/new';
 
   const HomeC    = tuiMode ? TuiHome    : Home;
   const LoginC   = tuiMode ? TuiLogin   : Login;
   const JamRoomC = tuiMode ? TuiJamRoom : JamRoom;
 
   return (
-    <>
+    <JamPlaybackProvider>
+      <PlaybackRouteCleanup />
       <Routes>
         <Route path="/"      element={<HomeC />} />
         <Route path="/login" element={<LoginC />} />
@@ -45,7 +63,7 @@ export default function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       {!tuiMode && <TuiToggle />}
-      {!tuiMode && <Footer />}
-    </>
+      {!tuiMode && !isJamRoom && <Footer />}
+    </JamPlaybackProvider>
   );
 }

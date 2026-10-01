@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import AuthBar from "../components/AuthBar";
 import NowPlaying from "../components/NowPlaying";
 import QueueList from "../components/QueueList";
+import AddSongForm from "../components/AddSongForm";
 import QueueCard from "../components/QueueCard";
 import ParticipantList from "../components/ParticipantList";
 import InviteBadge from "../components/InviteBadge";
@@ -14,9 +15,13 @@ import { joinSession, endSession } from "../lib/session";
 import { useAnalytics } from "../lib/analytics";
 import { API_BASE } from "../lib/api";
 import { ToastProvider } from "../components/Toast";
+import { useTui } from "../tui/TuiContext";
+import { useJamPlayback } from "../playback/JamPlaybackContext";
 import s from "../styles/jam.module.css";
 
 export default function JamRoom() {
+  const { guiTheme, setGuiTheme } = useTui();
+  const { clearPlayback } = useJamPlayback();
   const { code } = useParams();
   const navigate = useNavigate();
   const {
@@ -28,6 +33,7 @@ export default function JamRoom() {
   const { session, loading: sessionLoading, setSession } = useSession(code);
   const {
     items: queueItems,
+    ready: queueReady,
     refresh: refreshQueue,
     addItem,
   } = useQueue(session?.id);
@@ -70,6 +76,10 @@ export default function JamRoom() {
   useEffect(() => {
     sessionIdRef.current = session?.id ?? null;
   }, [session?.id]);
+
+  useEffect(() => {
+    if (session?.status === "ended") clearPlayback(session.id);
+  }, [session?.id, session?.status, clearPlayback]);
 
   // Leave on SPA nav (unmount) or actual tab/browser close (pagehide).
   // Do NOT leave on visibilitychange:hidden — tab-switching fires that and
@@ -148,7 +158,7 @@ export default function JamRoom() {
 
   if (authLoading || sessionLoading) {
     return (
-      <div className="page" style={{ justifyContent: "center" }}>
+      <div className={`page ${s.jamRoom} ${s[guiTheme]}`} style={{ justifyContent: "center" }}>
         <div className="spinner" />
       </div>
     );
@@ -157,10 +167,10 @@ export default function JamRoom() {
   if (!session) {
     return (
       <div
-        className="page"
+        className={`page ${s.jamRoom} ${s[guiTheme]}`}
         style={{ justifyContent: "center", textAlign: "center" }}
       >
-        <p style={{ color: "var(--muted)" }}>Session not found.</p>
+        <p style={{ color: "var(--jam-muted)" }}>Session not found.</p>
         <a href="/" className="btn" style={{ marginTop: 20 }}>
           Go home
         </a>
@@ -173,11 +183,21 @@ export default function JamRoom() {
       ["played", "playing", "skipped"].includes(i.status),
     );
     return (
-      <div className="page">
-        <AuthBar />
-        <div className={s.layout}>
+      <div className={`page ${s.jamRoom} ${s[guiTheme]}`} style={{ padding: 0 }}>
+        <div className={s.layout} style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gridTemplateColumns: "1fr", maxWidth: 800, margin: "0 auto", padding: "0 20px" }}>
+          <header className={s.jamHeader}>
+            <a className={s.roomBrand} href="/" aria-label="MusicOne home">music<span>one</span></a>
+            <div className={s.roomIdentity}></div>
+            <div className={s.roomActions}>
+              <div className={s.themeSwitch} aria-label="Jam room theme">
+                <button type="button" aria-pressed={guiTheme === "pulse"} onClick={() => setGuiTheme("pulse")}>Pulse</button>
+                <button type="button" aria-pressed={guiTheme === "studio"} onClick={() => setGuiTheme("studio")}>Studio</button>
+              </div>
+               <AuthBar embedded />
+            </div>
+          </header>
           <div className={s.endedBanner}>
-            <p style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: 8 }}>
+            <p style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: 8, color: "var(--jam-text)" }}>
               Session ended
             </p>
             <p>
@@ -191,7 +211,7 @@ export default function JamRoom() {
             <div style={{ gridColumn: "1/-1" }}>
               <p
                 style={{
-                  color: "var(--muted)",
+                  color: "var(--jam-muted)",
                   fontSize: "0.85rem",
                   marginBottom: 12,
                 }}
@@ -221,24 +241,22 @@ export default function JamRoom() {
 
   return (
     <ToastProvider>
-      <div className="page" style={{ padding: 0 }}>
-        <AuthBar />
+      <div className={`page ${s.jamRoom} ${s[guiTheme]}`} style={{ padding: 0 }}>
         <div className={s.layout}>
-          <div className={s.jamHeader}>
-            <div>
-              <h2 style={{ fontSize: "1.1rem", fontWeight: 700 }}>
-                Jam Session
-              </h2>
+          <header className={s.jamHeader}>
+            <a className={s.roomBrand} href="/" aria-label="MusicOne home">music<span>one</span></a>
+            <div className={s.roomIdentity}>
+              <span className={s.liveIndicator} aria-hidden="true" />
+              <h1 className={s.roomTitle}>Jam Session</h1>
+              <p className={s.roomPresence}>· {participants.length} listening</p>
             </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                alignItems: "center",
-                flexWrap: "wrap",
-              }}
-            >
+            <div className={s.roomActions}>
+              <div className={s.themeSwitch} aria-label="Jam room theme">
+                <button type="button" aria-pressed={guiTheme === "pulse"} onClick={() => setGuiTheme("pulse")}>Pulse</button>
+                <button type="button" aria-pressed={guiTheme === "studio"} onClick={() => setGuiTheme("studio")}>Studio</button>
+              </div>
               <InviteBadge code={session.invite_code} />
+              <AuthBar embedded />
               {isHost && (
                 <button
                   className="btn btn-danger"
@@ -267,9 +285,9 @@ export default function JamRoom() {
                 </button>
               )}
             </div>
-          </div>
+          </header>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <main className={s.primaryColumn} aria-label="Jam room">
             <NowPlaying
               nowPlaying={nowPlaying}
               sessionId={session.id}
@@ -283,6 +301,7 @@ export default function JamRoom() {
                 setSession((prev) => ({ ...prev, repeat_mode: mode }))
               }
               queueItems={queueItems}
+              playbackReady={queueReady && !authLoading && !sessionLoading}
             />
             <QueueList
               items={queueItems}
@@ -301,16 +320,36 @@ export default function JamRoom() {
                 refreshQueue();
               }}
               onQueueChange={refreshQueue}
+              showAdd={false}
             />
-          </div>
+          </main>
 
-          <div className={s.sidebar}>
+          <aside className={s.sidebar} aria-label="Room details">
             <ParticipantList
               participants={participants}
               session={session}
               currentUserId={user?.id}
             />
-          </div>
+            <section className={`${s.sidebarSection} ${s.addPanel}`} aria-labelledby="add-song-heading">
+              <div className={s.sectionHeading}>
+                <div>
+                  <p className={s.eyebrow}>Contribute</p>
+                  <h3 id="add-song-heading">Add a song</h3>
+                </div>
+              </div>
+              <p className={s.addHint}>Paste a song or playlist link, or search by title and artist.</p>
+              <AddSongForm
+                sessionId={session.id}
+                userId={user?.id}
+                profile={profile}
+                onPlatformDetected={setPreferredPlatform}
+                onAdded={(item) => {
+                  addItem(item);
+                  refreshQueue();
+                }}
+              />
+            </section>
+          </aside>
         </div>
       </div>
     </ToastProvider>
