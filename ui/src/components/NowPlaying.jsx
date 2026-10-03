@@ -46,7 +46,7 @@ export default function NowPlaying({
   const ytFeatureFiredRef = useRef(false);
 
   const { videoId: ytId, resolvedTitle: ytResolvedTitle } = useResolvedYouTubeVideo(nowPlaying, isDJ);
-  const { registerPlayback, play, pause, seek, getTime, getDuration, getState } = useJamPlayback();
+  const { registerPlayback, play, pause, seek, replay, getTime, getDuration, getState } = useJamPlayback();
   const [transport, setTransport] = useState({ current: 0, duration: 0, state: -1 });
   const [isSeeking, setIsSeeking] = useState(false);
 
@@ -200,6 +200,11 @@ export default function NowPlaying({
 
     try {
       const next = await playNext(sessionId);
+      if (next?.next_item_id === nowPlaying?.id) {
+        replay();
+        onQueueChange?.();
+        return;
+      }
       onQueueChange?.();
       if (!next?.next_item_id) {
         if (nextItem) {

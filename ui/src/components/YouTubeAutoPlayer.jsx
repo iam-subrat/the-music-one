@@ -47,12 +47,21 @@ const YouTubeAutoPlayer = forwardRef(function YouTubeAutoPlayer(
     onEndedRef.current = onEnded;
   }, [onEnded]);
 
+  // Tracks whether onEnded already fired for the current video, so the
+  // ENDED-state and the near-end-PAUSED safety net don't both run.
+  const endedFiredRef = useRef(false);
+
   useImperativeHandle(
     ref,
     () => ({
       play: () => playerRef.current?.playVideo?.(),
       pause: () => playerRef.current?.pauseVideo?.(),
       seek: (sec) => playerRef.current?.seekTo?.(sec, true),
+      replay: () => {
+        endedFiredRef.current = false;
+        playerRef.current?.seekTo?.(0, true);
+        playerRef.current?.playVideo?.();
+      },
       getTime: () => playerRef.current?.getCurrentTime?.() ?? 0,
       getDuration: () => playerRef.current?.getDuration?.() ?? 0,
       // 1 = playing, 2 = paused, 0 = ended, -1 = unstarted, 3 = buffering, 5 = cued
@@ -61,10 +70,6 @@ const YouTubeAutoPlayer = forwardRef(function YouTubeAutoPlayer(
     }),
     [],
   );
-
-  // Tracks whether onEnded already fired for the current video, so the
-  // ENDED-state and the near-end-PAUSED safety net don't both run.
-  const endedFiredRef = useRef(false);
 
   // Song change: swap video in the existing player (keeps iOS media element "activated").
   // On first mount playerRef is null — initPlayer handles the initial videoId.
