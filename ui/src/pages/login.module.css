@@ -93,5 +93,5 @@
 }
 
 .backLink:hover {
-  color: var(--jam-muted);
+  color: var(--jam-accent);
 }

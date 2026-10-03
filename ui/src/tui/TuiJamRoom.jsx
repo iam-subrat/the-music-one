@@ -664,7 +664,7 @@ export default function TuiJamRoom() {
           ✗ session not found: {code}
         </div>
         <div className={s.hint}>
-          <a href="/" style={{ color: "var(--tui-accent)" }}>
+          <a href="/">
             cd ~
           </a>{" "}
           · go home
@@ -696,7 +696,7 @@ export default function TuiJamRoom() {
           </tbody>
         </table>
         <div className={s.hint} style={{ marginTop: 18 }}>
-          <a href="/" style={{ color: "var(--tui-accent)" }}>
+          <a href="/">
             [ back home ]
           </a>
         </div>
@@ -740,7 +740,7 @@ export default function TuiJamRoom() {
                   </b>
                   {hasVoted && (
                     <span
-                      style={{ color: "var(--tui-magenta)", marginLeft: 10 }}
+                      style={{ color: "var(--tui-lime)", marginLeft: 10 }}
                     >
                       · you voted
                     </span>

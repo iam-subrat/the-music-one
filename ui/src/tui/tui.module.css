@@ -12,7 +12,7 @@
   --tui-amber: #ffc857;
   --tui-red: #ff5e6c;
   --tui-blue: #7ad7ff;
-  --tui-magenta: #ff8df0;
+  --tui-lime: #b8ff67;
   --tui-border: #173427;
   --tui-glow: rgba(95, 255, 175, 0.35);
 }
@@ -294,6 +294,15 @@
   color: var(--tui-fg-dim);
   background: rgba(95,255,175,0.04);
 }
+.hint a {
+  color: var(--tui-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.12s ease;
+}
+.hint a:hover {
+  color: #b8ff67;
+}
 
 /* ── Platform list ───────────────────────────────────────── */
 
@@ -420,7 +429,7 @@
 }
 .badge.dj   { color: var(--tui-accent); }
 .badge.host { color: var(--tui-blue); }
-.you        { color: var(--tui-magenta); }
+.you        { color: var(--tui-lime); }
 
 .nowPlayingBlock {
   display: flex;
@@ -661,9 +670,18 @@
   color: var(--tui-accent);
   text-decoration: none;
   border-bottom: 1px dotted var(--tui-accent);
+  transition: color 0.12s ease, border-color 0.12s ease;
 }
 
 .attribution a:hover {
-  color: var(--tui-amber);
-  border-bottom-color: var(--tui-amber);
+  color: #b8ff67;
+  border-bottom-color: #b8ff67;
+}
+
+:global(html[data-tui="1"]) a:hover {
+  color: #b8ff67;
+}
+
+:global(html[data-tui="1"]) .platformRow:hover {
+  color: var(--tui-fg);
 }

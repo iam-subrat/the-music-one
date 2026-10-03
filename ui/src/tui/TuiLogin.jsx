@@ -40,7 +40,7 @@ export default function TuiLogin() {
       </button>
 
       <div className={s.hint} style={{ marginTop: 14 }}>
-        or <a href="/" style={{ color: 'var(--tui-accent)' }}>cd ~</a> to return home
+        or <a href="/">cd ~</a> to return home
       </div>
     </TerminalShell>
   );

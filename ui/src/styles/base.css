@@ -9,10 +9,10 @@
   --surface-raised: #1c1c2e;
   --border: #242436;
   --border-subtle: #1a1a2a;
-  --accent: #7c6af7;
-  --accent-hover: #9585ff;
-  --accent-glow: rgba(124, 106, 247, 0.25);
-  --accent-glow-strong: rgba(124, 106, 247, 0.4);
+  --accent: #b8ff67;
+  --accent-hover: #c8ff75;
+  --accent-glow: rgba(184, 255, 103, 0.25);
+  --accent-glow-strong: rgba(184, 255, 103, 0.4);
   --text: #eeeef5;
   --text-secondary: #b0b0cc;
   --muted: #6b6b88;
@@ -40,7 +40,7 @@ body {
   min-height: 100vh;
   /* Subtle radial gradient for depth */
   background-image:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(124, 106, 247, 0.08) 0%, transparent 60%);
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(184, 255, 103, 0.08) 0%, transparent 60%);
 }
 
 .jam-persistent-player {
@@ -113,7 +113,19 @@ html[data-gui-theme="studio"] .jam-persistent-player__copy small { color: #68706
   .jam-persistent-player__copy { min-width: 0; max-width: 150px; }
 }
 
-a { color: inherit; }
+a {
+  color: inherit;
+  transition: color 0.15s ease;
+}
+
+a:hover {
+  color: var(--accent);
+}
+
+.roomBrand,
+.roomBrand:hover {
+  color: inherit;
+}
 
 /* ── Buttons ──────────────────────────────────────────────── */
 
@@ -122,10 +134,10 @@ a { color: inherit; }
   border-radius: var(--radius);
   border: none;
   background: var(--accent);
-  color: #fff;
+  color: #0a0a0f;
   font-family: inherit;
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.01em;
   cursor: pointer;
   transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
@@ -150,6 +162,7 @@ a { color: inherit; }
 
 .btn:hover {
   background: var(--accent-hover);
+  color: #0a0a0f;
   box-shadow: 0 6px 28px var(--accent-glow-strong);
   transform: translateY(-1px);
 }
@@ -169,7 +182,7 @@ a { color: inherit; }
 .btn-ghost:hover {
   border-color: var(--accent);
   color: var(--accent);
-  background: rgba(124, 106, 247, 0.06);
+  background: rgba(184, 255, 103, 0.06);
   box-shadow: none;
   transform: translateY(-1px);
 }
@@ -280,8 +293,8 @@ input:focus, textarea:focus {
 }
 
 .siteFooter a:hover {
-  color: var(--accent-hover);
-  border-bottom-color: var(--accent-hover);
+  color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 
 @media (max-width: 480px) {
