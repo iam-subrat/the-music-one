@@ -18,8 +18,8 @@ jobs:
       run:
         working-directory: api
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7.6.0
         with:
           version: latest
       - run: uv sync
@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: staging
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build & deploy
         uses: appleboy/ssh-action@v1
         with:
