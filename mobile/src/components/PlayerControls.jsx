@@ -106,7 +106,11 @@ export default function PlayerControls({
 
         playNext(session.id)
           .then((res) => {
-            if (res?.next_item_id) {
+            if (res?.next_item_id === playingItem?.id) {
+              audioElement.currentTime = 0;
+              audioElement.play().catch(console.error);
+              refresh?.();
+            } else if (res?.next_item_id) {
               refresh?.();
             } else if (nextItem) {
               playSpecificSong(session.id, nextItem.id)
@@ -134,7 +138,7 @@ export default function PlayerControls({
 
     audioElement.addEventListener("ended", handleEnd);
     return () => audioElement.removeEventListener("ended", handleEnd);
-  }, [audioElement, isDJ, session, repeatMode, refresh, queueItems]);
+  }, [audioElement, isDJ, session, repeatMode, refresh, queueItems, playingItem?.id]);
 
   // ── Skip vote handler ─────────────────────────────────────────────────────
   const handleSkipVote = async () => {

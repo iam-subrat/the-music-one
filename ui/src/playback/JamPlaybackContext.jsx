@@ -87,6 +87,7 @@ export function JamPlaybackProvider({ children }) {
     play: () => playerRef.current?.play(),
     pause: () => playerRef.current?.pause(),
     seek: (seconds) => playerRef.current?.seek(seconds),
+    replay: () => playerRef.current?.replay(),
     getTime: () => playerRef.current?.getTime() ?? 0,
     getDuration: () => playerRef.current?.getDuration() ?? 0,
     getState: () => playerRef.current?.getState() ?? -1,

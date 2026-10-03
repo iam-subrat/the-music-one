@@ -122,7 +122,7 @@ export default function TuiJamRoom() {
   );
   const skipThreshold = Math.floor(participants.length / 2) + 1;
   const { videoId: ytId } = useResolvedYouTubeVideo(nowPlaying, isDJ);
-  const { registerPlayback, clearPlayback, play, pause, seek, getTime, getDuration, getState } = useJamPlayback();
+  const { registerPlayback, clearPlayback, play, pause, seek, replay, getTime, getDuration, getState } = useJamPlayback();
 
   function append(...lines) {
     setLog((prev) => [...prev, ...lines]);
@@ -209,8 +209,9 @@ export default function TuiJamRoom() {
         if (!session?.id || !isDJ) return;
         try {
           const next = await playNext(session.id);
+          if (next?.next_item_id === nowPlaying?.id) replay();
           refreshQueue();
-          if (!next) append({ kind: "warn", text: "~ queue empty" });
+          if (!next?.next_item_id) append({ kind: "warn", text: "~ queue empty" });
         } catch (e) {
           append({ kind: "err", text: `✗ auto-advance failed: ${e.message}` });
         }
@@ -663,7 +664,7 @@ export default function TuiJamRoom() {
           ✗ session not found: {code}
         </div>
         <div className={s.hint}>
-          <a href="/" style={{ color: "var(--tui-accent)" }}>
+          <a href="/">
             cd ~
           </a>{" "}
           · go home
@@ -695,7 +696,7 @@ export default function TuiJamRoom() {
           </tbody>
         </table>
         <div className={s.hint} style={{ marginTop: 18 }}>
-          <a href="/" style={{ color: "var(--tui-accent)" }}>
+          <a href="/">
             [ back home ]
           </a>
         </div>
@@ -739,7 +740,7 @@ export default function TuiJamRoom() {
                   </b>
                   {hasVoted && (
                     <span
-                      style={{ color: "var(--tui-magenta)", marginLeft: 10 }}
+                      style={{ color: "var(--tui-lime)", marginLeft: 10 }}
                     >
                       · you voted
                     </span>
