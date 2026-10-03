@@ -34,7 +34,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  box-shadow: 0 0 0 1px rgba(124, 106, 247, 0.1), 0 4px 24px rgba(124, 106, 247, 0.1);
+  box-shadow: 0 0 0 1px rgba(184, 255, 103, 0.1), 0 4px 24px rgba(184, 255, 103, 0.1);
 }
 .nowPlayingIdle { border-color: var(--border); }
 
@@ -796,7 +796,7 @@
 .skipBtn:hover, .skipBtnVoted, .queueVoteBtn:hover, .queueVoteBtnVoted { color: var(--jam-danger); border-color: color-mix(in srgb, var(--jam-danger) 38%, transparent); background: var(--jam-control-hover); }
 .listenDetails summary { padding: 3px 0; font-size: .78rem; }
 .queueCard, .studio .queueCard { min-height: 62px; gap: 12px; }
-.queueThumb:not(img) { background: linear-gradient(145deg, #493b72, #b688bb); }
+.queueThumb:not(img) { background: linear-gradient(145deg, #172a1d, #2f5436); }
 .queuePlayBtn { width: 36px; height: 36px; border-radius: 50%; color: var(--jam-accent); }
 .queuePlayBtn:hover { background: var(--jam-control-hover); }
 .queueVoteBtn { min-height: 32px; padding: 5px 8px; font-size: .72rem; }
@@ -819,7 +819,7 @@
 .modalTitle { font-size: 1.16rem; letter-spacing: -.03em; }
 .modalTrackRow { padding: 12px 24px; border-color: var(--jam-control-border); }
 .modalTrackThumb { width: 40px; height: 40px; border-radius: 7px; }
-.modalTrackThumb:not(img) { background: linear-gradient(145deg, #493b72, #b688bb); }
+.modalTrackThumb:not(img) { background: linear-gradient(145deg, #172a1d, #2f5436); }
 .modalFooter { padding: 16px 24px; border-color: var(--jam-control-border); }
 .modalFooter :global(.btn) { border-radius: 9px; min-height: 40px; }
 .jamRoom button:focus-visible { outline: 2px solid var(--jam-accent); outline-offset: 3px; }
