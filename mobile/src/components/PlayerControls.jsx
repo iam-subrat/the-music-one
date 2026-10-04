@@ -56,6 +56,8 @@ export default function PlayerControls({
   participantCount,
   repeatMode = "none",
   onRepeatModeChange,
+  autoPilot = false,
+  onAutoPilotChange,
 }) {
   const skipThreshold = participantCount
     ? Math.floor(participantCount / 2) + 1
@@ -396,6 +398,18 @@ export default function PlayerControls({
                     className={repeatMode === "none" ? "opacity-30" : ""}
                   />
                 )}
+              </button>
+
+              <button
+                onClick={() => onAutoPilotChange?.(!autoPilot)}
+                title={autoPilot ? "Auto-Pilot On" : "Auto-Pilot Off"}
+                className={`w-10 h-10 border-2 border-black rounded-full flex items-center justify-center active:scale-90 transition-transform ${
+                  autoPilot ? "bg-lime-300" : "bg-white"
+                }`}
+              >
+                <div className={`text-xs font-black ${!autoPilot && "opacity-30"}`}>
+                  AI
+                </div>
               </button>
 
               {/* Previous */}

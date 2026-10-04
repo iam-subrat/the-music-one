@@ -82,8 +82,30 @@ class QueueService:
 
         if not next_item:
             session = await self.store.sessions.get_by_id(session_id)
-            if not (session and session.repeat_mode == "queue"):
-                return None
+            if session and session.repeat_mode == "queue":
+                return await self.store.queue.play_next(session_id, user_id, "played")
+            
+            if session and session.auto_pilot:
+                current = await self.store.queue.get_current_playing(session_id)
+                if current:
+                    try:
+                        related_meta = await self.song_svc.get_related_song(current)
+                        if related_meta:
+                            await self.store.queue.create(
+                                session_id=session_id,
+                                added_by_user_id=session.dj_user_id or user_id,
+                                title=related_meta["title"],
+                                artist=related_meta["artist"],
+                                thumbnail_url=related_meta.get("thumbnailUrl"),
+                                platform_links=related_meta.get("platformLinks", {}),
+                                status="queued",
+                                resolve_status="resolved",
+                            )
+                            # Fall through to play the newly queued song
+                            return await self.store.queue.play_next(session_id, user_id, "played")
+                    except Exception as exc:
+                        logging.getLogger(__name__).warning("Auto-pilot failed: %s", exc)
+
             return await self.store.queue.play_next(session_id, user_id, "played")
 
         while next_item:

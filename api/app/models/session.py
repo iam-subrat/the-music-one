@@ -15,6 +15,7 @@ class Session(Base):
     dj_user_id: Mapped[Optional[UUID]] = mapped_column(ForeignKey("profiles.id", ondelete="SET NULL"))
     status: Mapped[str] = mapped_column(default="active")
     repeat_mode: Mapped[str] = mapped_column(default="none")
+    auto_pilot: Mapped[bool] = mapped_column(default=False)
     max_participants: Mapped[int] = mapped_column(default=20)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     ended_at: Mapped[Optional[datetime]]

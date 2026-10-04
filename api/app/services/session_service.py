@@ -38,6 +38,12 @@ class SessionService:
     async def pass_dj(self, session_id: UUID, new_dj_id: UUID, user_id: UUID) -> None:
         await self.store.sessions.pass_dj(session_id, new_dj_id, user_id)
 
+    async def set_auto_pilot(self, session_id: UUID, enabled: bool, user_id: UUID) -> None:
+        session = await self.store.sessions.get_by_id(session_id)
+        if not session or session.dj_user_id != user_id:
+            raise PermissionError("Only the DJ can set auto pilot")
+        await self.store.sessions.set_auto_pilot(session_id, enabled, user_id)
+
     async def require_participant(self, session_id: UUID, user_id: UUID) -> None:
         if not await self.store.sessions.is_participant(session_id, user_id):
             raise PermissionError(f"User {user_id} is not a participant of session {session_id}")

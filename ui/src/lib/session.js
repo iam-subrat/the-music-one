@@ -32,6 +32,14 @@ export async function setRepeatMode(sessionId, mode) {
   if (!res.ok) throw new Error('Failed to set repeat mode');
 }
 
+export async function setAutoPilot(sessionId, enabled) {
+  const res = await api(`/sessions/${sessionId}/auto-pilot`, {
+    method: 'PATCH',
+    body: JSON.stringify({ enabled }),
+  });
+  if (!res.ok) throw new Error('Failed to set auto pilot');
+}
+
 export async function passDjToken(sessionId, newDjUserId) {
   const res = await api(`/sessions/${sessionId}/dj`, {
     method: 'POST',

@@ -300,6 +300,10 @@ export default function JamRoom() {
               onRepeatModeChange={(mode) =>
                 setSession((prev) => ({ ...prev, repeat_mode: mode }))
               }
+              autoPilot={session.auto_pilot ?? false}
+              onAutoPilotChange={(enabled) =>
+                setSession((prev) => ({ ...prev, auto_pilot: enabled }))
+              }
               queueItems={queueItems}
               playbackReady={queueReady && !authLoading && !sessionLoading}
             />
