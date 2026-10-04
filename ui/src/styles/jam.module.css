@@ -65,6 +65,52 @@
 .nowPlayingArtist { font-size: 0.9rem; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nowPlayingAdded { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
 
+.artworkStage { position: relative; flex: 0 0 auto; isolation: isolate; }
+.artworkStage .thumb { position: relative; z-index: 1; display: block; }
+.songVisualizer {
+  position: absolute;
+  z-index: 0;
+  inset: -20%;
+  display: grid;
+  place-items: end center;
+  overflow: hidden;
+  border-radius: 22%;
+  opacity: .88;
+  pointer-events: none;
+  transform: translateZ(0);
+}
+.songVisualizer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--visualizer-artwork, radial-gradient(circle at 18% 18%, var(--jam-accent), transparent 62%));
+  background-position: center;
+  background-size: cover;
+  filter: blur(18px) saturate(1.4);
+  opacity: .46;
+  transform: scale(1.28);
+}
+.songVisualizer::after {
+  content: "";
+  position: absolute;
+  inset: 8%;
+  border: 1px solid color-mix(in srgb, var(--jam-accent) 38%, transparent);
+  border-radius: 28%;
+  opacity: .78;
+}
+.songVisualizerBars { position: relative; z-index: 1; display: flex; align-items: end; gap: clamp(2px, .45vw, 5px); height: 48%; padding-bottom: 10%; }
+.songVisualizerBars i {
+  display: block;
+  width: clamp(2px, .35vw, 4px);
+  height: var(--bar-height);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--jam-accent) 88%, white);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--jam-accent) 62%, transparent);
+  transform-origin: bottom;
+}
+.songVisualizer[data-playing="true"] .songVisualizerBars i { animation: visualizerBeat 1.15s ease-in-out infinite alternate; animation-delay: calc(var(--bar-index) * -95ms); }
+@keyframes visualizerBeat { from { transform: scaleY(.45); opacity: .55; } to { transform: scaleY(1.45); opacity: 1; } }
+
 .preferredBtn {
   display: inline-flex;
   align-items: center;
@@ -516,7 +562,7 @@
   .queueList { max-height: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pulseDot, .iconButton, .playButton, .queueCard, .preferredBtn { animation: none; transition: none; }
+  .pulseDot, .songVisualizerBars i, .iconButton, .playButton, .queueCard, .preferredBtn { animation: none; transition: none; }
 }
 
 /* Pulse and Studio share the mockup's room shell; color and artwork treatment vary. */
@@ -529,6 +575,13 @@
   --jam-border: rgba(255, 255, 255, .09);
   --text-secondary: var(--jam-muted);
   background: var(--jam-canvas);
+}
+.studio .songVisualizer { opacity: .58; }
+.studio .songVisualizer::before { filter: blur(20px) saturate(.72); opacity: .26; }
+.studio .songVisualizer::after { border-color: color-mix(in srgb, #5b8751 36%, transparent); }
+.studio .songVisualizerBars i {
+  background: color-mix(in srgb, #5b8751 76%, #dbe6d4);
+  box-shadow: 0 0 8px color-mix(in srgb, #5b8751 28%, transparent);
 }
 .studio {
   --jam-canvas: #f5f3ed;
@@ -836,3 +889,103 @@
   .queueCard { flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) { .iconButton, .playButton { transition: none; } }
+
+/* Artwork visualizer: a contained foreground rhythm, never a competing card. */
+.artworkStage {
+  width: 148px;
+  height: 148px;
+  overflow: hidden;
+  border: 1px solid var(--jam-control-border);
+  border-radius: 14px;
+  background: var(--jam-control-fill);
+}
+.artworkStage .thumb { width: 100%; height: 100%; border-radius: inherit; }
+.nowPlayingMeta { grid-template-columns: 148px minmax(0, 1fr); gap: 22px; margin: 0; }
+.nowPlayingTitle { max-width: 24ch; font-size: clamp(1.55rem, 2.5vw, 2.35rem); line-height: 1.04; }
+.nowPlayingAdded { margin-top: 10px; }
+.songVisualizer[data-layer="foreground"] {
+  z-index: 2;
+  inset: auto 0 0;
+  height: 42%;
+  display: flex;
+  align-items: end;
+  overflow: hidden;
+  border-radius: 0 0 13px 13px;
+  opacity: 1;
+  background: linear-gradient(to top, rgba(5, 7, 12, .8), rgba(5, 7, 12, 0));
+}
+.songVisualizer[data-layer="foreground"]::before { display: none; }
+.songVisualizer[data-layer="foreground"]::after {
+  inset: 0 0 auto;
+  width: auto;
+  height: 1px;
+  border: 0;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--jam-accent) 58%, transparent);
+  opacity: 1;
+}
+.songVisualizer[data-layer="foreground"] .songVisualizerBars {
+  width: 100%;
+  height: 68%;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 12px 10px;
+}
+.songVisualizer[data-layer="foreground"] .songVisualizerBars i {
+  width: 3px;
+  background: color-mix(in srgb, var(--jam-accent) 90%, white);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--jam-accent) 74%, transparent);
+}
+.studio .artworkStage { width: 100%; height: 190px; border-color: #c5cbbd; }
+.studio .songVisualizer[data-layer="foreground"] {
+  background: linear-gradient(to top, rgba(27, 46, 31, .82), rgba(27, 46, 31, 0));
+}
+.studio .songVisualizer[data-layer="foreground"]::after { background: rgba(242, 237, 218, .72); }
+.studio .songVisualizer[data-layer="foreground"] .songVisualizerBars i {
+  background: #f2edda;
+  box-shadow: 0 0 7px rgba(242, 237, 218, .5);
+}
+@media (max-width: 760px) {
+  .artworkStage { width: 112px; height: 112px; }
+  .nowPlayingMeta { grid-template-columns: 112px minmax(0, 1fr); gap: 16px; }
+  .studio .artworkStage { width: 100%; height: 160px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .songVisualizer[data-playing="true"] .songVisualizerBars i { animation: none; }
+}
+
+/* Composed motion: energetic while playing, visibly settled while paused. */
+.songVisualizer[data-layer="foreground"] .songVisualizerBars i {
+  opacity: .46;
+  transform: scaleY(var(--bar-idle));
+  transition: transform 620ms cubic-bezier(.2, .8, .25, 1), opacity 620ms ease;
+}
+.songVisualizer[data-motion="playing"] .songVisualizerBars i {
+  animation: visualizerPhrase var(--bar-duration) cubic-bezier(.45, 0, .55, 1) var(--bar-delay) infinite;
+  opacity: 1;
+}
+.songVisualizer[data-motion="paused"] .songVisualizerBars i { animation: none; }
+.songVisualizer[data-motion="paused"]::after {
+  background: linear-gradient(90deg, transparent 0%, var(--jam-accent) 44%, transparent 56%);
+  background-size: 220% 100%;
+  animation: visualizerIdleRail 5.4s ease-in-out infinite;
+  opacity: .55;
+}
+@keyframes visualizerPhrase {
+  0%, 100% { transform: scaleY(var(--bar-idle)); opacity: .54; }
+  22% { transform: scaleY(var(--bar-peak)); opacity: 1; }
+  53% { transform: scaleY(var(--bar-mid)); opacity: .76; }
+  78% { transform: scaleY(var(--bar-late)); opacity: .93; }
+}
+@keyframes visualizerIdleRail {
+  0%, 100% { background-position: 100% 0; }
+  50% { background-position: 0 0; }
+}
+.studio .songVisualizer[data-motion="paused"]::after {
+  background: linear-gradient(90deg, transparent 0%, #f2edda 44%, transparent 56%);
+  background-size: 220% 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .songVisualizer[data-motion="playing"] .songVisualizerBars i,
+  .songVisualizer[data-motion="paused"]::after { animation: none; }
+}

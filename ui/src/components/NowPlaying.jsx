@@ -20,6 +20,7 @@ import { useAnalytics } from "../lib/analytics";
 import { useResolvedYouTubeVideo } from "../playback/useResolvedYouTubeVideo";
 import { useJamPlayback } from "../playback/JamPlaybackContext";
 import JamIcon from "./JamIcon";
+import SongVisualizer from "./SongVisualizer";
 
 export default function NowPlaying({
   nowPlaying,
@@ -330,11 +331,14 @@ export default function NowPlaying({
       </div>
 
       <div className={s.nowPlayingMeta}>
-        {nowPlaying.thumbnail_url ? (
-          <img className={s.thumb} src={nowPlaying.thumbnail_url} alt="" />
-        ) : (
-          <div className={s.thumb} />
-        )}
+        <div className={s.artworkStage}>
+          <SongVisualizer isPlaying={isPlaying} artworkUrl={nowPlaying.thumbnail_url} />
+          {nowPlaying.thumbnail_url ? (
+            <img className={s.thumb} src={nowPlaying.thumbnail_url} alt="" />
+          ) : (
+            <div className={s.thumb} />
+          )}
+        </div>
         <div className={s.nowPlayingText}>
           <div className={s.nowPlayingTitle}>{nowPlaying.title}</div>
           <div className={s.nowPlayingArtist}>{nowPlaying.artist}</div>
