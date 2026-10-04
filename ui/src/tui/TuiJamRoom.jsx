@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import TerminalShell from "./TerminalShell";
 import TuiPlaylistPicker from "./TuiPlaylistPicker";
+import TuiPlaybackIndicator from "./TuiPlaybackIndicator";
 import { useAuth } from "../hooks/useAuth";
 import { useSession } from "../hooks/useSession";
 import { useQueue } from "../hooks/useQueue";
@@ -106,6 +107,11 @@ export default function TuiJamRoom() {
   const [histIdx, setHistIdx] = useState(-1);
   const [pendingConfirm, setPendingConfirm] = useState(null);
   const [playlistPicker, setPlaylistPicker] = useState(null);
+  const [playbackSnapshot, setPlaybackSnapshot] = useState({
+    currentTime: 0,
+    duration: 0,
+    playerState: -1,
+  });
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -218,6 +224,32 @@ export default function TuiJamRoom() {
       },
     });
   }, [session?.id, nowPlaying?.id, ytId, isDJ, session?.repeat_mode, registerPlayback, refreshQueue, queueReady, authLoading, sessionLoading]);
+
+  useEffect(() => {
+    if (!nowPlaying) {
+      setPlaybackSnapshot({ currentTime: 0, duration: 0, playerState: -1 });
+      return undefined;
+    }
+
+    const updatePlaybackSnapshot = () => {
+      const next = {
+        currentTime: getTime(),
+        duration: getDuration(),
+        playerState: getState(),
+      };
+      setPlaybackSnapshot((current) => (
+        current.currentTime === next.currentTime
+        && current.duration === next.duration
+        && current.playerState === next.playerState
+          ? current
+          : next
+      ));
+    };
+
+    updatePlaybackSnapshot();
+    const intervalId = window.setInterval(updatePlaybackSnapshot, 500);
+    return () => window.clearInterval(intervalId);
+  }, [getDuration, getState, getTime, nowPlaying?.id]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
@@ -730,6 +762,12 @@ export default function TuiJamRoom() {
                 <div style={{ color: "var(--tui-fg-dim)" }}>
                   {nowPlaying.artist}
                 </div>
+                <TuiPlaybackIndicator
+                  playerState={playbackSnapshot.playerState}
+                  currentTime={playbackSnapshot.currentTime}
+                  duration={playbackSnapshot.duration}
+                  repeatMode={session.repeat_mode}
+                />
                 <div
                   className={`${s.logLine} ${s.dim}`}
                   style={{ marginTop: 6 }}
