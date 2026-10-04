@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle } from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import NowPlaying from "./NowPlaying";
@@ -70,6 +70,23 @@ describe("NowPlaying shared playback", () => {
     expect(screen.getByRole("button", { name: "Previous track" })).toBeEnabled();
     await waitFor(() => expect(screen.getByRole("button", { name: "Pause playback" })).toBeEnabled());
     expect(screen.getByRole("button", { name: "Next track" })).toBeEnabled();
+  });
+
+  test("keeps the play button paused immediately after the DJ pauses", async () => {
+    let syncTransport;
+    const originalSetInterval = window.setInterval;
+    vi.spyOn(window, "setInterval").mockImplementation((callback, delay, ...args) => {
+      if (delay === 500) syncTransport = callback;
+      return originalSetInterval(callback, delay, ...args);
+    });
+    render(<JamPlaybackProvider><NowPlaying {...playingProps} /></JamPlaybackProvider>);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Pause playback" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Pause playback" }));
+    act(() => syncTransport());
+
+    expect(player.pause).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Play playback" })).toBeEnabled();
   });
 
   test("lets the DJ seek using the labelled playback position slider", async () => {
