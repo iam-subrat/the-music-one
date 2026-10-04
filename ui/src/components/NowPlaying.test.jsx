@@ -5,6 +5,13 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import NowPlaying from "./NowPlaying";
 import { JamPlaybackProvider } from "../playback/JamPlaybackContext";
 
+const mocks = vi.hoisted(() => ({
+  castSkipVote: vi.fn(),
+  removeSkipVote: vi.fn(),
+  setRepeatMode: vi.fn(),
+  flags: { AUTO_PLAY_QUEUE: true, YOUTUBE_EMBED: false, VOTE_TO_SKIP: false },
+}));
+
 const player = {
   play: vi.fn(),
   pause: vi.fn(),
@@ -27,11 +34,11 @@ vi.mock("../playback/useResolvedYouTubeVideo", () => ({
 }));
 vi.mock("../hooks/useSkipVotes", () => ({ useSkipVotes: () => ({ count: 0, hasVoted: false }) }));
 vi.mock("../lib/analytics", () => ({ useAnalytics: () => ({ capture: vi.fn() }) }));
-vi.mock("../lib/queue", () => ({ castSkipVote: vi.fn(), removeSkipVote: vi.fn(), playNext: vi.fn(), playPrevious: vi.fn(), playSpecificSong: vi.fn() }));
-vi.mock("../lib/session", () => ({ setRepeatMode: vi.fn() }));
+vi.mock("../lib/queue", () => ({ castSkipVote: mocks.castSkipVote, removeSkipVote: mocks.removeSkipVote, playNext: vi.fn(), playPrevious: vi.fn(), playSpecificSong: vi.fn() }));
+vi.mock("../lib/session", () => ({ setRepeatMode: mocks.setRepeatMode }));
 vi.mock("./Toast", () => ({ useToast: () => vi.fn() }));
 vi.mock("./PlatformLinks", () => ({ default: () => null }));
-vi.mock("../lib/flags", () => ({ FLAGS: { AUTO_PLAY_QUEUE: true, YOUTUBE_EMBED: false, VOTE_TO_SKIP: false } }));
+vi.mock("../lib/flags", () => ({ FLAGS: mocks.flags }));
 
 const playingProps = {
   nowPlaying: { id: "item-1", title: "Song", artist: "Artist", thumbnail_url: null, platform_links: {} },
@@ -49,9 +56,31 @@ const playingProps = {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  mocks.flags.VOTE_TO_SKIP = false;
 });
 
 describe("NowPlaying shared playback", () => {
+  test("keeps the repeat control in its next state while the update is pending", () => {
+    mocks.setRepeatMode.mockImplementationOnce(() => new Promise(() => {}));
+    const onRepeatModeChange = vi.fn();
+    render(<JamPlaybackProvider><NowPlaying {...playingProps} onRepeatModeChange={onRepeatModeChange} /></JamPlaybackProvider>);
+
+    fireEvent.click(screen.getByRole("button", { name: "Repeat" }));
+
+    expect(onRepeatModeChange).toHaveBeenCalledWith("song");
+    expect(screen.getByRole("button", { name: "Repeat song" })).toBeDisabled();
+  });
+
+  test("keeps a skip vote selected while its request is pending", () => {
+    mocks.flags.VOTE_TO_SKIP = true;
+    mocks.castSkipVote.mockImplementationOnce(() => new Promise(() => {}));
+    render(<JamPlaybackProvider><NowPlaying {...playingProps} isDJ={false} /></JamPlaybackProvider>);
+
+    fireEvent.click(screen.getByRole("button", { name: /skip/i }));
+
+    expect(screen.getByRole("button", { name: /unvote/i })).toBeDisabled();
+  });
+
   test("registers an active GUI song with the single provider-owned player", async () => {
     render(<JamPlaybackProvider><NowPlaying {...playingProps} /></JamPlaybackProvider>);
     await waitFor(() => expect(screen.getByTestId("youtube-player")).toHaveAttribute("data-video-id", "video-123"));

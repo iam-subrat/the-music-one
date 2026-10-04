@@ -160,10 +160,12 @@ export default function JamRoom() {
 
   // ── Repeat mode: read from server session, write back via API ─────────────
   const repeatMode = session.repeat_mode ?? "none";
-  const handleRepeatModeChange = (next) => {
+  const handleRepeatModeChange = async (next) => {
     // Optimistic local update so the UI responds immediately
     setSession((prev) => ({ ...prev, repeat_mode: next }));
-    setRepeatMode(session.id, next).catch((e) => {
+    try {
+      await setRepeatMode(session.id, next);
+    } catch (e) {
       // Roll back on failure
       setSession((prev) => ({ ...prev, repeat_mode: repeatMode }));
       if (isAuthError(e)) {
@@ -172,7 +174,8 @@ export default function JamRoom() {
           `/jam/${code}`,
         );
       }
-    });
+      throw e;
+    }
   };
 
   // ── Queue display: upcoming only ──────────────────────────────────────────

@@ -50,6 +50,21 @@ export default function NowPlaying({
   const { registerPlayback, play, pause, seek, replay, getTime, getDuration, getState } = useJamPlayback();
   const [transport, setTransport] = useState({ current: 0, duration: 0, state: -1 });
   const [isSeeking, setIsSeeking] = useState(false);
+  const [isRepeatUpdating, setIsRepeatUpdating] = useState(false);
+  const [repeatOverride, setRepeatOverride] = useState(null);
+  const [isVoting, setIsVoting] = useState(false);
+  const [voteOverride, setVoteOverride] = useState(null);
+  const displayRepeatMode = repeatOverride ?? repeatMode;
+  const displayHasVoted = voteOverride?.hasVoted ?? hasVoted;
+  const displaySkipVotes = voteOverride?.count ?? skipVotes;
+
+  useEffect(() => {
+    if (repeatOverride === repeatMode) setRepeatOverride(null);
+  }, [repeatMode, repeatOverride]);
+
+  useEffect(() => {
+    if (voteOverride?.hasVoted === hasVoted) setVoteOverride(null);
+  }, [hasVoted, voteOverride]);
   const pendingTransportStateRef = useRef(null);
 
   useEffect(() => {
@@ -385,29 +400,38 @@ export default function NowPlaying({
       <div className={s.djControls}>
         {isDJ && (
           <button
-            className={`${s.repeatBtn} ${repeatMode !== "none" ? s.repeatBtnActive : ""}`}
-            onClick={() => {
+            className={`${s.repeatBtn} ${displayRepeatMode !== "none" ? s.repeatBtnActive : ""}`}
+            disabled={isRepeatUpdating}
+            onClick={async () => {
               const next = { none: "song", song: "queue", queue: "none" }[
-                repeatMode
+                displayRepeatMode
               ];
+              setRepeatOverride(next);
+              setIsRepeatUpdating(true);
               onRepeatModeChange?.(next);
-              setRepeatMode(sessionId, next).catch((e) => {
+              try {
+                await setRepeatMode(sessionId, next);
+              } catch (e) {
+                setRepeatOverride(null);
                 onRepeatModeChange?.(repeatMode);
                 toast(e.message);
-              });
+              } finally {
+                setIsRepeatUpdating(false);
+              }
             }}
           >
             <JamIcon name="repeat" size={15} />
-            {repeatMode === "queue" ? "Repeat queue" : repeatMode === "song" ? "Repeat song" : "Repeat"}
+            {displayRepeatMode === "queue" ? "Repeat queue" : displayRepeatMode === "song" ? "Repeat song" : "Repeat"}
           </button>
         )}
         {FLAGS.VOTE_TO_SKIP && (
           <button
-            className={`${s.skipBtn} ${hasVoted ? s.skipBtnVoted : ""}`}
+            className={`${s.skipBtn} ${displayHasVoted ? s.skipBtnVoted : ""}`}
+            disabled={isVoting}
             onClick={handleSkipVote}
           >
             <JamIcon name="skip" size={15} />
-            {hasVoted ? "Unvote" : "Skip"} ({skipVotes}/{skipThreshold})
+            {displayHasVoted ? "Unvote" : "Skip"} ({displaySkipVotes}/{skipThreshold})
           </button>
         )}
       </div>
@@ -465,8 +489,14 @@ export default function NowPlaying({
   );
 
   async function handleSkipVote() {
+    const nextHasVoted = !displayHasVoted;
+    setVoteOverride({
+      hasVoted: nextHasVoted,
+      count: Math.max(0, skipVotes + (nextHasVoted ? 1 : -1)),
+    });
+    setIsVoting(true);
     try {
-      if (hasVoted) {
+      if (displayHasVoted) {
         await removeSkipVote(nowPlaying.id, userId);
         refreshSkipVotes?.();
       } else {
@@ -479,7 +509,10 @@ export default function NowPlaying({
         else refreshSkipVotes?.();
       }
     } catch (e) {
+      setVoteOverride(null);
       toast(e.message);
+    } finally {
+      setIsVoting(false);
     }
   }
 }

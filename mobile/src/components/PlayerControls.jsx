@@ -69,6 +69,21 @@ export default function PlayerControls({
     userId,
     session?.id,
   );
+  const [isRepeatUpdating, setIsRepeatUpdating] = useState(false);
+  const [repeatOverride, setRepeatOverride] = useState(null);
+  const [isVoting, setIsVoting] = useState(false);
+  const [voteOverride, setVoteOverride] = useState(null);
+  const displayRepeatMode = repeatOverride ?? repeatMode;
+  const displayHasVoted = voteOverride?.hasVoted ?? hasVoted;
+  const displaySkipVotes = voteOverride?.count ?? skipVotes;
+
+  useEffect(() => {
+    if (repeatOverride === repeatMode) setRepeatOverride(null);
+  }, [repeatMode, repeatOverride]);
+
+  useEffect(() => {
+    if (voteOverride?.hasVoted === hasVoted) setVoteOverride(null);
+  }, [hasVoted, voteOverride]);
 
   // ── Auto-advance on natural song end ─────────────────────────────────────
   useEffect(() => {
@@ -149,14 +164,21 @@ export default function PlayerControls({
       );
       return;
     }
+    const nextHasVoted = !displayHasVoted;
+    setVoteOverride({
+      hasVoted: nextHasVoted,
+      count: Math.max(0, skipVotes + (nextHasVoted ? 1 : -1)),
+    });
+    setIsVoting(true);
     try {
-      if (hasVoted) {
+      if (displayHasVoted) {
         await removeSkipVote(playingItem.id, userId);
       } else {
         const skipped = await castSkipVote(playingItem.id, skipThreshold);
         if (skipped) refresh?.();
       }
     } catch (e) {
+      setVoteOverride(null);
       console.error("Skip vote failed:", e);
       if (isAuthError(e)) {
         promptSignIn(
@@ -164,14 +186,24 @@ export default function PlayerControls({
           session?.invite_code ? `/jam/${session.invite_code}` : null,
         );
       }
+    } finally {
+      setIsVoting(false);
     }
   };
 
   // ── Repeat toggle: cycle none → song → queue → none ──────────────────────
-  const handleRepeatToggle = () => {
+  const handleRepeatToggle = async () => {
     const next =
-      { none: "song", song: "queue", queue: "none" }[repeatMode] ?? "none";
-    onRepeatModeChange?.(next);
+      { none: "song", song: "queue", queue: "none" }[displayRepeatMode] ?? "none";
+    setRepeatOverride(next);
+    setIsRepeatUpdating(true);
+    try {
+      await onRepeatModeChange?.(next);
+    } catch {
+      setRepeatOverride(null);
+    } finally {
+      setIsRepeatUpdating(false);
+    }
   };
 
   // ── Seek bar: smooth drag + drop-to-seek ──────────────────────────────────
@@ -364,36 +396,38 @@ export default function PlayerControls({
               {/* Skip vote (visible to all, including DJ) */}
               <button
                 onClick={handleSkipVote}
+                disabled={isVoting}
                 className={`relative w-10 h-10 border-2 border-black rounded-full flex items-center justify-center active:scale-90 transition-transform ${
-                  hasVoted ? "bg-black text-lime-400" : "bg-white text-black"
+                  displayHasVoted ? "bg-black text-lime-400" : "bg-white text-black"
                 }`}
               >
                 <ThumbsDown size={18} />
                 <div className="absolute -top-2 -right-2 bg-white border-2 border-black text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full">
-                  {skipVotes}
+                  {displaySkipVotes}
                 </div>
               </button>
 
               {/* Repeat toggle — cycles none → song → queue */}
               <button
                 onClick={handleRepeatToggle}
+                disabled={isRepeatUpdating}
                 title={
-                  repeatMode === "song"
+                  displayRepeatMode === "song"
                     ? "Repeat Song"
-                    : repeatMode === "queue"
+                    : displayRepeatMode === "queue"
                       ? "Repeat Queue"
                       : "No Repeat"
                 }
                 className={`w-10 h-10 border-2 border-black rounded-full flex items-center justify-center active:scale-90 transition-transform ${
-                  repeatMode !== "none" ? "bg-lime-300" : "bg-white"
+                  displayRepeatMode !== "none" ? "bg-lime-300" : "bg-white"
                 }`}
               >
-                {repeatMode === "song" ? (
+                {displayRepeatMode === "song" ? (
                   <Repeat1 size={18} />
                 ) : (
                   <Repeat
                     size={18}
-                    className={repeatMode === "none" ? "opacity-30" : ""}
+                    className={displayRepeatMode === "none" ? "opacity-30" : ""}
                   />
                 )}
               </button>
@@ -435,12 +469,13 @@ export default function PlayerControls({
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={handleSkipVote}
+                disabled={isVoting}
                 className={`border-2 border-black rounded-full px-3 py-2 text-xs font-bold uppercase tracking-wider active:scale-95 transition-transform flex items-center gap-1.5 ${
-                  hasVoted ? "bg-black text-lime-400" : "bg-white text-black"
+                  displayHasVoted ? "bg-black text-lime-400" : "bg-white text-black"
                 }`}
               >
                 <ThumbsDown size={14} />
-                Skip ({skipVotes}/{skipThreshold}) {hasVoted ? "✓" : ""}
+                Skip ({displaySkipVotes}/{skipThreshold}) {displayHasVoted ? "✓" : ""}
               </button>
               <div className="bg-white border-2 border-black rounded-full px-3 py-2 text-xs font-bold uppercase tracking-wider">
                 {isPlaying ? "Playing" : "Paused"}
