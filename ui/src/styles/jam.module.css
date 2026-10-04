@@ -889,3 +889,67 @@
   .queueCard { flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) { .iconButton, .playButton { transition: none; } }
+
+/* Artwork visualizer: a contained foreground rhythm, never a competing card. */
+.artworkStage {
+  width: 148px;
+  height: 148px;
+  overflow: hidden;
+  border: 1px solid var(--jam-control-border);
+  border-radius: 14px;
+  background: var(--jam-control-fill);
+}
+.artworkStage .thumb { width: 100%; height: 100%; border-radius: inherit; }
+.nowPlayingMeta { grid-template-columns: 148px minmax(0, 1fr); gap: 22px; margin: 0; }
+.nowPlayingTitle { max-width: 24ch; font-size: clamp(1.55rem, 2.5vw, 2.35rem); line-height: 1.04; }
+.nowPlayingAdded { margin-top: 10px; }
+.songVisualizer[data-layer="foreground"] {
+  z-index: 2;
+  inset: auto 0 0;
+  height: 42%;
+  display: flex;
+  align-items: end;
+  overflow: hidden;
+  border-radius: 0 0 13px 13px;
+  opacity: 1;
+  background: linear-gradient(to top, rgba(5, 7, 12, .8), rgba(5, 7, 12, 0));
+}
+.songVisualizer[data-layer="foreground"]::before { display: none; }
+.songVisualizer[data-layer="foreground"]::after {
+  inset: 0 0 auto;
+  width: auto;
+  height: 1px;
+  border: 0;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--jam-accent) 58%, transparent);
+  opacity: 1;
+}
+.songVisualizer[data-layer="foreground"] .songVisualizerBars {
+  width: 100%;
+  height: 68%;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 12px 10px;
+}
+.songVisualizer[data-layer="foreground"] .songVisualizerBars i {
+  width: 3px;
+  background: color-mix(in srgb, var(--jam-accent) 90%, white);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--jam-accent) 74%, transparent);
+}
+.studio .artworkStage { width: 100%; height: 190px; border-color: #c5cbbd; }
+.studio .songVisualizer[data-layer="foreground"] {
+  background: linear-gradient(to top, rgba(27, 46, 31, .82), rgba(27, 46, 31, 0));
+}
+.studio .songVisualizer[data-layer="foreground"]::after { background: rgba(242, 237, 218, .72); }
+.studio .songVisualizer[data-layer="foreground"] .songVisualizerBars i {
+  background: #f2edda;
+  box-shadow: 0 0 7px rgba(242, 237, 218, .5);
+}
+@media (max-width: 760px) {
+  .artworkStage { width: 112px; height: 112px; }
+  .nowPlayingMeta { grid-template-columns: 112px minmax(0, 1fr); gap: 16px; }
+  .studio .artworkStage { width: 100%; height: 160px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .songVisualizer[data-playing="true"] .songVisualizerBars i { animation: none; }
+}

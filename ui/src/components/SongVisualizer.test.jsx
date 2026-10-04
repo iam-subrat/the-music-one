@@ -19,4 +19,10 @@ describe("SongVisualizer", () => {
 
     expect(screen.getByTestId("song-visualizer")).toHaveAttribute("data-playing", "false");
   });
+
+  test("marks its bars as a foreground artwork layer", () => {
+    render(<SongVisualizer isPlaying />);
+
+    expect(screen.getByTestId("song-visualizer")).toHaveAttribute("data-layer", "foreground");
+  });
 });

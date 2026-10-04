@@ -7,6 +7,7 @@ export default function SongVisualizer({ isPlaying, artworkUrl }) {
     <div
       aria-hidden="true"
       className={s.songVisualizer}
+      data-layer="foreground"
       data-playing={isPlaying ? "true" : "false"}
       data-testid="song-visualizer"
       style={artworkUrl ? { "--visualizer-artwork": `url("${artworkUrl}")` } : undefined}
