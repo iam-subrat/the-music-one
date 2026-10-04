@@ -65,6 +65,52 @@
 .nowPlayingArtist { font-size: 0.9rem; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nowPlayingAdded { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
 
+.artworkStage { position: relative; flex: 0 0 auto; isolation: isolate; }
+.artworkStage .thumb { position: relative; z-index: 1; display: block; }
+.songVisualizer {
+  position: absolute;
+  z-index: 0;
+  inset: -20%;
+  display: grid;
+  place-items: end center;
+  overflow: hidden;
+  border-radius: 22%;
+  opacity: .88;
+  pointer-events: none;
+  transform: translateZ(0);
+}
+.songVisualizer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--visualizer-artwork, radial-gradient(circle at 18% 18%, var(--jam-accent), transparent 62%));
+  background-position: center;
+  background-size: cover;
+  filter: blur(18px) saturate(1.4);
+  opacity: .46;
+  transform: scale(1.28);
+}
+.songVisualizer::after {
+  content: "";
+  position: absolute;
+  inset: 8%;
+  border: 1px solid color-mix(in srgb, var(--jam-accent) 38%, transparent);
+  border-radius: 28%;
+  opacity: .78;
+}
+.songVisualizerBars { position: relative; z-index: 1; display: flex; align-items: end; gap: clamp(2px, .45vw, 5px); height: 48%; padding-bottom: 10%; }
+.songVisualizerBars i {
+  display: block;
+  width: clamp(2px, .35vw, 4px);
+  height: var(--bar-height);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--jam-accent) 88%, white);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--jam-accent) 62%, transparent);
+  transform-origin: bottom;
+}
+.songVisualizer[data-playing="true"] .songVisualizerBars i { animation: visualizerBeat 1.15s ease-in-out infinite alternate; animation-delay: calc(var(--bar-index) * -95ms); }
+@keyframes visualizerBeat { from { transform: scaleY(.45); opacity: .55; } to { transform: scaleY(1.45); opacity: 1; } }
+
 .preferredBtn {
   display: inline-flex;
   align-items: center;
@@ -516,7 +562,7 @@
   .queueList { max-height: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pulseDot, .iconButton, .playButton, .queueCard, .preferredBtn { animation: none; transition: none; }
+  .pulseDot, .songVisualizerBars i, .iconButton, .playButton, .queueCard, .preferredBtn { animation: none; transition: none; }
 }
 
 /* Pulse and Studio share the mockup's room shell; color and artwork treatment vary. */
@@ -529,6 +575,13 @@
   --jam-border: rgba(255, 255, 255, .09);
   --text-secondary: var(--jam-muted);
   background: var(--jam-canvas);
+}
+.studio .songVisualizer { opacity: .58; }
+.studio .songVisualizer::before { filter: blur(20px) saturate(.72); opacity: .26; }
+.studio .songVisualizer::after { border-color: color-mix(in srgb, #5b8751 36%, transparent); }
+.studio .songVisualizerBars i {
+  background: color-mix(in srgb, #5b8751 76%, #dbe6d4);
+  box-shadow: 0 0 8px color-mix(in srgb, #5b8751 28%, transparent);
 }
 .studio {
   --jam-canvas: #f5f3ed;
