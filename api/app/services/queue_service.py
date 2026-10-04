@@ -87,6 +87,8 @@ class QueueService:
             
             if session and session.auto_pilot:
                 current = await self.store.queue.get_current_playing(session_id)
+                if not current:
+                    current = await self.store.queue.get_last_played(session_id)
                 if current:
                     try:
                         related_meta = await self.song_svc.get_related_song(current)

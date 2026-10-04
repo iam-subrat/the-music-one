@@ -93,12 +93,23 @@ async def set_auto_pilot(
     body: AutoPilotUpdate,
     user_id: UUID = Depends(get_current_user),
     svc=Depends(get_session_service),
+    queue_svc=Depends(get_queue_service),
 ):
     try:
         await svc.set_auto_pilot(session_id, body.enabled, user_id)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     await bus.publish(str(session_id), "session_updated", {"auto_pilot": body.enabled})
+    
+    if body.enabled:
+        # If enabled, and nothing is currently playing, trigger play_next to instantly kickstart the auto-pilot
+        try:
+            current = await queue_svc.store.queue.get_current_playing(session_id)
+            if not current:
+                await queue_svc.play_next(session_id, user_id)
+        except Exception:
+            pass
+
     return {"ok": True}
 
 

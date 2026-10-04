@@ -100,6 +100,16 @@ class QueueRepository(AbstractRepository):
         )
         return result.scalar_one_or_none()
 
+    async def get_last_played(self, session_id: UUID) -> Optional[QueueItem]:
+        result = await self.db.execute(
+            select(QueueItem)
+            .where(QueueItem.session_id == session_id, QueueItem.status == "played")
+            .order_by(QueueItem.position.desc())
+            .limit(1)
+            .options(selectinload(QueueItem.profiles))
+        )
+        return result.scalar_one_or_none()
+
     async def create_stub(
         self,
         session_id: UUID,
