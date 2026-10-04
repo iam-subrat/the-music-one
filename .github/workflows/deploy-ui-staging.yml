@@ -32,7 +32,7 @@ jobs:
       - name: Build UI
         working-directory: ui
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL || vars.VITE_API_URL }}
           VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
           VITE_APP_ENV: ${{ vars.VITE_APP_ENV }}
           FLAG_JAM_SESSION: 'true'
