@@ -25,4 +25,13 @@ describe("SongVisualizer", () => {
 
     expect(screen.getByTestId("song-visualizer")).toHaveAttribute("data-layer", "foreground");
   });
+
+  test("gives the playing bars varied motion timing instead of one synchronized loop", () => {
+    const { container } = render(<SongVisualizer isPlaying />);
+
+    const durations = [...container.querySelectorAll("i")].map((bar) =>
+      bar.style.getPropertyValue("--bar-duration"),
+    );
+    expect(new Set(durations).size).toBeGreaterThan(1);
+  });
 });

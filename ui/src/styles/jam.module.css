@@ -953,3 +953,38 @@
 @media (prefers-reduced-motion: reduce) {
   .songVisualizer[data-playing="true"] .songVisualizerBars i { animation: none; }
 }
+
+/* Composed motion: energetic while playing, visibly settled while paused. */
+.songVisualizer[data-layer="foreground"] .songVisualizerBars i {
+  opacity: .46;
+  transform: scaleY(var(--bar-idle));
+  transition: transform 620ms cubic-bezier(.2, .8, .25, 1), opacity 620ms ease;
+}
+.songVisualizer[data-playing="true"] .songVisualizerBars i {
+  animation: visualizerPhrase var(--bar-duration) cubic-bezier(.45, 0, .55, 1) var(--bar-delay) infinite;
+  opacity: 1;
+}
+.songVisualizer[data-playing="false"]::after {
+  background: linear-gradient(90deg, transparent 0%, var(--jam-accent) 44%, transparent 56%);
+  background-size: 220% 100%;
+  animation: visualizerIdleRail 5.4s ease-in-out infinite;
+  opacity: .55;
+}
+@keyframes visualizerPhrase {
+  0%, 100% { transform: scaleY(var(--bar-idle)); opacity: .54; }
+  22% { transform: scaleY(var(--bar-peak)); opacity: 1; }
+  53% { transform: scaleY(var(--bar-mid)); opacity: .76; }
+  78% { transform: scaleY(var(--bar-late)); opacity: .93; }
+}
+@keyframes visualizerIdleRail {
+  0%, 100% { background-position: 100% 0; }
+  50% { background-position: 0 0; }
+}
+.studio .songVisualizer[data-playing="false"]::after {
+  background: linear-gradient(90deg, transparent 0%, #f2edda 44%, transparent 56%);
+  background-size: 220% 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .songVisualizer[data-playing="true"] .songVisualizerBars i,
+  .songVisualizer[data-playing="false"]::after { animation: none; }
+}
