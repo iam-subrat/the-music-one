@@ -12,6 +12,7 @@ class SessionResponse(BaseModel):
     dj_user_id: Optional[UUID] = None
     status: str
     repeat_mode: str
+    auto_pilot: bool
     max_participants: int
     created_at: datetime
     ended_at: Optional[datetime] = None
@@ -22,6 +23,10 @@ class SessionResponse(BaseModel):
 
 class RepeatModeUpdate(BaseModel):
     mode: str  # "none" | "song" | "queue"
+
+
+class AutoPilotUpdate(BaseModel):
+    enabled: bool
 
 
 class DjPassRequest(BaseModel):

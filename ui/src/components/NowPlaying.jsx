@@ -13,7 +13,7 @@ import {
   playPrevious,
   playSpecificSong,
 } from "../lib/queue";
-import { setRepeatMode } from "../lib/session";
+import { setRepeatMode, setAutoPilot } from "../lib/session";
 import { useToast } from "./Toast";
 import PlatformLinks from "./PlatformLinks";
 import { useAnalytics } from "../lib/analytics";
@@ -32,6 +32,8 @@ export default function NowPlaying({
   onQueueChange,
   repeatMode,
   onRepeatModeChange,
+  autoPilot,
+  onAutoPilotChange,
   queueItems,
   playbackReady = true,
 }) {
@@ -422,6 +424,22 @@ export default function NowPlaying({
           >
             <JamIcon name="repeat" size={15} />
             {displayRepeatMode === "queue" ? "Repeat queue" : displayRepeatMode === "song" ? "Repeat song" : "Repeat"}
+          </button>
+        )}
+        {isDJ && (
+          <button
+            className={`${s.repeatBtn} ${autoPilot ? s.repeatBtnActive : ""}`}
+            onClick={() => {
+              const next = !autoPilot;
+              onAutoPilotChange?.(next);
+              setAutoPilot(sessionId, next).catch((e) => {
+                onAutoPilotChange?.(autoPilot);
+                toast(e.message);
+              });
+            }}
+          >
+            <JamIcon name="play" size={15} />
+            Auto-Pilot {autoPilot ? "On" : "Off"}
           </button>
         )}
         {FLAGS.VOTE_TO_SKIP && (
