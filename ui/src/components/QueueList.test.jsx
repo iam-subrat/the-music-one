@@ -38,6 +38,22 @@ function renderQueue(items, repeatMode = "none") {
 }
 
 describe("QueueList", () => {
+  test("renders a previously played queue item with the normal card styling", () => {
+    const playedView = renderQueue([{ ...queuedSong, status: "played" }], "queue");
+    const playedCard = screen
+      .getByText(queuedSong.title)
+      .closest('[class*="queueCard"]');
+
+    playedView.unmount();
+    const queuedView = renderQueue([queuedSong], "queue");
+    const queuedCard = screen
+      .getByText(queuedSong.title)
+      .closest('[class*="queueCard"]');
+
+    expect(playedCard.className).toBe(queuedCard.className);
+    queuedView.unmount();
+  });
+
   test("offers Skip for a previously played song when repeating the queue", () => {
     renderQueue([{ ...queuedSong, status: "played" }], "queue");
 

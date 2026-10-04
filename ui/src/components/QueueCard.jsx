@@ -18,15 +18,13 @@ export default function QueueCard({
   const [isVoting, setIsVoting] = useState(false);
   const skipThreshold = Math.floor(participantCount / 2) + 1;
   const statusCls =
-    item.status === "played"
-      ? s.queueCardPlayed
-      : item.status === "skipped"
-        ? s.queueCardSkipped
-        : item.resolve_status === "resolving"
-          ? s.queueCardResolving
-          : item.resolve_status === "failed"
-            ? s.queueCardFailed
-            : "";
+    item.status === "skipped"
+      ? s.queueCardSkipped
+      : item.resolve_status === "resolving"
+        ? s.queueCardResolving
+        : item.resolve_status === "failed"
+          ? s.queueCardFailed
+          : "";
 
   return (
     <div className={`${s.queueCard} ${statusCls}`}>

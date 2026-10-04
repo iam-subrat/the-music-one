@@ -173,7 +173,6 @@
 .queueVoteBtn { margin-left: auto; padding: 6px 9px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--muted); font-size: 0.75rem; cursor: pointer; }
 .queueVoteBtn:hover, .queueVoteBtnVoted { border-color: #ff6b6b; color: #ff6b6b; }
 .queueVoteBtn:disabled { cursor: wait; opacity: 0.65; }
-.queueCardPlayed { opacity: 0.45; }
 .queueCardSkipped { opacity: 0.35; }
 .queueThumb { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; background: var(--border); flex-shrink: 0; }
 .queueMeta { flex: 1; min-width: 0; }
