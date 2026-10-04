@@ -33,6 +33,7 @@ export function getUpcoming(items, repeatMode) {
 export default function QueueList({
   items,
   repeatMode,
+  autoPilot,
   sessionId,
   userId,
   participantCount,
@@ -73,7 +74,9 @@ export default function QueueList({
           >
             {repeatMode === "queue" && items?.length > 0
               ? "Looping all songs…"
-              : "No songs up next. Add one to keep the jam going."}
+              : autoPilot
+                ? "AI DJ Auto-Pilot is active. Next song will be automatically queued."
+                : "No songs up next. Add one to keep the jam going."}
           </p>
         ) : (
           upcoming.map((item, i) => (

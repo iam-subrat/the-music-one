@@ -310,6 +310,7 @@ export default function JamRoom() {
             <QueueList
               items={queueItems}
               repeatMode={session.repeat_mode ?? "none"}
+              autoPilot={session.auto_pilot ?? false}
               sessionId={session.id}
               userId={user?.id}
               participantCount={participants.length}
