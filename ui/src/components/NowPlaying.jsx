@@ -49,6 +49,7 @@ export default function NowPlaying({
   const { registerPlayback, play, pause, seek, replay, getTime, getDuration, getState } = useJamPlayback();
   const [transport, setTransport] = useState({ current: 0, duration: 0, state: -1 });
   const [isSeeking, setIsSeeking] = useState(false);
+  const pendingTransportStateRef = useRef(null);
 
   useEffect(() => {
     if (!nowPlaying || nowPlaying.id === prevNowPlayingIdRef.current) return;
@@ -249,10 +250,17 @@ export default function NowPlaying({
     if (!nowPlaying) return undefined;
     const syncTransport = () => {
       if (isSeeking) return;
+      const playerState = getState();
+      const pendingState = pendingTransportStateRef.current;
+      if (pendingState != null && playerState === pendingState) {
+        pendingTransportStateRef.current = null;
+      }
       setTransport({
         current: getTime(),
         duration: getDuration(),
-        state: getState(),
+        state: pendingState != null && playerState !== pendingState
+          ? pendingState
+          : playerState,
       });
     };
     syncTransport();
@@ -290,7 +298,11 @@ export default function NowPlaying({
   const prefMeta = pref ? PLATFORM_META[pref.platform] : null;
   const duration = Math.max(0, transport.duration || getDuration());
   const current = Math.min(Math.max(0, transport.current), duration || 0);
-  const isPlaying = transport.state === 1 || getState() === 1;
+  // Player commands update asynchronously. Once transport has observed a state,
+  // keep the control in sync with the optimistic tap state instead of briefly
+  // reverting to the player's previous state.
+  const playerState = transport.state === -1 ? getState() : transport.state;
+  const isPlaying = playerState === 1;
   const formatTime = (seconds) => {
     const safe = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
     return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, "0")}`;
@@ -304,9 +316,11 @@ export default function NowPlaying({
 
   function handleTogglePlayback() {
     if (!isDJ) return;
+    const nextState = isPlaying ? 2 : 1;
+    pendingTransportStateRef.current = nextState;
     if (isPlaying) pause();
     else play();
-    setTransport((value) => ({ ...value, state: isPlaying ? 2 : 1 }));
+    setTransport((value) => ({ ...value, state: nextState }));
   }
 
   return (

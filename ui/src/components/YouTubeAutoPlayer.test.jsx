@@ -33,6 +33,14 @@ afterEach(() => {
 });
 
 describe("YouTubeAutoPlayer", () => {
+  test("starts the initial video paused", () => {
+    render(<YouTubeAutoPlayer videoId="video-1" onEnded={vi.fn()} repeat={false} />);
+
+    act(() => window.onYouTubeIframeAPIReady());
+
+    expect(window.YT.Player.mock.calls[0][1].playerVars.autoplay).toBe(0);
+  });
+
   test("replays the current video and accepts its next natural end event", () => {
     const ref = createRef();
     const onEnded = vi.fn();
