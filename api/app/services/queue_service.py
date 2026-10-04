@@ -106,7 +106,7 @@ class QueueService:
                     except Exception as exc:
                         logging.getLogger(__name__).warning("Auto-pilot failed: %s", exc)
 
-            return await self.store.queue.play_next(session_id, user_id, "played")
+            return None
 
         while next_item:
             if next_item.resolve_status != "resolving":

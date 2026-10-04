@@ -6,9 +6,10 @@ from app.models.queue_item import QueueItem
 from fastapi import HTTPException
 
 
-def _make_session(repeat_mode="none"):
+def _make_session(repeat_mode="none", auto_pilot=False):
     session = MagicMock()
     session.repeat_mode = repeat_mode
+    session.auto_pilot = auto_pilot
     return session
 
 
