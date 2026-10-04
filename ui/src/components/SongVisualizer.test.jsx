@@ -17,7 +17,9 @@ describe("SongVisualizer", () => {
   test("settles the visualizer when playback is paused", () => {
     render(<SongVisualizer isPlaying={false} />);
 
-    expect(screen.getByTestId("song-visualizer")).toHaveAttribute("data-playing", "false");
+    const visualizer = screen.getByTestId("song-visualizer");
+    expect(visualizer).toHaveAttribute("data-playing", "false");
+    expect(visualizer).toHaveAttribute("data-motion", "paused");
   });
 
   test("marks its bars as a foreground artwork layer", () => {

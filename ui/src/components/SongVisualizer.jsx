@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import s from "../styles/jam.module.css";
 
 const BARS = [
@@ -15,16 +16,59 @@ const BARS = [
 ];
 
 export default function SongVisualizer({ isPlaying, artworkUrl }) {
+  const barsRef = useRef(null);
+  const settleFrameRef = useRef(null);
+  const [motion, setMotion] = useState(isPlaying ? "playing" : "paused");
+
+  useLayoutEffect(() => {
+    const bars = [...(barsRef.current?.querySelectorAll("i") || [])];
+    if (!bars.length) return undefined;
+
+    if (settleFrameRef.current) {
+      cancelAnimationFrame(settleFrameRef.current);
+      settleFrameRef.current = null;
+    }
+
+    if (isPlaying) {
+      bars.forEach((bar) => {
+        bar.style.removeProperty("transform");
+        bar.style.removeProperty("opacity");
+      });
+      setMotion("playing");
+      return undefined;
+    }
+
+    if (motion !== "playing") return undefined;
+
+    bars.forEach((bar) => {
+      const computed = window.getComputedStyle(bar);
+      bar.style.transform = computed.transform;
+      bar.style.opacity = computed.opacity;
+    });
+    setMotion("paused");
+    settleFrameRef.current = requestAnimationFrame(() => {
+      bars.forEach((bar) => {
+        bar.style.transform = `scaleY(${bar.style.getPropertyValue("--bar-idle")})`;
+        bar.style.opacity = ".46";
+      });
+    });
+
+    return () => {
+      if (settleFrameRef.current) cancelAnimationFrame(settleFrameRef.current);
+    };
+  }, [isPlaying]);
+
   return (
     <div
       aria-hidden="true"
       className={s.songVisualizer}
       data-layer="foreground"
+      data-motion={motion}
       data-playing={isPlaying ? "true" : "false"}
       data-testid="song-visualizer"
       style={artworkUrl ? { "--visualizer-artwork": `url("${artworkUrl}")` } : undefined}
     >
-      <div className={s.songVisualizerBars}>
+      <div ref={barsRef} className={s.songVisualizerBars}>
         {BARS.map(([height, duration, delay, idle, peak, mid, late], index) => (
           <i
             key={index}
