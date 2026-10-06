@@ -105,3 +105,59 @@ class SongService:
                 }
             except Exception:
                 return {"id": None, "title": None}
+
+    async def get_related_song(self, current_item) -> dict | None:
+        if not current_item or not current_item.platform_links:
+            return None
+        yt_url = current_item.platform_links.get("youtube")
+        if not yt_url:
+            return None
+            
+        import urllib.parse
+        parsed = urllib.parse.urlparse(yt_url)
+        qsl = urllib.parse.parse_qs(parsed.query)
+        video_id = qsl.get("v", [None])[0]
+        if not video_id:
+            return None
+
+        yt = await self.resolve_youtube_related(video_id)
+        if not yt.get("id"):
+            return None
+            
+        youtube_url = f"https://www.youtube.com/watch?v={yt['id']}"
+        try:
+            meta = await self.resolve_song_meta(youtube_url)
+        except HTTPException:
+            meta = {
+                "title": yt.get("title") or "Unknown Auto-Pilot Song",
+                "artist": "",
+                "thumbnailUrl": None,
+                "platformLinks": {"youtube": youtube_url},
+            }
+        return meta
+
+    async def resolve_youtube_related(self, video_id: str) -> dict:
+        import asyncio
+        from ytmusicapi import YTMusic
+        
+        def _fetch():
+            yt = YTMusic()
+            # Fetch the "Up Next" / related playlist from YouTube Music
+            res = yt.get_watch_playlist(videoId=video_id)
+            tracks = res.get("tracks", [])
+            # track 0 is usually the requested video_id itself. We want the next recommended one.
+            for track in tracks:
+                if track.get("videoId") and track.get("videoId") != video_id:
+                    return {
+                        "id": track["videoId"],
+                        "title": track.get("title", "")
+                    }
+            return {"id": None, "title": None}
+
+        try:
+            # ytmusicapi makes sync HTTP requests; run it in a threadpool to not block asyncio event loop
+            return await asyncio.to_thread(_fetch)
+        except Exception as e:
+            _log.warning(f"ytmusicapi failed to fetch related songs: {e}")
+            return {"id": None, "title": None}
+

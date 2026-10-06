@@ -13,7 +13,7 @@ import {
   removeSkipVote,
 } from "../lib/queue";
 import { useSkipVotes } from "../hooks/useSkipVotes";
-import { endSession, setRepeatMode } from "../lib/session";
+import { endSession, setRepeatMode, setAutoPilot } from "../lib/session";
 import { isAuthError, promptSignIn } from "../lib/authPrompt";
 import PlayerControls from "../components/PlayerControls";
 import { Search, Users, Copy, Check, Music, ArrowLeft, X, ThumbsDown } from "lucide-react";
@@ -176,6 +176,20 @@ export default function JamRoom() {
       }
       throw e;
     }
+  };
+
+  const autoPilot = session.auto_pilot ?? false;
+  const handleAutoPilotChange = (next) => {
+    setSession((prev) => ({ ...prev, auto_pilot: next }));
+    setAutoPilot(session.id, next).catch((e) => {
+      setSession((prev) => ({ ...prev, auto_pilot: autoPilot }));
+      if (isAuthError(e)) {
+        promptSignIn(
+          "Your session expired. Would you like to sign in again to change playback settings?",
+          `/jam/${code}`,
+        );
+      }
+    });
   };
 
   // ── Queue display: upcoming only ──────────────────────────────────────────
@@ -464,6 +478,8 @@ export default function JamRoom() {
         participantCount={participants?.length || 1}
         repeatMode={repeatMode}
         onRepeatModeChange={handleRepeatModeChange}
+        autoPilot={autoPilot}
+        onAutoPilotChange={handleAutoPilotChange}
       />
     </div>
   );

@@ -126,3 +126,12 @@ class SessionRepository(AbstractRepository):
             {"sid": str(session_id), "new_dj": str(new_dj_id)},
         )
         await self.db.commit()
+
+    async def set_auto_pilot(self, session_id: UUID, enabled: bool, user_id: UUID) -> None:
+        await set_jwt_claims(self.db, user_id)
+        await self.db.execute(
+            update(Session)
+            .where(Session.id == session_id)
+            .values(auto_pilot=enabled)
+        )
+        await self.db.commit()

@@ -2,7 +2,7 @@ from __future__ import annotations
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.dependencies import get_current_user, get_session_service, get_queue_service
-from app.schemas.session import SessionResponse, RepeatModeUpdate, DjPassRequest
+from app.schemas.session import SessionResponse, RepeatModeUpdate, DjPassRequest, AutoPilotUpdate
 from app.schemas.queue_item import QueueItemCreate, QueueItemResponse, BatchQueueRequest
 from app.services.event_bus import bus
 
@@ -84,6 +84,32 @@ async def set_repeat_mode(
 ):
     await svc.set_repeat_mode(session_id, body.mode, user_id)
     await bus.publish(str(session_id), "session_updated", {"repeat_mode": body.mode})
+    return {"ok": True}
+
+
+@router.patch("/{session_id}/auto-pilot")
+async def set_auto_pilot(
+    session_id: UUID,
+    body: AutoPilotUpdate,
+    user_id: UUID = Depends(get_current_user),
+    svc=Depends(get_session_service),
+    queue_svc=Depends(get_queue_service),
+):
+    try:
+        await svc.set_auto_pilot(session_id, body.enabled, user_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    await bus.publish(str(session_id), "session_updated", {"auto_pilot": body.enabled})
+    
+    if body.enabled:
+        # If enabled, and nothing is currently playing, trigger play_next to instantly kickstart the auto-pilot
+        try:
+            current = await queue_svc.store.queue.get_current_playing(session_id)
+            if not current:
+                await queue_svc.play_next(session_id, user_id)
+        except Exception:
+            pass
+
     return {"ok": True}
 
 

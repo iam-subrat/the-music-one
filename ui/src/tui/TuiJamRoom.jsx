@@ -13,6 +13,7 @@ import {
   endSession,
   passDjToken,
   setRepeatMode,
+  setAutoPilot,
 } from "../lib/session";
 import {
   addToQueue,
@@ -54,6 +55,7 @@ const HELP_LINES = [
   ["who | participants", "list participants with index/short-id"],
   ["dj <me|@name|N|prefix>", "host or DJ — pass DJ token (see `who`)"],
   ["repeat <none|song|queue>", "DJ only — set repeat mode"],
+  ["autopilot <on|off>", "DJ only — auto-queue similar songs"],
   ["invite", "copy invite link to clipboard"],
   ["end", "host only — end session"],
   ["leave", "leave the session"],
@@ -569,6 +571,25 @@ export default function TuiJamRoom() {
         }
         break;
       }
+      case "autopilot": {
+        if (!isDJ) {
+          append({ kind: "err", text: "✗ DJ only" });
+          break;
+        }
+        const enabled = arg === "on" || arg === "true" || arg === "1";
+        if (arg !== "on" && arg !== "off") {
+          append({ kind: "warn", text: "usage: autopilot <on|off>" });
+          break;
+        }
+        try {
+          await setAutoPilot(session.id, enabled);
+          setSession((prev) => ({ ...prev, auto_pilot: enabled }));
+          append({ kind: "ok", text: `✓ autopilot=${enabled ? "on" : "off"}` });
+        } catch (e) {
+          append({ kind: "err", text: `✗ ${e.message}` });
+        }
+        break;
+      }
       case "invite":
         navigator.clipboard.writeText(`${location.origin}/jam/${code}`).then(
           () => append({ kind: "ok", text: "✓ invite link copied" }),
@@ -737,7 +758,8 @@ export default function TuiJamRoom() {
   }
 
   const upcoming = getUpcoming(queueItems, session.repeat_mode ?? "none");
-  const statusLine = `${participants.length} online${isDJ ? " · you are DJ" : ""}${isHost ? " · host" : ""}`;
+  const autoPilotStatus = session.auto_pilot ? " · AI ✈️" : "";
+  const statusLine = `${participants.length} online${isDJ ? " · you are DJ" : ""}${isHost ? " · host" : ""}${autoPilotStatus}`;
 
   return (
     <TerminalShell
@@ -794,9 +816,14 @@ export default function TuiJamRoom() {
         </div>
 
         <div className={s.panel}>
-          <div className={s.panelLabel}>queue ({upcoming.length})</div>
+          <div className={s.panelLabel}>
+            queue ({upcoming.length})
+            {session.auto_pilot && <span style={{ color: "var(--tui-lime)", marginLeft: 8 }}>[AI-DJ Active]</span>}
+          </div>
           {upcoming.length === 0 ? (
-            <div className={`${s.logLine} ${s.mute}`}>~ queue empty</div>
+            <div className={`${s.logLine} ${s.mute}`}>
+              ~ queue empty {session.auto_pilot && "· AI will queue next"}
+            </div>
           ) : (
             <table className={s.queueTable}>
               <thead>
