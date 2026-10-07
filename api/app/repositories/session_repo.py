@@ -6,6 +6,7 @@ from sqlalchemy import select, update, delete, text, func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from app.models.session import Session, SessionParticipant
 from app.models.profile import Profile
+from app.models.feature_flag import FeatureFlag
 from app.repositories.base import AbstractRepository
 from app.repositories.db_auth import set_jwt_claims
 
@@ -17,6 +18,12 @@ def _gen_code() -> str:
 
 
 class SessionRepository(AbstractRepository):
+    async def independent_enabled(self) -> bool:
+        return bool(await self.db.scalar(select(FeatureFlag.enabled).where(FeatureFlag.key == 'INDEPENDENT_PLAYBACK'))) and await self.embed_enabled()
+
+    async def embed_enabled(self) -> bool:
+        return bool(await self.db.scalar(select(FeatureFlag.enabled).where(FeatureFlag.key == 'YOUTUBE_EMBED')))
+
     async def get_by_id(self, id: UUID) -> Optional[Session]:
         result = await self.db.execute(select(Session).where(Session.id == id))
         return result.scalar_one_or_none()
@@ -39,11 +46,20 @@ class SessionRepository(AbstractRepository):
             host_user_id=host_user_id,
             dj_user_id=host_user_id,
             status="active",
+            playback_mode=kwargs.get('playback_mode', 'dj'),
         )
         self.db.add(session)
         await self.db.commit()
         await self.db.refresh(session)
         return session
+
+    async def set_playback_mode(self, session_id: UUID, mode: str, expected_version: int, user_id: UUID) -> Session:
+        await set_jwt_claims(self.db, user_id)
+        await self.db.execute(text('SELECT set_playback_mode(:sid, :mode, :version)'),
+                              {'sid': str(session_id), 'mode': mode, 'version': expected_version})
+        await self.db.commit()
+        self.db.expire_all()
+        return await self.get_by_id(session_id)
 
     async def end(self, session_id: UUID) -> None:
         await self.db.execute(

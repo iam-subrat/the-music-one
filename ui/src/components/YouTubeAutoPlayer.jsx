@@ -29,13 +29,16 @@ function loadApi() {
  * Do NOT use key={videoId} on this component. Let the videoId prop change in place.
  */
 const YouTubeAutoPlayer = forwardRef(function YouTubeAutoPlayer(
-  { videoId, onEnded, repeat },
+  { videoId, playbackKey, onEnded, repeat, autoplayOnChange = true, onReady, onError, onBlocked },
   ref,
 ) {
   const wrapperRef = useRef(null);
   const playerRef = useRef(null);
   const repeatRef = useRef(repeat);
   const onEndedRef = useRef(onEnded);
+  const eventsRef = useRef({ onReady, onError, onBlocked });
+  eventsRef.current = { onReady, onError, onBlocked };
+  const readyRef = useRef(false);
   // Always reflects the latest videoId so initPlayer uses it even if the prop
   // changed while waiting for the YT API to load.
   const videoIdRef = useRef(videoId);
@@ -50,11 +53,12 @@ const YouTubeAutoPlayer = forwardRef(function YouTubeAutoPlayer(
   // Tracks whether onEnded already fired for the current video, so the
   // ENDED-state and the near-end-PAUSED safety net don't both run.
   const endedFiredRef = useRef(false);
+  const playedRef = useRef(false);
 
   useImperativeHandle(
     ref,
     () => ({
-      play: () => playerRef.current?.playVideo?.(),
+      play: () => { endedFiredRef.current = false; playerRef.current?.playVideo?.(); },
       pause: () => playerRef.current?.pauseVideo?.(),
       seek: (sec) => playerRef.current?.seekTo?.(sec, true),
       replay: () => {
@@ -66,7 +70,7 @@ const YouTubeAutoPlayer = forwardRef(function YouTubeAutoPlayer(
       getDuration: () => playerRef.current?.getDuration?.() ?? 0,
       // 1 = playing, 2 = paused, 0 = ended, -1 = unstarted, 3 = buffering, 5 = cued
       getState: () => playerRef.current?.getPlayerState?.() ?? -1,
-      isReady: () => !!playerRef.current,
+      isReady: () => readyRef.current,
     }),
     [],
   );
@@ -76,10 +80,12 @@ const YouTubeAutoPlayer = forwardRef(function YouTubeAutoPlayer(
   useEffect(() => {
     videoIdRef.current = videoId;
     endedFiredRef.current = false;
+    playedRef.current = false;
     if (playerRef.current) {
-      playerRef.current.loadVideoById(videoId);
+      if (autoplayOnChange) playerRef.current.loadVideoById(videoId);
+      else playerRef.current.cueVideoById(videoId);
     }
-  }, [videoId]);
+  }, [videoId, playbackKey]);
 
   function fireEnded() {
     if (endedFiredRef.current) return;
@@ -108,6 +114,8 @@ const YouTubeAutoPlayer = forwardRef(function YouTubeAutoPlayer(
         playerVars: { autoplay: 0, rel: 0, modestbranding: 1, playsinline: 1, origin: window.location.origin },
         events: {
           onReady: () => {
+            readyRef.current = true;
+            queueMicrotask(() => { if (readyRef.current) eventsRef.current.onReady?.(); });
             const iframe = wrapperRef.current?.querySelector("iframe");
             if (iframe) {
               iframe.setAttribute(
@@ -118,8 +126,13 @@ const YouTubeAutoPlayer = forwardRef(function YouTubeAutoPlayer(
             }
           },
           onStateChange: (e) => {
-            if (e.data === window.YT.PlayerState.ENDED) fireEnded();
+            const actualId = e.target?.getVideoData?.().video_id;
+            if (actualId && actualId !== videoIdRef.current) return;
+            if (e.data === 1) playedRef.current = true;
+            if (e.data === window.YT.PlayerState.ENDED && playedRef.current) fireEnded();
           },
+          onError: () => eventsRef.current.onError?.('This video could not be played.'),
+          onAutoplayBlocked: () => eventsRef.current.onBlocked?.(),
         },
       });
     }
@@ -138,6 +151,7 @@ const YouTubeAutoPlayer = forwardRef(function YouTubeAutoPlayer(
         if (idx !== -1) readyCallbacks.splice(idx, 1);
       }
       playerRef.current?.destroy();
+      readyRef.current = false;
       playerRef.current = null;
       if (wrapperRef.current) wrapperRef.current.innerHTML = "";
     };

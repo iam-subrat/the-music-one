@@ -36,6 +36,7 @@ export default function NowPlaying({
   onAutoPilotChange,
   queueItems,
   playbackReady = true,
+  modeVersion = 0,
 }) {
   const toast = useToast();
   const {
@@ -115,11 +116,11 @@ export default function NowPlaying({
       (repeatMode === "queue" ? [...after, ...before] : after)[0] || null;
 
     try {
-      const n = await playNext(sessionId);
+      const n = await playNext(sessionId, modeVersion);
       onQueueChange?.();
       if (!n?.next_item_id) {
         if (nextItem) {
-          await playSpecificSong(sessionId, nextItem.id);
+          await playSpecificSong(sessionId, nextItem.id, modeVersion);
           onQueueChange?.();
         } else {
           toast("Queue is empty!");
@@ -128,7 +129,7 @@ export default function NowPlaying({
     } catch (e) {
       if (nextItem) {
         try {
-          await playSpecificSong(sessionId, nextItem.id);
+          await playSpecificSong(sessionId, nextItem.id, modeVersion);
           onQueueChange?.();
         } catch (err) {
           toast(err.message);
@@ -218,7 +219,7 @@ export default function NowPlaying({
       (repeatMode === "queue" ? [...after, ...before] : after)[0] || null;
 
     try {
-      const next = await playNext(sessionId);
+      const next = await playNext(sessionId, modeVersion);
       if (next?.next_item_id === nowPlaying?.id) {
         replay();
         onQueueChange?.();
@@ -227,7 +228,7 @@ export default function NowPlaying({
       onQueueChange?.();
       if (!next?.next_item_id) {
         if (nextItem) {
-          await playSpecificSong(sessionId, nextItem.id);
+          await playSpecificSong(sessionId, nextItem.id, modeVersion);
           onQueueChange?.();
         } else {
           toast("Queue is empty!");
@@ -236,7 +237,7 @@ export default function NowPlaying({
     } catch (e) {
       if (nextItem) {
         try {
-          await playSpecificSong(sessionId, nextItem.id);
+          await playSpecificSong(sessionId, nextItem.id, modeVersion);
           onQueueChange?.();
         } catch {}
       } else {
@@ -248,6 +249,7 @@ export default function NowPlaying({
   useEffect(() => {
     registerPlayback({
       owner: "gui",
+      modeVersion,
       ready: playbackReady,
       isDJ,
       sessionId,
@@ -262,7 +264,7 @@ export default function NowPlaying({
       },
       onEnded: handleEnded,
     });
-  }, [sessionId, nowPlaying?.id, ytId, isDJ, repeatMode, registerPlayback, queueItems, onQueueChange, playbackReady]);
+  }, [sessionId, nowPlaying?.id, ytId, isDJ, repeatMode, registerPlayback, queueItems, onQueueChange, playbackReady, modeVersion]);
 
   useEffect(() => {
     if (!nowPlaying) return undefined;

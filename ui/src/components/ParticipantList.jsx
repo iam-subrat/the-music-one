@@ -9,7 +9,7 @@ export default function ParticipantList({ participants, session, currentUserId }
   const { capture } = useAnalytics();
   const isHost = session.host_user_id === currentUserId;
   const isDJ = session.dj_user_id === currentUserId;
-  const canPassDJ = isHost || isDJ;
+  const canPassDJ = session.playback_mode !== 'independent' && (isHost || isDJ);
 
   return (
     <div className={s.sidebarSection}>
@@ -21,7 +21,7 @@ export default function ParticipantList({ participants, session, currentUserId }
             : <div className={s.pAvatar} role="img" aria-label={`${p.display_name || 'Guest'} avatar`}>{(p.display_name || 'G').trim().charAt(0).toUpperCase()}</div>}
           <span className={s.pName}>{p.display_name || 'Guest'}</span>
           {p.id === session.host_user_id && <span className={s.pRole}>Host</span>}
-          {p.id === session.dj_user_id && <span className={s.pDj}>DJ</span>}
+          {session.playback_mode !== 'independent' && p.id === session.dj_user_id && <span className={s.pDj}>DJ</span>}
           {FLAGS.DJ_TOKEN && canPassDJ && p.id !== currentUserId && p.id !== session.dj_user_id && (
             <button
               className="btn btn-ghost"

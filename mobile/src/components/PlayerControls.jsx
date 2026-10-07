@@ -64,7 +64,7 @@ export default function PlayerControls({
     : 1;
 
   const { isPlaying, progress, duration, togglePlay, seek, audioElement } =
-    useAudioPlayer(playingItem);
+    useAudioPlayer(playingItem, (session.playback_mode_version ?? 0) > 0);
 
   const { count: skipVotes, hasVoted } = useSkipVotes(
     playingItem?.id,
@@ -121,7 +121,7 @@ export default function PlayerControls({
         const nextItem =
           (repeatMode === "queue" ? [...after, ...before] : after)[0] || null;
 
-        playNext(session.id)
+        playNext(session.id, session.playback_mode_version ?? 0)
           .then((res) => {
             if (res?.next_item_id === playingItem?.id) {
               audioElement.currentTime = 0;
@@ -130,7 +130,7 @@ export default function PlayerControls({
             } else if (res?.next_item_id) {
               refresh?.();
             } else if (nextItem) {
-              playSpecificSong(session.id, nextItem.id)
+              playSpecificSong(session.id, nextItem.id, session.playback_mode_version ?? 0)
                 .then(() => refresh?.())
                 .catch(console.error);
             } else {
@@ -145,7 +145,7 @@ export default function PlayerControls({
                 session?.invite_code ? `/jam/${session.invite_code}` : null,
               );
             } else if (nextItem) {
-              playSpecificSong(session.id, nextItem.id)
+              playSpecificSong(session.id, nextItem.id, session.playback_mode_version ?? 0)
                 .then(() => refresh?.())
                 .catch(console.error);
             }
@@ -334,12 +334,12 @@ export default function PlayerControls({
     const nextItem =
       (repeatMode === "queue" ? [...after, ...before] : after)[0] || null;
 
-    playNext(session.id)
+    playNext(session.id, session.playback_mode_version ?? 0)
       .then((res) => {
         if (res?.next_item_id) {
           refresh?.();
         } else if (nextItem) {
-          playSpecificSong(session.id, nextItem.id)
+          playSpecificSong(session.id, nextItem.id, session.playback_mode_version ?? 0)
             .then(() => refresh?.())
             .catch(console.error);
         } else {
@@ -358,7 +358,7 @@ export default function PlayerControls({
             session?.invite_code ? `/jam/${session.invite_code}` : null,
           );
         } else if (nextItem) {
-          playSpecificSong(session.id, nextItem.id)
+          playSpecificSong(session.id, nextItem.id, session.playback_mode_version ?? 0)
             .then(() => refresh?.())
             .catch(console.error);
         }

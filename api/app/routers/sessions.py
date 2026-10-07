@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.dependencies import get_current_user, get_session_service, get_queue_service
 from app.schemas.session import SessionResponse, RepeatModeUpdate, DjPassRequest, AutoPilotUpdate
+from app.schemas.session import SessionCreate, PlaybackModeUpdate
 from app.schemas.queue_item import QueueItemCreate, QueueItemResponse, BatchQueueRequest
 from app.services.event_bus import bus
 
@@ -11,10 +12,20 @@ router = APIRouter()
 
 @router.post("/", response_model=SessionResponse)
 async def create_session(
+    body: SessionCreate | None = None,
     user_id: UUID = Depends(get_current_user),
     svc=Depends(get_session_service),
 ):
-    return await svc.create(user_id)
+    return await svc.create(user_id, body.playback_mode if body else 'dj')
+
+
+@router.patch('/{session_id}/playback-mode', response_model=SessionResponse)
+async def change_playback_mode(session_id: UUID, body: PlaybackModeUpdate,
+                               user_id: UUID = Depends(get_current_user), svc=Depends(get_session_service)):
+    session = await svc.set_playback_mode(session_id, body.mode, body.expected_version, user_id)
+    payload = SessionResponse.model_validate(session).model_dump(mode='json')
+    await bus.publish(str(session_id), 'session_updated', payload)
+    return session
 
 
 @router.get("/{code}", response_model=SessionResponse)

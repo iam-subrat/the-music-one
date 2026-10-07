@@ -1,5 +1,6 @@
 from typing import Optional
 from uuid import UUID
+from fastapi import HTTPException
 from app.models.session import Session
 
 from app.store import Store
@@ -9,10 +10,19 @@ class SessionService:
     def __init__(self, store: Store) -> None:
         self.store = store
 
-    async def create(self, host_user_id: UUID) -> Session:
-        session = await self.store.sessions.create(host_user_id=host_user_id)
+    async def create(self, host_user_id: UUID, playback_mode: str = 'dj') -> Session:
+        if playback_mode == 'independent' and not await self.store.sessions.independent_enabled():
+            raise HTTPException(409, 'Shared Queue is not enabled')
+        session = await self.store.sessions.create(host_user_id=host_user_id, playback_mode=playback_mode)
         await self.store.sessions.join(session.id, host_user_id)
         return session
+
+    async def set_playback_mode(self, session_id: UUID, mode: str, expected_version: int, user_id: UUID) -> Session:
+        session = await self.store.sessions.get_by_id(session_id)
+        if not session or session.host_user_id != user_id:
+            raise PermissionError('Only the host can change the room mode')
+        await self.require_participant(session_id, user_id)
+        return await self.store.sessions.set_playback_mode(session_id, mode, expected_version, user_id)
 
     async def get_by_code(self, code: str) -> Optional[Session]:
         return await self.store.sessions.get_by_code(code)

@@ -18,6 +18,9 @@ import { ToastProvider } from "../components/Toast";
 import { useTui } from "../tui/TuiContext";
 import { useJamPlayback } from "../playback/JamPlaybackContext";
 import s from "../styles/jam.module.css";
+import { useIndependentPlayback } from '../playback/IndependentPlaybackContext';
+import IndependentPlayer, { IndependentQueue } from '../components/IndependentPlayer';
+import PlaybackModeControl from '../components/PlaybackModeControl';
 
 export default function JamRoom() {
   const { guiTheme, setGuiTheme } = useTui();
@@ -30,7 +33,7 @@ export default function JamRoom() {
     loading: authLoading,
     setPreferredPlatform,
   } = useAuth();
-  const { session, loading: sessionLoading, setSession } = useSession(code);
+  const { session, loading: sessionLoading, setSession, refresh: refreshSession } = useSession(code);
   const {
     items: queueItems,
     ready: queueReady,
@@ -41,6 +44,9 @@ export default function JamRoom() {
     session?.id,
   );
   const { capture } = useAnalytics();
+  const independent = session?.playback_mode === 'independent';
+  const local = useIndependentPlayback(session, queueItems, user?.id,
+    queueReady && !authLoading && !sessionLoading && (!independent || participants.some(p => p.id === user?.id)));
   const joinedAtRef = useRef(null);
   const activeSecondsRef = useRef(0);
   const lastVisibleAtRef = useRef(null);
@@ -288,7 +294,8 @@ export default function JamRoom() {
           </header>
 
           <main className={s.primaryColumn} aria-label="Jam room">
-            <NowPlaying
+            <PlaybackModeControl session={session} userId={user?.id} onChange={setSession} onRefresh={refreshSession} />
+            {independent ? <IndependentPlayer local={local} /> : <NowPlaying
               nowPlaying={nowPlaying}
               sessionId={session.id}
               isDJ={isDJ}
@@ -306,8 +313,9 @@ export default function JamRoom() {
               }
               queueItems={queueItems}
               playbackReady={queueReady && !authLoading && !sessionLoading}
-            />
-            <QueueList
+              modeVersion={session.playback_mode_version ?? 0}
+            />}
+            {independent ? <IndependentQueue items={queueItems} local={local} /> : <QueueList
               items={queueItems}
               repeatMode={session.repeat_mode ?? "none"}
               autoPilot={session.auto_pilot ?? false}
@@ -326,7 +334,7 @@ export default function JamRoom() {
               }}
               onQueueChange={refreshQueue}
               showAdd={false}
-            />
+            />}
           </main>
 
           <aside className={s.sidebar} aria-label="Room details">

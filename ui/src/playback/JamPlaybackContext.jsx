@@ -10,7 +10,7 @@ function samePlayback(a, b) {
     && a?.videoId === b?.videoId;
 }
 
-function PersistentPlayer({ descriptor, playerRef }) {
+function PersistentPlayer({ descriptor, playerRef, PlayerComponent, playerChrome }) {
   const latestDescriptor = useRef(descriptor);
   useEffect(() => { latestDescriptor.current = descriptor; }, [descriptor]);
   const enabled = !!(descriptor?.enabled && descriptor?.videoId);
@@ -19,14 +19,14 @@ function PersistentPlayer({ descriptor, playerRef }) {
     enabled,
     playerRef,
     metadata: descriptor?.metadata,
-    onNext: () => latestDescriptor.current?.onEnded?.(),
-    onPrev: () => playerRef.current?.seek?.(0),
+    onNext: () => (latestDescriptor.current?.onNext ?? latestDescriptor.current?.onEnded)?.(),
+    onPrev: () => latestDescriptor.current?.onPrevious ? latestDescriptor.current.onPrevious() : playerRef.current?.seek?.(0),
   });
 
   if (!enabled) return null;
   return (
     <div className="jam-persistent-player" data-session-id={descriptor.sessionId} aria-label="Shared Jam player">
-      <div className="jam-persistent-player__status" aria-hidden="true">
+      {playerChrome && <div className="jam-persistent-player__status" aria-hidden="true">
         <span className="jam-persistent-player__cover">
           {descriptor.metadata?.artwork && <img src={descriptor.metadata.artwork} alt="" />}
         </span>
@@ -34,27 +34,37 @@ function PersistentPlayer({ descriptor, playerRef }) {
           <strong>{descriptor.metadata?.title || "Now playing"}</strong>
           <small>{descriptor.metadata?.artist || "MusicOne Jam"}</small>
         </span>
-      </div>
-      <YouTubeAutoPlayer
+      </div>}
+      <PlayerComponent
         ref={playerRef}
         videoId={descriptor.videoId}
+        playbackKey={descriptor.playbackKey ?? descriptor.queueItemId + ':' + descriptor.modeVersion}
         repeat={descriptor.repeat}
+        autoplayOnChange={descriptor.autoplayOnChange !== false}
+        onReady={descriptor.onReady}
+        onError={descriptor.onError}
+        onBlocked={descriptor.onBlocked}
         onEnded={() => latestDescriptor.current?.onEnded?.()}
       />
     </div>
   );
 }
 
-export function JamPlaybackProvider({ children }) {
+export function JamPlaybackProvider({ children, PlayerComponent = YouTubeAutoPlayer, playerChrome = true }) {
   const playerRef = useRef(null);
   const [descriptor, setDescriptor] = useState(null);
 
   const registerPlayback = useCallback((next) => {
     setDescriptor((current) => {
       if (next.ready === false) return current;
+      if (current?.sessionId === next.sessionId && current?.modeVersion !== next.modeVersion) {
+        playerRef.current?.pause?.();
+        playerRef.current?.seek?.(0);
+        return { ...next, autoplayOnChange: false };
+      }
       if (
         current?.enabled
-        && next.isDJ
+        && (next.isDJ || next.independent)
         && current.sessionId === next.sessionId
         && current.queueItemId === next.queueItemId
         && (current.owner !== next.owner || next.videoId == null)
@@ -72,9 +82,10 @@ export function JamPlaybackProvider({ children }) {
       return samePlayback(current, next) ? { ...current, ...next } : next;
     });
   }, []);
-  const clearPlayback = useCallback((sessionId) => {
+  const clearPlayback = useCallback((sessionId, owner) => {
     setDescriptor((current) => {
       if (sessionId && current?.sessionId !== sessionId) return current;
+      if (owner && current?.owner !== owner) return current;
       playerRef.current?.pause?.();
       return null;
     });
@@ -96,7 +107,7 @@ export function JamPlaybackProvider({ children }) {
   return (
     <PlaybackContext.Provider value={value}>
       {children}
-      <PersistentPlayer descriptor={descriptor} playerRef={playerRef} />
+      <PersistentPlayer descriptor={descriptor} playerRef={playerRef} PlayerComponent={PlayerComponent} playerChrome={playerChrome} />
     </PlaybackContext.Provider>
   );
 }

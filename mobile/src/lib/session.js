@@ -1,7 +1,7 @@
 import { api } from './api';
 
-export async function createSession() {
-  const res = await api('/sessions/', { method: 'POST' });
+export async function createSession(playbackMode = 'dj') {
+  const res = await api('/sessions/', { method: 'POST', body: JSON.stringify({ playback_mode: playbackMode }) });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const err = new Error(body.detail || 'Failed to create session');
@@ -9,6 +9,15 @@ export async function createSession() {
     throw err;
   }
   return res.json();
+}
+
+export async function setPlaybackMode(sessionId, mode, version) {
+  const response = await api('/sessions/' + sessionId + '/playback-mode', {
+    method: 'PATCH', body: JSON.stringify({ mode, expected_version: version }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || 'Could not change room mode');
+  return data;
 }
 
 export async function getSessionByCode(code) {

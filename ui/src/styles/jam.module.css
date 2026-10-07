@@ -988,3 +988,34 @@
   .songVisualizer[data-motion="playing"] .songVisualizerBars i,
   .songVisualizer[data-motion="paused"]::after { animation: none; }
 }
+.playbackMode { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding-bottom: 16px; border-bottom: 1px solid var(--jam-control-border); }
+.modeSegment { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; background: var(--jam-control-fill); border: 1px solid var(--jam-control-border); border-radius: 7px; }
+.modeSegment button { min-height: 38px; padding: 8px 14px; border: 0; border-radius: 4px; background: transparent; color: var(--jam-muted); font: inherit; font-size: .8rem; font-weight: 650; cursor: pointer; }
+.modeSegment button[aria-pressed="true"] { background: var(--jam-accent); color: var(--jam-canvas); }
+.modeSegment button:disabled { cursor: default; }
+.modeScope { color: var(--jam-muted); font-size: .76rem; line-height: 1.5; }
+.modeDialog { width: min(440px, calc(100% - 32px)); max-height: calc(100dvh - 40px); margin: auto; padding: 26px; border: 1px solid var(--jam-control-border); border-radius: 8px; background: var(--jam-surface); color: var(--jam-text); }
+.modeDialog::backdrop { background: rgba(0,0,0,.65); }
+.modeDialog h2 { font-size: 1.2rem; line-height: 1.3; margin: 0 0 16px; letter-spacing: 0; }
+.modeDialog p { font-size: .87rem; line-height: 1.6; margin: 10px 0; color: var(--jam-muted); }
+.modeDialogActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
+.personalHeading, .personalFooter { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.personalStatus { color: var(--jam-muted); font-size: .76rem; }
+.personalRepeat { display: flex; align-items: center; gap: 9px; font-size: .8rem; color: var(--jam-text); }
+.personalRepeat select { padding: 6px 26px 6px 9px; border: 1px solid var(--jam-control-border); border-radius: 4px; background: var(--jam-control-fill); color: var(--jam-text); font: inherit; }
+.personalFooter { padding-top: 14px; border-top: 1px solid var(--jam-control-border); }
+.personalCurrent { background: var(--jam-control-hover); border-color: var(--jam-control-border); }
+.personalMarker { color: var(--jam-accent); font-size: .7rem; max-width: 70px; flex-shrink: 0; line-height: 1.4; }
+.queueIndex { color: var(--jam-muted); font-size: .76rem; width: 22px; flex-shrink: 0; text-align: center; }
+.queueInfo { flex: 1; min-width: 0; }
+.playbackError { color: var(--jam-danger); font-size: .85rem; line-height: 1.6; }
+.createRoom { width: min(560px, 100%); padding: 40px 24px; margin: 40px auto; }
+.createRoom h1 { font-size: 1.8rem; margin: 34px 0 28px; letter-spacing: 0; }
+.createOptions { border: 0; padding: 0; margin: 0 0 28px; }
+.createOptions legend { font-size: .85rem; color: var(--jam-muted); margin-bottom: 12px; }
+.createOption { display: flex; align-items: flex-start; gap: 14px; padding: 20px 0; border-bottom: 1px solid var(--jam-control-border); cursor: pointer; }
+.createOption input { margin-top: 3px; accent-color: var(--jam-accent); }
+.createOption strong { display: block; font-size: 1rem; color: var(--jam-text); margin-bottom: 7px; }
+.createOption small { display: block; color: var(--jam-muted); line-height: 1.5; font-size: .84rem; }
+.independentPlayer button:disabled { opacity: .45; cursor: default; }
+@media(max-width: 400px) { .modeSegment { width: 100%; } .personalMarker { max-width: 44px; } }
