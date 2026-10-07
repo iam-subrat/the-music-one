@@ -77,3 +77,11 @@ test('known expiry stops loaded playback without a network update', async () => 
   await waitFor(() => expect(screen.getByTestId('player')).toBeInTheDocument());
   await waitFor(() => expect(screen.queryByTestId('player')).not.toBeInTheDocument());
 });
+
+test('a new selection checkpoints zero rather than the previous player position', async () => {
+  render(<JamPlaybackProvider><IndependentPlaybackProvider resolveItem={async item => ({ video_id: item.id })}><Probe /></IndependentPlaybackProvider></JamPlaybackProvider>);
+  await waitFor(() => expect(screen.getByTestId('player')).toHaveAttribute('data-video', 'a'));
+  fireEvent.click(screen.getByRole('button', { name: 'next' }));
+  await waitFor(() => expect(screen.getByTestId('player')).toHaveAttribute('data-video', 'b'));
+  expect(JSON.parse(sessionStorage.getItem('musicone:independent:user:room'))).toMatchObject({ itemId: 'b', time: 0 });
+});

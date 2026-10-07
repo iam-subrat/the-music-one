@@ -23,7 +23,7 @@ expiry, terminal local Skip, and cross-worker item resolution locking. Scoped
 review found two regressions (host authorization and logout after leaving); both
 were fixed and regression-tested. No known code-review blockers remain.
 
-Verification: API 119 tests, web 46 unit tests, browser 17 acceptance tests.
+Verification: API 119 tests, web 47 unit tests, browser 17 acceptance tests.
 Web/mobile production builds pass. Responsive screenshots inspected for Pulse,
 Studio and the mobile view. Physical-device playback and deployment smoke checks
 remain release gates; the feature is disabled by default.

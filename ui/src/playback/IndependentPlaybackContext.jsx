@@ -32,7 +32,7 @@ export function IndependentPlaybackProvider({ children, resolveItem = defaultRes
   }, []);
   const save = useCallback(() => {
     const local = stateRef.current;
-    if (!checkpointKey.current || !local.item) return;
+    if (!checkpointKey.current || !local.item || local.loading) return;
     try { sessionStorage.setItem(checkpointKey.current, JSON.stringify({ schema: 1,
       epoch: roomRef.current?.session.playback_mode_version ?? 0, itemId: local.item.id,
       time: playback.getTime(), repeat: local.repeat })); } catch { /* Storage may be unavailable. */ }
@@ -45,6 +45,11 @@ export function IndependentPlaybackProvider({ children, resolveItem = defaultRes
     playback.pause();
     restoreTime.current = checkpoint?.time ?? 0;
     stateUpdate(s => ({ ...s, item: { ...item }, intent, repeat: checkpoint?.repeat ?? s.repeat, error: '', loading: true, atEnd: false }));
+    try {
+      sessionStorage.setItem(checkpointKey.current, JSON.stringify({ schema: 1,
+        epoch: room.session.playback_mode_version ?? 0, itemId: item.id,
+        time: checkpoint?.time ?? 0, repeat: stateRef.current.repeat }));
+    } catch { /* Storage may be unavailable. */ }
     try {
       const resolved = await resolveItem(item);
       if (request !== token.current || !roomActive(roomRef.current)) return;
@@ -140,7 +145,6 @@ export function IndependentPlaybackProvider({ children, resolveItem = defaultRes
       onEnded: () => { if (epoch === token.current) ended(); }, onNext: next, onPrevious: previous,
       onReady, onError: message => { if (epoch === token.current) stateUpdate(s => ({ ...s, error: message, intent: false })); },
       onBlocked: () => { if (epoch === token.current) stateUpdate(s => ({ ...s, error: 'Press Play to continue', intent: false })); } });
-    save();
   }, [state.item?.id, state.videoId, state.intent, state.loading, ended, next, previous, playback.registerPlayback, stateUpdate, save]);
 
   useEffect(() => {
