@@ -84,6 +84,16 @@ export function JamPlaybackProvider({ children, PlayerComponent = YouTubeAutoPla
         playerRef.current?.seek?.(0);
         return { ...next, autoplayOnChange: false };
       }
+      if (current?.enabled && current.isDJ && next.isDJ
+        && current.sessionId === next.sessionId && next.queueItemId
+        && current.queueItemId !== next.queueItemId) {
+        // Keep the activated iframe alive while the replacement video resolves.
+        if (!next.videoId) return current;
+        const explicitStart = request?.queueItemId === next.queueItemId;
+        const state = playerRef.current?.getState?.();
+        if (explicitStart) pendingStartRef.current = null;
+        return { ...next, autoplayOnChange: explicitStart || [0, 1, 3].includes(state) };
+      }
       if (
         current?.enabled
         && (next.isDJ || next.independent)

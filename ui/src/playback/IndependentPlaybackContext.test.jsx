@@ -16,8 +16,22 @@ const session = { id: 'room', status: 'active', playback_mode: 'independent', pl
 const items = [{ id: 'a', position: 1, status: 'queued', title: 'One' }, { id: 'b', position: 2, status: 'queued', title: 'Two' }];
 function Probe({ surface = 'gui', room = session }) {
   const local = useIndependentPlayback(room, items, 'user');
-  return <><span>{surface}: {local.state.item?.title}</span><button onClick={local.next}>next</button><button onClick={local.play}>play</button><button onClick={() => local.reset()}>leave</button></>;
+  return <><span>{surface}: {local.state.item?.title}</span><button onClick={local.next}>next</button><button onClick={local.previous}>previous</button><button onClick={local.play}>play</button><button onClick={local.pause}>pause</button><button onClick={() => local.reset()}>leave</button></>;
 }
+
+test('next and previous preserve active or paused playback intent', async () => {
+  render(<JamPlaybackProvider><IndependentPlaybackProvider resolveItem={async item => ({ video_id: item.id })}><Probe /></IndependentPlaybackProvider></JamPlaybackProvider>);
+  await waitFor(() => expect(screen.getByTestId('player')).toHaveAttribute('data-video', 'a'));
+  fireEvent.click(screen.getByRole('button', { name: 'play' }));
+  player.play.mockClear();
+  fireEvent.click(screen.getByRole('button', { name: 'next' }));
+  await waitFor(() => expect(screen.getByTestId('player')).toHaveAttribute('data-video', 'b'));
+  expect(player.play).toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'pause' }));
+  player.play.mockClear();
+  fireEvent.click(screen.getByRole('button', { name: 'previous' }));
+  expect(player.play).not.toHaveBeenCalled();
+});
 test('joining is paused and changing surface retains one local player and cursor', async () => {
   const resolve = vi.fn(async item => ({ video_id: item.id }));
   const tree = surface => <JamPlaybackProvider><IndependentPlaybackProvider resolveItem={resolve}><Probe surface={surface} /></IndependentPlaybackProvider></JamPlaybackProvider>;

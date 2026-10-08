@@ -7,14 +7,34 @@ import { JamPlaybackProvider, useJamPlayback } from "./JamPlaybackContext";
 const player = { play: vi.fn(), pause: vi.fn(), seek: vi.fn(), getTime: () => 12, getDuration: () => 180, getState: () => 2, isReady: () => true };
 
 vi.mock("../components/YouTubeAutoPlayer", () => ({
-  default: forwardRef(({ videoId, onReady }, ref) => {
+  default: forwardRef(({ videoId, onReady, autoplayOnChange }, ref) => {
     useImperativeHandle(ref, () => player);
-    return <div data-testid="youtube-player" data-video-id={videoId}><button onClick={onReady}>player ready</button></div>;
+    return <div data-testid="youtube-player" data-video-id={videoId} data-autoplay={String(autoplayOnChange)}><button onClick={onReady}>player ready</button></div>;
   }),
 }));
 vi.mock("../hooks/useMediaSession", () => ({ useMediaSession: vi.fn() }));
 
 const active = { owner: "gui", isDJ: true, sessionId: "session-a", queueItemId: "item-a", videoId: "video-a", enabled: true, repeat: false, metadata: { title: "Song" }, onEnded: vi.fn() };
+
+test.each(['gui', 'tui'])('keeps the DJ player mounted while %s resolves a different track', owner => {
+  const tree = descriptor => <JamPlaybackProvider><Registration descriptor={descriptor} /></JamPlaybackProvider>;
+  const view = render(tree({ ...active, owner, modeVersion: 1 }));
+  const mounted = screen.getByTestId('youtube-player');
+  view.rerender(tree({ ...active, owner, modeVersion: 1, queueItemId: 'item-b', videoId: null, enabled: false }));
+  expect(screen.getByTestId('youtube-player')).toBe(mounted);
+  view.rerender(tree({ ...active, owner, modeVersion: 1, queueItemId: 'item-b', videoId: 'video-b' }));
+  expect(screen.getByTestId('youtube-player')).toBe(mounted);
+  expect(mounted).toHaveAttribute('data-video-id', 'video-b');
+});
+
+test.each([1, 2, 3, 0])('preserves DJ transport state %s when changing tracks', state => {
+  const stateSpy = vi.spyOn(player, 'getState').mockReturnValue(state);
+  const tree = descriptor => <JamPlaybackProvider><Registration descriptor={descriptor} /></JamPlaybackProvider>;
+  const view = render(tree(active));
+  view.rerender(tree({ ...active, queueItemId: 'item-b', videoId: 'video-b' }));
+  expect(screen.getByTestId('youtube-player')).toHaveAttribute('data-autoplay', String(state !== 2));
+  stateSpy.mockRestore();
+});
 
 afterEach(() => {
   cleanup();

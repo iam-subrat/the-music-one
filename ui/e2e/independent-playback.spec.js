@@ -8,7 +8,7 @@ const songs = [
 
 async function fixture(page, user = 'host', theme = 'pulse', mode = 'independent') {
   const mutations = [];
-  const queue = songs.map(item => ({ ...item, platform_links: { youtube: 'https://youtu.be/abcdefghijk' } }));
+  const queue = songs.map(item => ({ ...item, platform_links: { youtube: `https://youtu.be/${item.id}1234567890` } }));
   const session = { id: 'room', invite_code: 'SHARED', host_user_id: 'host', dj_user_id: 'host',
     status: 'active', playback_mode: mode, playback_mode_version: 1, repeat_mode: 'none' };
   await page.addInitScript(theme => {
@@ -42,6 +42,12 @@ async function fixture(page, user = 'host', theme = 'pulse', mode = 'independent
     if (path.endsWith('/participants')) return json([{ id: 'host', display_name: 'Alex' }, { id: 'listener', display_name: 'Sam' }]);
     if (path.endsWith('/queue')) return json(queue);
     if (path.endsWith('/repeat-mode')) { session.repeat_mode = request.postDataJSON().mode; return json(session); }
+    if (/\/(next|previous)$/.test(path)) {
+      const current = queue.findIndex(item => item.status === 'playing');
+      const target = queue[current + (path.endsWith('/previous') ? -1 : 1)];
+      if (target) queue.forEach(item => { if (item === target) item.status = 'playing'; else if (item.status === 'playing') item.status = 'played'; });
+      return json({ next_item_id: target?.id ?? null });
+    }
     if (/\/queue\/items\/[^/]+\/play$/.test(path)) {
       const id = path.split('/').at(-2);
       queue.forEach(item => { if (item.id === id) item.status = 'playing'; else if (item.status === 'playing') item.status = 'played'; });
@@ -61,6 +67,33 @@ async function fixture(page, user = 'host', theme = 'pulse', mode = 'independent
     return json({});
   });
   return { mutations, session };
+}
+
+for (const mode of ['dj', 'independent']) {
+  for (const surface of ['gui', 'tui']) {
+    test(`track navigation preserves playback in ${mode} ${surface}`, async ({ page }) => {
+      await fixture(page, 'host', 'pulse', mode);
+      await page.goto('/jam/SHARED');
+      if (surface === 'tui') await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
+      const selectedTitle = title => surface === 'tui'
+        ? page.getByText(`▶ ${title}`, { exact: true })
+        : page.getByRole('region', { name: mode === 'dj' ? 'Playback' : 'Your playback', exact: true }).getByText(title, { exact: true });
+      await page.getByRole('button', { name: 'Play playback', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Pause playback', exact: true })).toBeVisible();
+      await page.getByRole('button', { name: 'Next track', exact: true }).click();
+      await expect(selectedTitle(mode === 'dj' ? 'Dreams' : 'Something About Us')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Pause playback', exact: true })).toBeVisible();
+      await page.getByRole('button', { name: 'Previous track', exact: true }).click();
+      await expect(selectedTitle(mode === 'dj' ? 'Something About Us' : 'Midnight City')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Pause playback', exact: true })).toBeVisible();
+      expect(await page.evaluate(() => window.playerCreations)).toBe(1);
+      await page.getByRole('button', { name: 'Pause playback', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Play playback', exact: true })).toBeVisible();
+      await page.getByRole('button', { name: 'Next track', exact: true }).click();
+      await expect(selectedTitle(mode === 'dj' ? 'Dreams' : 'Something About Us')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Play playback', exact: true })).toBeVisible();
+    });
+  }
 }
 
 test('two listeners play independently, preserve player across GUI/TUI, and reload paused', async ({ browser }) => {

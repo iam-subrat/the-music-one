@@ -44,7 +44,7 @@ export function IndependentPlaybackProvider({ children, resolveItem = defaultRes
     const request = ++token.current;
     playback.pause();
     restoreTime.current = checkpoint?.time ?? 0;
-    stateUpdate(s => ({ ...s, item: { ...item }, intent, started: intent, repeat: checkpoint?.repeat ?? s.repeat, error: '', loading: true, atEnd: false }));
+    stateUpdate(s => ({ ...s, item: { ...item }, intent, started: s.started || intent, repeat: checkpoint?.repeat ?? s.repeat, error: '', loading: true, atEnd: false }));
     try {
       sessionStorage.setItem(checkpointKey.current, JSON.stringify({ schema: 1,
         epoch: room.session.playback_mode_version ?? 0, itemId: item.id,
@@ -67,11 +67,12 @@ export function IndependentPlaybackProvider({ children, resolveItem = defaultRes
   const next = useCallback(async () => {
     const room = roomRef.current;
     if (!roomActive(room)) return;
+    const intent = stateRef.current.intent;
     for (let attempts = 0; attempts < room.items.length; attempts++) {
       const local = stateRef.current;
       const target = nextItem(roomRef.current.items, local.item, local.repeat, failedRef.current);
       if (!target) break;
-      const result = await select(target);
+      const result = await select(target, intent);
       if (result !== false || roomRef.current?.key !== room.key || !roomRef.current?.active) return;
     }
       ++token.current; playback.pause();
@@ -88,8 +89,9 @@ export function IndependentPlaybackProvider({ children, resolveItem = defaultRes
   }, [next, playback.replay]);
   const previous = useCallback(() => {
     if (!roomActive(roomRef.current)) return;
-    if (playback.getTime() > 3) { playback.seek(0); playback.play(); return; }
-    select(previousItem(roomRef.current.items, stateRef.current.item));
+    const intent = stateRef.current.intent;
+    if (playback.getTime() > 3) { playback.seek(0); if (intent) playback.play(); return; }
+    select(previousItem(roomRef.current.items, stateRef.current.item), intent);
   }, [playback.getTime, playback.seek, playback.play, select]);
 
   const configure = useCallback(({ session, items, userId, ready }) => {
