@@ -26,7 +26,6 @@ END; $$;
 
 
 _UPGRADE_SQL = _replace_guard(_OLD_GUARD, _NEW_GUARD) + """
-ALTER TABLE sessions ALTER COLUMN expires_at SET DEFAULT now() + interval '24 hours';
 UPDATE sessions SET expires_at = created_at + interval '24 hours'
   WHERE expires_at IS NULL;
 """

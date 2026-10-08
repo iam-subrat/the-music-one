@@ -9,6 +9,9 @@ tab/device owns its cursor, transport and repeat mode; the room shares a catalog
    to DJ-led. Revision 010 repairs null expiry timestamps using creation time plus
    24 hours, without extending existing timestamps or reviving expired rooms.
    Deploy the updated API model so new rooms use the database expiry default.
+   The default already exists from the baseline; revision 010 avoids an
+   unnecessary ALTER TABLE exclusive lock. SSE releases its setup transaction
+   before streaming so open listeners do not retain database read locks.
 2. Deploy web clients, including the hosted /bridge player with protocol 2.
 3. Ship the Capacitor mobile client update. Old mobile clients cannot play Shared
    Queue and cannot mutate its global playback state.

@@ -174,3 +174,42 @@ async def test_expiry_migration_repairs_old_rooms_without_reviving_them(room_db)
         await c.execute("INSERT INTO queue_items(session_id,title,artist,status) VALUES($1,'New','Artist','queued')", sid)
     await c.execute(migration._DOWNGRADE_SQL)
     assert await c.fetchval('SELECT expires_at FROM sessions WHERE id=$1', sid) == room['expires_at']
+
+
+@pytest.mark.asyncio
+async def test_expiry_migration_does_not_wait_for_room_readers(room_db):
+    c, _, _, sid, _, url = room_db
+    migration = _load_migration('010_fix_session_expiry.py')
+    await c.execute(migration._DOWNGRADE_SQL)
+    reader = await asyncpg.connect(url)
+    try:
+        await reader.execute('BEGIN')
+        await reader.fetchval('SELECT id FROM sessions WHERE id=$1', sid)
+        await c.execute("SET statement_timeout='500ms'")
+        await c.execute(migration._UPGRADE_SQL)
+    finally:
+        await reader.execute('ROLLBACK')
+        await reader.close()
+        await c.execute('SET statement_timeout=0')
+
+
+@pytest.mark.asyncio
+async def test_stream_releases_database_transaction_before_streaming(room_db, monkeypatch):
+    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+    from starlette.requests import Request
+    from app.routers import events
+    from app.services.session_service import SessionService
+    from app.store import Store
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    _, host, _, sid, _, url = room_db
+    monkeypatch.setattr(events, 'bus', SimpleNamespace(subscribe=AsyncMock(return_value=asyncio.Queue()),
+                                                     publish=AsyncMock(), unsubscribe=AsyncMock()))
+    engine = create_async_engine(url.replace('postgresql://', 'postgresql+asyncpg://'))
+    try:
+        async with AsyncSession(engine, expire_on_commit=False) as db:
+            await events.session_stream(sid, Request({'type': 'http'}), host, SessionService(Store(db)))
+            assert not db.in_transaction()
+    finally:
+        await engine.dispose()
