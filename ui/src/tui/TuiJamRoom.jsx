@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import TerminalShell from "./TerminalShell";
 import TuiPlaylistPicker from "./TuiPlaylistPicker";
-import TuiPlaybackIndicator from "./TuiPlaybackIndicator";
+import TuiPlayer from "./TuiPlayer";
+import TuiQueueList from "./TuiQueueList";
+import { readySong } from "../playback/queuePresentation";
 import { useAuth } from "../hooks/useAuth";
 import { useSession } from "../hooks/useSession";
 import { useQueue } from "../hooks/useQueue";
@@ -39,7 +41,6 @@ import { getUpcoming } from "../components/QueueList";
 import { useResolvedYouTubeVideo } from "../playback/useResolvedYouTubeVideo";
 import { useJamPlayback } from "../playback/JamPlaybackContext";
 import { useIndependentPlayback } from "../playback/IndependentPlaybackContext";
-import { eligibleItems } from "../playback/independentQueue";
 import s from "./tui.module.css";
 
 const HELP_LINES = [
@@ -123,21 +124,31 @@ export default function TuiJamRoom() {
   const inputRef = useRef(null);
   const didJoinRef = useRef(false);
   const sessionIdRef = useRef(null);
+  const controlsBusyRef = useRef(false);
+  const [controlsBusy, setControlsBusy] = useState(false);
+
+  async function playerCommand(command) {
+    if (controlsBusyRef.current) return;
+    controlsBusyRef.current = true; setControlsBusy(true);
+    try { await exec(command); }
+    finally { controlsBusyRef.current = false; setControlsBusy(false); }
+  }
 
   const independent = session?.playback_mode === "independent";
   const local = useIndependentPlayback(session, queueItems, user?.id,
     queueReady && !authLoading && !sessionLoading && (!independent || participants.some(p => p.id === user?.id)));
   const nowPlaying = independent ? local.state.item : queueItems.find((i) => i.status === "playing") ?? null;
+  const displayItem = nowPlaying ?? readySong(queueItems, session?.repeat_mode);
   const isDJ = !independent && !!session && session.dj_user_id === user?.id;
   const isHost = !!session && session.host_user_id === user?.id;
   const { count: skipVotes, hasVoted } = useSkipVotes(
-    nowPlaying?.id,
+    independent ? null : nowPlaying?.id,
     user?.id,
     session?.id,
   );
   const skipThreshold = Math.floor(participants.length / 2) + 1;
   const { videoId: ytId } = useResolvedYouTubeVideo(nowPlaying, isDJ);
-  const { registerPlayback, clearPlayback, play, pause, seek, replay, getTime, getDuration, getState } = useJamPlayback();
+  const { registerPlayback, requestStart, clearPlayback, play, pause, seek, replay, getTime, getDuration, getState } = useJamPlayback();
 
   function append(...lines) {
     setLog((prev) => [...prev, ...lines]);
@@ -313,8 +324,9 @@ export default function TuiJamRoom() {
       }
       if (["play", "resume", "pause", "p", "next", "n", "skip", "prev", "previous", "repeat", "seek", "seekend"].includes(command)) {
         if (command === "play" && arg) {
-          const number = Number(arg), item = eligibleItems(queueItems)[number - 1];
+          const number = Number(arg), item = upcoming[number - 1];
           if (!Number.isInteger(number) || !item) { append({ kind: "warn", text: "usage: play <queue number>" }); return; }
+          if (['failed', 'resolving'].includes(item.resolve_status)) { append({ kind: "warn", text: "Song is not ready for playback" }); return; }
           await local.select(item);
         } else if (["play", "resume"].includes(command)) local.play();
         else if (["pause", "p"].includes(command)) local.pause();
@@ -432,17 +444,29 @@ export default function TuiJamRoom() {
             break;
           }
           const target = upcoming[n - 1];
+          if (['failed', 'resolving'].includes(target.resolve_status)) { append({ kind: "warn", text: "Song is not ready for playback" }); break; }
+          const cancelStart = !nowPlaying ? requestStart(session.id, target.id, session.playback_mode_version ?? 0) : null;
           try {
-            await playSpecificSong(session.id, target.id);
+            await playSpecificSong(session.id, target.id, session.playback_mode_version ?? 0);
             append({ kind: "ok", text: `▶ jumping to #${n}: ${target.title}` });
             refreshQueue();
           } catch (e) {
+            cancelStart?.();
             append({ kind: "err", text: `✗ ${e.message}` });
           }
           break;
         }
         if (!isDJ) {
           append({ kind: "err", text: "✗ DJ only" });
+          break;
+        }
+        if (!nowPlaying && displayItem) {
+          const cancelStart = requestStart(session.id, displayItem.id, session.playback_mode_version ?? 0);
+          try {
+            await playSpecificSong(session.id, displayItem.id, session.playback_mode_version ?? 0);
+            refreshQueue();
+            append({ kind: "ok", text: `▶ started ${displayItem.title}` });
+          } catch (error) { cancelStart(); append({ kind: "err", text: error.message }); }
           break;
         }
         if (getState() === -1) {
@@ -806,7 +830,7 @@ export default function TuiJamRoom() {
     );
   }
 
-  const upcoming = independent ? eligibleItems(queueItems) : getUpcoming(queueItems, session.repeat_mode ?? "none");
+  const upcoming = getUpcoming(queueItems, session.repeat_mode ?? "none", independent);
   const autoPilotStatus = session.auto_pilot ? " · AI ✈️" : "";
   const statusLine = `${independent ? "Shared Queue · this device" : "DJ-led"} · ${participants.length} online${isDJ ? " · you are DJ" : ""}${isHost ? " · host" : ""}${autoPilotStatus}`;
 
@@ -822,28 +846,12 @@ export default function TuiJamRoom() {
         {sessionError} <button type="button" className={s.authBtn} onClick={refreshSession}>Retry</button>
       </div>}
       <div className={s.jamGrid}>
-        <div className={`${s.panel} ${s.panelSpan2}`}>
-          <div className={s.panelLabel}>{independent ? "your playback" : "now playing"}</div>
-          {independent && local.state.error && <div role="alert" className={s.err}>{local.state.error}</div>}
-          {nowPlaying ? (
-            <div className={s.nowPlayingBlock}>
-              {nowPlaying.thumbnail_url && (
-                <img src={nowPlaying.thumbnail_url} alt="" />
-              )}
-              <div>
-                <div style={{ color: "var(--tui-accent)", fontWeight: 600 }}>
-                  ▶ {nowPlaying.title}
-                </div>
-                <div style={{ color: "var(--tui-fg-dim)" }}>
-                  {nowPlaying.artist}
-                </div>
-                <TuiPlaybackIndicator
-                  playerState={playbackSnapshot.playerState}
-                  currentTime={playbackSnapshot.currentTime}
-                  duration={playbackSnapshot.duration}
-                  repeatMode={independent ? local.state.repeat : session.repeat_mode}
-                />
-                {!independent && <div
+        <TuiPlayer item={displayItem} snapshot={nowPlaying ? playbackSnapshot : { playerState: -1, currentTime: 0, duration: 0 }}
+          repeat={independent ? local.state.repeat : session.repeat_mode} canControl={independent || isDJ}
+          started={independent ? !!local.state.started : !!nowPlaying}
+          busy={controlsBusy || (independent ? local.state.loading : !queueReady)}
+          error={independent ? local.state.error : null} scope={independent ? 'This device' : isDJ ? 'DJ controls' : 'Controlled by DJ'} onCommand={playerCommand}>
+                {!independent && nowPlaying && <div
                   className={`${s.logLine} ${s.dim}`}
                   style={{ marginTop: 6 }}
                 >
@@ -859,59 +867,8 @@ export default function TuiJamRoom() {
                     </span>
                   )}
                 </div>}
-              </div>
-            </div>
-          ) : (
-            <div style={{ color: "var(--tui-fg-mute)", fontStyle: "italic" }}>
-              ~ nothing playing · type `add &lt;url&gt;` to queue a song
-            </div>
-          )}
-        </div>
-
-        <div className={s.panel}>
-          <div className={s.panelLabel}>
-            queue ({upcoming.length})
-            {session.auto_pilot && <span style={{ color: "var(--tui-lime)", marginLeft: 8 }}>[AI-DJ Active]</span>}
-          </div>
-          {upcoming.length === 0 ? (
-            <div className={`${s.logLine} ${s.mute}`}>
-              ~ queue empty {session.auto_pilot && "· AI will queue next"}
-            </div>
-          ) : (
-            <table className={s.queueTable}>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>title</th>
-                  <th>by</th>
-                </tr>
-              </thead>
-              <tbody>
-                {upcoming.map((it, i) => (
-                  <tr key={it.id}>
-                    <td className={s.idx}>{String(i + 1).padStart(2, "0")}</td>
-                    <td>
-                      {it.title}
-                      <span style={{ color: "var(--tui-fg-mute)" }}>
-                        {" "}
-                        — {it.artist}
-                      </span>
-                      {it.resolve_status === "resolving" && (
-                        <span style={{ color: "var(--tui-amber)" }}> ⟳</span>
-                      )}
-                      {it.resolve_status === "failed" && (
-                        <span style={{ color: "var(--tui-red)" }}> !</span>
-                      )}
-                    </td>
-                    <td className={s.dim}>
-                      {it.profiles?.display_name || "someone"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        </TuiPlayer>
+        <TuiQueueList items={upcoming} currentId={independent ? local.state.item?.id : !nowPlaying ? displayItem?.id : undefined} autoPilot={!independent && session.auto_pilot} />
 
         <div className={s.panel}>
           <div className={s.panelLabel}>

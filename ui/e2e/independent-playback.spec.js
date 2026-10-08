@@ -6,10 +6,11 @@ const songs = [
   { id: 'c', position: 3, title: 'Dreams', artist: 'Fleetwood Mac', status: 'queued' },
 ].map(item => ({ ...item, resolve_status: 'resolved', platform_links: {}, profiles: { display_name: 'Alex' } }));
 
-async function fixture(page, user = 'host', theme = 'pulse') {
+async function fixture(page, user = 'host', theme = 'pulse', mode = 'independent') {
   const mutations = [];
+  const queue = songs.map(item => ({ ...item, platform_links: { youtube: 'https://youtu.be/abcdefghijk' } }));
   const session = { id: 'room', invite_code: 'SHARED', host_user_id: 'host', dj_user_id: 'host',
-    status: 'active', playback_mode: 'independent', playback_mode_version: 1, repeat_mode: 'none' };
+    status: 'active', playback_mode: mode, playback_mode_version: 1, repeat_mode: 'none' };
   await page.addInitScript(theme => {
     localStorage.setItem('musicone:gui-theme', theme);
     window.playerCreations = 0;
@@ -39,7 +40,14 @@ async function fixture(page, user = 'host', theme = 'pulse') {
     if (path.endsWith('/flags/')) return json([{ key: 'INDEPENDENT_PLAYBACK', enabled: true }]);
     if (path.endsWith('/sessions/SHARED')) return json(session);
     if (path.endsWith('/participants')) return json([{ id: 'host', display_name: 'Alex' }, { id: 'listener', display_name: 'Sam' }]);
-    if (path.endsWith('/queue')) return json(songs);
+    if (path.endsWith('/queue')) return json(queue);
+    if (path.endsWith('/repeat-mode')) { session.repeat_mode = request.postDataJSON().mode; return json(session); }
+    if (/\/queue\/items\/[^/]+\/play$/.test(path)) {
+      const id = path.split('/').at(-2);
+      queue.forEach(item => { if (item.id === id) item.status = 'playing'; else if (item.status === 'playing') item.status = 'played'; });
+      mutations.push(path);
+      return json({ next_item_id: id });
+    }
     if (path.endsWith('/stream')) return route.fulfill({ contentType: 'text/event-stream', body: '' });
     if (path.endsWith('/resolve-playback')) return json({ video_id: path.split('/')[3] + '1234567890' });
     if (path.endsWith('/playback-mode')) {
@@ -68,7 +76,7 @@ test('two listeners play independently, preserve player across GUI/TUI, and relo
   await expect(personal(first).getByText('Something About Us', { exact: true })).toBeVisible();
   await expect(personal(second).getByText('Midnight City', { exact: true })).toBeVisible();
   await first.getByRole('button', { name: 'Toggle terminal interface' }).click();
-  await expect(first.getByText('your playback', { exact: true })).toBeVisible();
+  await expect(first.getByText('playback', { exact: true })).toBeVisible();
   const command = first.getByPlaceholder('type `help` or `add <url>`');
   await command.fill('next'); await command.press('Enter');
   await expect(first.getByText('▶ Dreams', { exact: true })).toBeVisible();
@@ -91,13 +99,72 @@ for (const theme of ['pulse', 'studio']) {
       await fixture(page, 'host', theme);
       await page.goto('/jam/SHARED');
       await expect(page.getByRole('region', { name: 'Your playback' })).toBeVisible();
+      await expect(page.getByRole('region', { name: 'Your playback' }).getByText('Ready', { exact: true })).toBeVisible();
+      await expect(page.getByRole('region', { name: 'Your playback' }).getByRole('button', { name: 'Next track', exact: true })).toHaveCount(0);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       await page.screenshot({ path: testInfo.outputPath('shared-queue.png'), fullPage: true });
+      await page.getByRole('button', { name: 'Repeat: Off' }).click();
+      await expect(page.getByRole('menu')).toBeVisible();
+      await page.screenshot({ path: testInfo.outputPath('repeat-menu.png'), fullPage: true });
+      await page.getByRole('menu').press('Escape');
       await page.getByRole('button', { name: 'DJ-led', exact: true }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
       await page.screenshot({ path: testInfo.outputPath('mode-confirmation.png'), fullPage: true });
       await page.getByRole('button', { name: 'Cancel', exact: true }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
+      await page.getByRole('button', { name: 'DJ-led', exact: true }).click();
+      await page.getByRole('button', { name: 'Change mode', exact: true }).click();
+      const dj = page.getByRole('region', { name: 'Playback', exact: true });
+      await expect(dj.getByText('Something About Us', { exact: true })).toBeVisible();
+      await expect(dj.getByRole('button', { name: 'Previous track', exact: true })).toHaveCount(0);
+      await expect(dj.getByRole('button', { name: 'Next track', exact: true })).toHaveCount(0);
+      await page.screenshot({ path: testInfo.outputPath('dj-ready.png'), fullPage: true });
+      await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
+      await expect(page.getByText('READY', { exact: true })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await page.screenshot({ path: testInfo.outputPath('tui-ready.png'), fullPage: true });
     });
   }
 }
+
+test('TUI cues the first DJ song, starts explicitly, and shares controls across modes', async ({ page }) => {
+  await fixture(page, 'host', 'pulse', 'dj');
+  await page.goto('/jam/SHARED');
+  await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
+  await expect(page.getByText('▶ Something About Us', { exact: true })).toBeVisible();
+  await expect(page.getByText('READY', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Next track', exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => window.playerCreations)).toBe(0);
+  await page.getByRole('button', { name: 'Play playback', exact: true }).click();
+  await expect(page.getByText('PLAYING', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Next track', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Repeat: Off' }).click();
+  await page.getByRole('menuitemradio', { name: 'Queue', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Repeat: Queue' })).toBeVisible();
+});
+
+test('pending first Play survives switching from GUI to TUI before the queue refresh', async ({ page }) => {
+  await fixture(page, 'host', 'pulse', 'dj');
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  await page.route('**/queue/items/b/play', async route => {
+    await gate;
+    await route.fallback();
+  });
+  await page.goto('/jam/SHARED');
+  await page.getByRole('region', { name: 'Playback', exact: true }).getByRole('button', { name: 'Play playback' }).click();
+  await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
+  await expect(page.getByText('READY', { exact: true })).toBeVisible();
+  release();
+  await expect(page.getByText('PLAYING', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => window.playerCreations)).toBe(1);
+});
+
+test('the DJ can start the cued song from the shared queue row', async ({ page }) => {
+  await fixture(page, 'host', 'pulse', 'dj');
+  await page.goto('/jam/SHARED');
+  await page.getByRole('button', { name: 'Play Something About Us', exact: true }).click();
+  const player = page.getByRole('region', { name: 'Playback', exact: true });
+  await expect(player.getByRole('button', { name: 'Pause playback' })).toBeVisible();
+  await expect(player.getByText('Playing', { exact: true })).toBeVisible();
+});

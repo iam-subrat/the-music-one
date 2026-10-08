@@ -26,6 +26,6 @@ for (const surface of ['gui', 'tui', 'mobile']) {
     failed = false;
     await page.getByRole('button', { name: 'Retry', exact: true }).click();
     await expect(page.getByText('Could not load the room. Please try again.', { exact: true })).toHaveCount(0);
-    await expect(page.getByText(surface === 'tui' ? 'your playback' : 'Shared Queue', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(surface === 'tui' ? 'playback' : 'Shared Queue', { exact: true }).first()).toBeVisible();
   });
 }

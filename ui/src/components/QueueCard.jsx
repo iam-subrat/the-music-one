@@ -13,9 +13,15 @@ export default function QueueCard({
   userId,
   participantCount,
   onQueueChange,
+  local,
+  modeVersion = 0,
+  selected = false,
+  onStartPlayback,
 }) {
-  const { count: skipVotes, hasVoted, refresh: refreshVotes } = useSkipVotes(item.id, userId, sessionId, false);
+  const { count: skipVotes, hasVoted, refresh: refreshVotes } = useSkipVotes(local ? null : item.id, userId, sessionId, false);
   const [isVoting, setIsVoting] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [playError, setPlayError] = useState('');
   const skipThreshold = Math.floor(participantCount / 2) + 1;
   const statusCls =
     item.status === "skipped"
@@ -27,7 +33,7 @@ export default function QueueCard({
           : "";
 
   return (
-    <div className={`${s.queueCard} ${statusCls}`}>
+    <div data-queue-item={item.id} aria-current={selected ? 'true' : undefined} className={`${s.queueCard} ${statusCls} ${selected ? s.personalCurrent : ''}`}>
       {item.thumbnail_url ? (
         <img className={s.queueThumb} src={item.thumbnail_url} alt="" />
       ) : (
@@ -43,6 +49,7 @@ export default function QueueCard({
         <div className={s.queueBy}>
           by {item.profiles?.display_name || "someone"}
         </div>
+        {playError && <div role="alert" className={s.playbackError}>{playError}</div>}
       </div>
       {item.resolve_status === "resolving" && (
         <span className={s.resolvingBadge}>Resolving…</span>
@@ -51,7 +58,7 @@ export default function QueueCard({
         <span className={s.failedBadge}>Failed</span>
       )}
 
-      {FLAGS.VOTE_TO_SKIP &&
+      {!local && FLAGS.VOTE_TO_SKIP &&
         item.status !== "playing" &&
         item.status !== "skipped" && (
         <button
@@ -63,18 +70,23 @@ export default function QueueCard({
         </button>
       )}
 
-      {isDj &&
-        item.status !== "playing" &&
+      {(local || isDj) &&
+        (local || item.status !== "playing") &&
         item.status !== "skipped" &&
         item.resolve_status !== "failed" && (
           <button
             className={s.queuePlayBtn}
-            onClick={() =>
-              playSpecificSong(sessionId, item.id).catch((e) =>
-                console.error(e),
-              )
-            }
-            title="Play this song"
+            disabled={item.resolve_status === 'resolving' || local?.state.loading || isStarting}
+            onClick={async () => {
+              if (local) { local.select(item); return; }
+              setIsStarting(true); setPlayError('');
+              const cancelStart = onStartPlayback?.(item);
+              try { await playSpecificSong(sessionId, item.id, modeVersion); onQueueChange?.(); }
+              catch (error) { cancelStart?.(); setPlayError(error.message); }
+              finally { setIsStarting(false); }
+            }}
+            aria-label={`Play ${item.title}`}
+            title={`Play ${item.title}`}
           >
             <JamIcon name="play" size={15} />
           </button>

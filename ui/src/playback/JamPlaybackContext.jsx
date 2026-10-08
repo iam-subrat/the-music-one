@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState } from "react";
 import YouTubeAutoPlayer from "../components/YouTubeAutoPlayer";
 import { useMediaSession } from "../hooks/useMediaSession";
 
@@ -10,9 +10,9 @@ function samePlayback(a, b) {
     && a?.videoId === b?.videoId;
 }
 
-function PersistentPlayer({ descriptor, playerRef, PlayerComponent, playerChrome }) {
+function PersistentPlayer({ descriptor, playerRef, PlayerComponent, playerChrome, onPlayerReady }) {
   const latestDescriptor = useRef(descriptor);
-  useEffect(() => { latestDescriptor.current = descriptor; }, [descriptor]);
+  useLayoutEffect(() => { latestDescriptor.current = descriptor; }, [descriptor]);
   const enabled = !!(descriptor?.enabled && descriptor?.videoId);
 
   useMediaSession({
@@ -41,7 +41,11 @@ function PersistentPlayer({ descriptor, playerRef, PlayerComponent, playerChrome
         playbackKey={descriptor.playbackKey ?? descriptor.queueItemId + ':' + descriptor.modeVersion}
         repeat={descriptor.repeat}
         autoplayOnChange={descriptor.autoplayOnChange !== false}
-        onReady={descriptor.onReady}
+        onReady={() => {
+          const current = latestDescriptor.current;
+          onPlayerReady(current);
+          current?.onReady?.();
+        }}
         onError={descriptor.onError}
         onBlocked={descriptor.onBlocked}
         onEnded={() => latestDescriptor.current?.onEnded?.()}
@@ -53,10 +57,28 @@ function PersistentPlayer({ descriptor, playerRef, PlayerComponent, playerChrome
 export function JamPlaybackProvider({ children, PlayerComponent = YouTubeAutoPlayer, playerChrome = true }) {
   const playerRef = useRef(null);
   const [descriptor, setDescriptor] = useState(null);
+  const pendingStartRef = useRef(null);
+  const requestStart = useCallback((sessionId, queueItemId, modeVersion) => {
+    const request = { sessionId, queueItemId, modeVersion };
+    pendingStartRef.current = request;
+    return () => { if (pendingStartRef.current === request) pendingStartRef.current = null; };
+  }, []);
+  const onPlayerReady = useCallback((current) => {
+    const request = pendingStartRef.current;
+    if (request && current?.isDJ && current.enabled && request.sessionId === current.sessionId
+      && request.queueItemId === current.queueItemId && request.modeVersion === current.modeVersion) {
+      pendingStartRef.current = null;
+      playerRef.current?.play();
+    }
+  }, []);
 
   const registerPlayback = useCallback((next) => {
     setDescriptor((current) => {
       if (next.ready === false) return current;
+      const request = pendingStartRef.current;
+      if (request && (request.sessionId !== next.sessionId || request.modeVersion !== next.modeVersion || !next.isDJ)) {
+        pendingStartRef.current = null;
+      }
       if (current?.sessionId === next.sessionId && current?.modeVersion !== next.modeVersion) {
         playerRef.current?.pause?.();
         playerRef.current?.seek?.(0);
@@ -86,6 +108,7 @@ export function JamPlaybackProvider({ children, PlayerComponent = YouTubeAutoPla
     setDescriptor((current) => {
       if (sessionId && current?.sessionId !== sessionId) return current;
       if (owner && current?.owner !== owner) return current;
+      pendingStartRef.current = null;
       playerRef.current?.pause?.();
       return null;
     });
@@ -93,6 +116,7 @@ export function JamPlaybackProvider({ children, PlayerComponent = YouTubeAutoPla
 
   const value = useMemo(() => ({
     registerPlayback,
+    requestStart,
     clearPlayback,
     playerRef,
     play: () => playerRef.current?.play(),
@@ -102,12 +126,12 @@ export function JamPlaybackProvider({ children, PlayerComponent = YouTubeAutoPla
     getTime: () => playerRef.current?.getTime() ?? 0,
     getDuration: () => playerRef.current?.getDuration() ?? 0,
     getState: () => playerRef.current?.getState() ?? -1,
-  }), [clearPlayback, registerPlayback]);
+  }), [clearPlayback, registerPlayback, requestStart]);
 
   return (
     <PlaybackContext.Provider value={value}>
       {children}
-      <PersistentPlayer descriptor={descriptor} playerRef={playerRef} PlayerComponent={PlayerComponent} playerChrome={playerChrome} />
+      <PersistentPlayer descriptor={descriptor} playerRef={playerRef} PlayerComponent={PlayerComponent} playerChrome={playerChrome} onPlayerReady={onPlayerReady} />
     </PlaybackContext.Provider>
   );
 }

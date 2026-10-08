@@ -4,7 +4,7 @@ import { eligibleItems, nextItem, previousItem, readCheckpoint } from './indepen
 import { api } from '../lib/api';
 
 const Context = createContext(null);
-const empty = { item: null, videoId: null, intent: false, repeat: 'none', error: '', loading: false, atEnd: false };
+const empty = { item: null, videoId: null, intent: false, started: false, repeat: 'none', error: '', loading: false, atEnd: false };
 function roomActive(room) {
   return room?.active && (!room.session.expires_at || Date.parse(room.session.expires_at) > Date.now());
 }
@@ -44,7 +44,7 @@ export function IndependentPlaybackProvider({ children, resolveItem = defaultRes
     const request = ++token.current;
     playback.pause();
     restoreTime.current = checkpoint?.time ?? 0;
-    stateUpdate(s => ({ ...s, item: { ...item }, intent, repeat: checkpoint?.repeat ?? s.repeat, error: '', loading: true, atEnd: false }));
+    stateUpdate(s => ({ ...s, item: { ...item }, intent, started: intent, repeat: checkpoint?.repeat ?? s.repeat, error: '', loading: true, atEnd: false }));
     try {
       sessionStorage.setItem(checkpointKey.current, JSON.stringify({ schema: 1,
         epoch: room.session.playback_mode_version ?? 0, itemId: item.id,
@@ -159,7 +159,7 @@ export function IndependentPlaybackProvider({ children, resolveItem = defaultRes
     if (!local.item) { select(eligibleItems(roomRef.current.items)[0]); return; }
     if (!local.videoId || (local.error && local.error !== 'Press Play to continue')) { select(local.item); return; }
     endedToken.current = -1;
-    stateUpdate(s => ({ ...s, intent: true, error: '', atEnd: false })); playback.play();
+    stateUpdate(s => ({ ...s, intent: true, started: true, error: '', atEnd: false })); playback.play();
   }, [select, stateUpdate, playback.play]);
   const pause = useCallback(() => { stateUpdate(s => ({ ...s, intent: false })); playback.pause(); save(); }, [stateUpdate, playback.pause, save]);
   const repeat = useCallback(value => { if (['none', 'song', 'queue'].includes(value)) { stateUpdate(s => ({ ...s, repeat: value })); save(); } }, [stateUpdate, save]);

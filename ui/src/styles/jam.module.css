@@ -999,11 +999,29 @@
 .modeDialog h2 { font-size: 1.2rem; line-height: 1.3; margin: 0 0 16px; letter-spacing: 0; }
 .modeDialog p { font-size: .87rem; line-height: 1.6; margin: 10px 0; color: var(--jam-muted); }
 .modeDialogActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
-.personalHeading, .personalFooter { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.personalStatus { color: var(--jam-muted); font-size: .76rem; }
-.personalRepeat { display: flex; align-items: center; gap: 9px; font-size: .8rem; color: var(--jam-text); }
-.personalRepeat select { padding: 6px 26px 6px 9px; border: 1px solid var(--jam-control-border); border-radius: 4px; background: var(--jam-control-fill); color: var(--jam-text); font: inherit; }
-.personalFooter { padding-top: 14px; border-top: 1px solid var(--jam-control-border); }
+.playerStatus { display: flex; align-items: center; justify-content: flex-end; gap: 7px; min-height: 20px; color: var(--jam-muted); font-size: .75rem; }
+.statusDot { width: 5px; height: 5px; border-radius: 50%; background: var(--jam-muted); }
+.playerStatus[data-playing="true"] .statusDot { background: var(--jam-accent); }
+.playerEmpty { padding: 32px 0; color: var(--jam-muted); text-align: center; font-size: .9rem; }
+.playerFooter { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 16px; margin-top: 2px; border-top: 1px solid var(--jam-control-border); }
+.playerOptions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.repeatMenu { position: relative; color: var(--jam-text); font-size: .78rem; }
+.repeatTrigger { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 12px; border: 1px solid var(--jam-control-border); border-radius: 8px; background: var(--jam-control-fill); color: inherit; font: inherit; cursor: pointer; }
+.repeatTrigger > span:not(.menuChevron) { color: var(--jam-muted); }
+.repeatTrigger strong { min-width: 34px; font-weight: 600; }
+.repeatTrigger:hover, .repeatTrigger[aria-expanded="true"] { background: var(--jam-control-hover); border-color: var(--jam-muted); }
+.repeatTrigger:disabled { opacity: .5; cursor: default; }
+.menuChevron { width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); margin: -3px 2px 0 4px; }
+.repeatOptions { position: absolute; z-index: 20; bottom: calc(100% + 8px); left: 0; width: 180px; padding: 5px; border: 1px solid var(--jam-control-border); border-radius: 8px; background: var(--jam-surface); box-shadow: 0 12px 36px rgba(0,0,0,.2); }
+.repeatOptions button { width: 100%; display: flex; align-items: center; justify-content: space-between; min-height: 40px; padding: 8px 10px; border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.repeatOptions button[aria-checked="true"] { color: var(--jam-accent); background: var(--jam-control-fill); }
+.repeatOptions button:hover, .repeatOptions button:focus-visible { background: var(--jam-control-hover); outline: none; }
+.autoPilotToggle { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0; border: 0; background: transparent; color: var(--jam-muted); font: inherit; font-size: .78rem; cursor: pointer; }
+.toggleTrack { display: flex; align-items: center; width: 30px; height: 18px; padding: 3px; border-radius: 10px; background: var(--jam-control-border); }
+.toggleTrack span { width: 12px; height: 12px; border-radius: 50%; background: var(--jam-muted); transition: transform .15s ease; }
+.autoPilotToggle[aria-checked="true"] .toggleTrack { background: var(--jam-accent); }
+.autoPilotToggle[aria-checked="true"] .toggleTrack span { transform: translateX(12px); background: var(--jam-canvas); }
+.autoPilotToggle:disabled { opacity: .5; cursor: default; }
 .personalCurrent { background: var(--jam-control-hover); border-color: var(--jam-control-border); }
 .personalMarker { color: var(--jam-accent); font-size: .7rem; max-width: 70px; flex-shrink: 0; line-height: 1.4; }
 .queueIndex { color: var(--jam-muted); font-size: .76rem; width: 22px; flex-shrink: 0; text-align: center; }
@@ -1017,5 +1035,31 @@
 .createOption input { margin-top: 3px; accent-color: var(--jam-accent); }
 .createOption strong { display: block; font-size: 1rem; color: var(--jam-text); margin-bottom: 7px; }
 .createOption small { display: block; color: var(--jam-muted); line-height: 1.5; font-size: .84rem; }
-.independentPlayer button:disabled { opacity: .45; cursor: default; }
+.nowPlaying button:disabled, .queuePlayBtn:disabled { opacity: .45; cursor: default; }
+.nowPlayingTitle { font-size: 2rem; line-height: 1.15; letter-spacing: 0; overflow-wrap: anywhere; }
+.nowPlayingArtist, .nowPlayingAdded { white-space: normal; overflow-wrap: anywhere; }
+.sectionHeading h3 { letter-spacing: 0; }
+.artworkStage { border-radius: 8px; }
+.artworkStage .artworkPlaceholder, .studio .artworkStage .artworkPlaceholder { display: grid; place-items: center; background: var(--jam-control-fill); color: var(--jam-muted); font-size: 3rem; font-weight: 600; }
+.queueThumb:not(img) { background: var(--jam-control-fill); }
+.studio .nowPlayingMeta[data-artwork="false"] { grid-template-columns: 148px minmax(0, 1fr); }
+.studio .nowPlayingMeta[data-artwork="false"] .artworkStage { width: 148px; height: 148px; }
+.studio .thumb { border-radius: 8px; }
+.transportButtons { min-height: 56px; display: grid; grid-template-columns: 44px 56px 44px; justify-content: center; gap: 14px; }
+.transportButtons .playButton { grid-column: 2; grid-row: 1; width: 56px; height: 56px; }
+.transportButtons .iconButton:first-child { grid-column: 1; grid-row: 1; }
+.transportButtons .iconButton:last-child { grid-column: 3; grid-row: 1; }
+.queueCard, .studio .queueCard { flex-wrap: nowrap; }
+.queuePos { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.personalCurrent { box-shadow: inset 2px 0 var(--jam-accent); }
+@media(max-width: 760px) {
+  .nowPlayingTitle { font-size: 1.5rem; }
+  .studio .nowPlayingMeta[data-artwork="false"] { grid-template-columns: 112px minmax(0, 1fr); }
+  .studio .nowPlayingMeta[data-artwork="false"] .artworkStage { width: 112px; height: 112px; }
+  .playerOptions { gap: 12px; }
+  .playerFooter > .modeScope { margin-left: auto; }
+  .queueCard { gap: 8px; }
+  .queueTitle { white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
+  .queueVoteBtn { font-size: .68rem; }
+}
 @media(max-width: 400px) { .modeSegment { width: 100%; } .personalMarker { max-width: 44px; } }

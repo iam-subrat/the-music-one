@@ -19,12 +19,12 @@ import { useTui } from "../tui/TuiContext";
 import { useJamPlayback } from "../playback/JamPlaybackContext";
 import s from "../styles/jam.module.css";
 import { useIndependentPlayback } from '../playback/IndependentPlaybackContext';
-import IndependentPlayer, { IndependentQueue } from '../components/IndependentPlayer';
+import IndependentPlayer from '../components/IndependentPlayer';
 import PlaybackModeControl from '../components/PlaybackModeControl';
 
 export default function JamRoom() {
   const { guiTheme, setGuiTheme } = useTui();
-  const { clearPlayback } = useJamPlayback();
+  const { clearPlayback, requestStart } = useJamPlayback();
   const { code } = useParams();
   const navigate = useNavigate();
   const {
@@ -301,7 +301,7 @@ export default function JamRoom() {
               {sessionError} <button type="button" className="btn btn-ghost" onClick={refreshSession}>Retry</button>
             </div>}
             <PlaybackModeControl session={session} userId={user?.id} onChange={setSession} onRefresh={refreshSession} />
-            {independent ? <IndependentPlayer local={local} /> : <NowPlaying
+            {independent ? <IndependentPlayer local={local} preferredPlatform={profile?.preferred_platform} /> : <NowPlaying
               nowPlaying={nowPlaying}
               sessionId={session.id}
               isDJ={isDJ}
@@ -321,18 +321,18 @@ export default function JamRoom() {
               playbackReady={queueReady && !authLoading && !sessionLoading}
               modeVersion={session.playback_mode_version ?? 0}
             />}
-            {independent ? <IndependentQueue items={queueItems} local={local} /> : <QueueList
+            <QueueList
+              local={independent ? local : undefined}
+              modeVersion={session.playback_mode_version ?? 0}
               items={queueItems}
+              onStartPlayback={item => !nowPlaying ? requestStart(session.id, item.id, session.playback_mode_version ?? 0) : undefined}
               repeatMode={session.repeat_mode ?? "none"}
               autoPilot={session.auto_pilot ?? false}
               sessionId={session.id}
               userId={user?.id}
               participantCount={participants.length}
               profile={profile}
-              isDj={
-                session?.dj_user_id === user?.id ||
-                session?.host_user_id === user?.id
-              }
+              isDj={isDJ}
               onPlatformDetected={setPreferredPlatform}
               onAdded={(item) => {
                 addItem(item);
@@ -340,7 +340,7 @@ export default function JamRoom() {
               }}
               onQueueChange={refreshQueue}
               showAdd={false}
-            />}
+            />
           </main>
 
           <aside className={s.sidebar} aria-label="Room details">

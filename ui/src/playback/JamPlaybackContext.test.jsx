@@ -7,9 +7,9 @@ import { JamPlaybackProvider, useJamPlayback } from "./JamPlaybackContext";
 const player = { play: vi.fn(), pause: vi.fn(), seek: vi.fn(), getTime: () => 12, getDuration: () => 180, getState: () => 2, isReady: () => true };
 
 vi.mock("../components/YouTubeAutoPlayer", () => ({
-  default: forwardRef(({ videoId }, ref) => {
+  default: forwardRef(({ videoId, onReady }, ref) => {
     useImperativeHandle(ref, () => player);
-    return <div data-testid="youtube-player" data-video-id={videoId} />;
+    return <div data-testid="youtube-player" data-video-id={videoId}><button onClick={onReady}>player ready</button></div>;
   }),
 }));
 vi.mock("../hooks/useMediaSession", () => ({ useMediaSession: vi.fn() }));
@@ -36,6 +36,24 @@ function EndSessionProbe() {
   const { clearPlayback } = useJamPlayback();
   return <button type="button" onClick={() => clearPlayback("session-a")}>end session</button>;
 }
+
+function StartProbe() {
+  const { requestStart } = useJamPlayback();
+  return <button onClick={() => requestStart('session-a', 'item-a', 1)}>request start</button>;
+}
+
+test('pending explicit Play survives a surface handoff but not a mode epoch change', () => {
+  const tree = descriptor => <JamPlaybackProvider><Registration descriptor={descriptor} /><StartProbe /></JamPlaybackProvider>;
+  const view = render(tree({ ...active, modeVersion: 1 }));
+  fireEvent.click(screen.getByRole('button', { name: 'request start' }));
+  view.rerender(tree({ ...active, owner: 'tui', modeVersion: 1 }));
+  fireEvent.click(screen.getByRole('button', { name: 'player ready' }));
+  expect(player.play).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole('button', { name: 'request start' }));
+  view.rerender(tree({ ...active, owner: 'tui', modeVersion: 2 }));
+  fireEvent.click(screen.getByRole('button', { name: 'player ready' }));
+  expect(player.play).toHaveBeenCalledTimes(1);
+});
 
 describe("JamPlaybackProvider", () => {
   test("keeps one player mounted when a TUI registration replaces the GUI registration for the same item", () => {

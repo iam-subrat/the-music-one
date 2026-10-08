@@ -113,7 +113,7 @@ test("skip vote immediately becomes unvote and can be removed", async ({ page })
   await page.goto("/jam/room");
 
   // This catches removing the hook refresh after a successful non-majority vote.
-  const nowPlayingControls = page.locator('[class*="nowPlaying"] > [class*="djControls"]');
+  const nowPlayingControls = page.getByRole('region', { name: 'Playback', exact: true });
   const skip = nowPlayingControls.getByRole("button", { name: /skip \(0\/2\)/i });
   await expect(skip).toBeVisible();
   await skip.click();
@@ -123,28 +123,30 @@ test("skip vote immediately becomes unvote and can be removed", async ({ page })
   await expect(nowPlayingControls.getByRole("button", { name: /skip \(0\/2\)/i })).toBeVisible();
 });
 
-test("DJ can advance, go back, and cycle repeat mode", async ({ page }) => {
+test("DJ can advance, go back, and select repeat mode", async ({ page }) => {
   await installJamFixture(page);
   await page.goto("/jam/room");
   await expect(page.getByRole("main", { name: "Jam room" }).getByText("Current Track", { exact: true })).toBeVisible();
 
   await Promise.all([
     page.waitForRequest((request) => request.url().endsWith("/api/sessions/session-1/queue/next") && request.method() === "POST"),
-    page.getByRole("button", { name: /next/i }).click(),
+    page.getByRole("button", { name: 'Next track', exact: true }).click(),
   ]);
   await expect(page.getByRole("main", { name: "Jam room" }).getByText("Next Track", { exact: true })).toBeVisible();
 
   await Promise.all([
     page.waitForRequest((request) => request.url().endsWith("/api/sessions/session-1/queue/previous") && request.method() === "POST"),
-    page.getByRole("button", { name: /prev/i }).click(),
+    page.getByRole("button", { name: 'Previous track', exact: true }).click(),
   ]);
   await expect(page.getByRole("main", { name: "Jam room" }).getByText("Previous Track", { exact: true })).toBeVisible();
 
   const repeat = page.getByRole("button", { name: /repeat/i });
   await repeat.click();
-  await expect(page.getByRole("button", { name: /repeat song/i })).toBeVisible();
-  await page.getByRole("button", { name: /repeat song/i }).click();
-  await expect(page.getByRole("button", { name: /repeat queue/i })).toBeVisible();
+  await page.getByRole('menuitemradio', { name: 'Song', exact: true }).click();
+  await expect(page.getByRole("button", { name: 'Repeat: Song' })).toBeVisible();
+  await page.getByRole("button", { name: 'Repeat: Song' }).click();
+  await page.getByRole('menuitemradio', { name: 'Queue', exact: true }).click();
+  await expect(page.getByRole("button", { name: 'Repeat: Queue' })).toBeVisible();
 });
 
 test("listener cannot access DJ-only transport or queue-play controls", async ({ page }) => {
@@ -153,7 +155,7 @@ test("listener cannot access DJ-only transport or queue-play controls", async ({
 
   await expect(page.getByRole("button", { name: /prev/i })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /^next/i })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /repeat/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /repeat/i })).toBeDisabled();
   await expect(page.locator('button[title="Play this song"]')).toHaveCount(0);
   await expect(page.getByRole("button", { name: /skip \(0\/2\)/i }).first()).toBeVisible();
 });
