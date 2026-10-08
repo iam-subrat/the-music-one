@@ -93,7 +93,7 @@ export default function TuiJamRoom() {
   const navigate = useNavigate();
   const auth = useAuth();
   const { user, profile, loading: authLoading } = auth;
-  const { session, loading: sessionLoading, setSession } = useSession(code);
+  const { session, loading: sessionLoading, error: sessionError, setSession, refresh: refreshSession } = useSession(code);
   const {
     items: queueItems,
     ready: queueReady,
@@ -760,10 +760,11 @@ export default function TuiJamRoom() {
   }
   if (!session) {
     return (
-      <TerminalShell title="musicone.sh ~ jam" status="not found" auth={auth}>
+      <TerminalShell title="musicone.sh ~ jam" status={sessionError ? "connection failed" : "not found"} auth={auth}>
         <div className={`${s.logLine} ${s.err}`}>
-          ✗ session not found: {code}
+          {sessionError || `session not found: ${code}`}
         </div>
+        {sessionError && <button type="button" className={s.authBtn} onClick={refreshSession}>Retry</button>}
         <div className={s.hint}>
           <a href="/">
             cd ~
@@ -817,6 +818,9 @@ export default function TuiJamRoom() {
       auth={auth}
     >
 
+      {sessionError && <div role="alert" className={`${s.logLine} ${s.err}`}>
+        {sessionError} <button type="button" className={s.authBtn} onClick={refreshSession}>Retry</button>
+      </div>}
       <div className={s.jamGrid}>
         <div className={`${s.panel} ${s.panelSpan2}`}>
           <div className={s.panelLabel}>{independent ? "your playback" : "now playing"}</div>

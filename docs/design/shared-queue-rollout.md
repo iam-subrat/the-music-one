@@ -5,7 +5,10 @@ tab/device owns its cursor, transport and repeat mode; the room shares a catalog
 
 ## Deployment Order
 
-1. Apply Alembic revision 009 with the API release. Existing rooms default to DJ-led.
+1. Apply Alembic through revision 010 with the API release. Existing rooms default
+   to DJ-led. Revision 010 repairs null expiry timestamps using creation time plus
+   24 hours, without extending existing timestamps or reviving expired rooms.
+   Deploy the updated API model so new rooms use the database expiry default.
 2. Deploy web clients, including the hosted /bridge player with protocol 2.
 3. Ship the Capacitor mobile client update. Old mobile clients cannot play Shared
    Queue and cannot mutate its global playback state.
@@ -31,6 +34,10 @@ tab/device owns its cursor, transport and repeat mode; the room shares a catalog
 
 Disable INDEPENDENT_PLAYBACK to block new rooms/transitions without breaking
 already independent rooms. Hosts can return those rooms to DJ-led.
+
+Revision 010 downgrade restores the previous queue guard but retains repaired
+timestamps and the baseline expiry default. Reapply it if rolling back a client
+release; do not restore null expiry data.
 
 Before downgrading revision 009, end or convert all active Shared Queue rooms.
 The downgrade deliberately refuses otherwise. Downgrade removes the additive

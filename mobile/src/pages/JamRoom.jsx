@@ -69,7 +69,7 @@ export default function JamRoom({ independentEnabled }) {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
-  const { session, loading: sessionLoading, setSession, refresh: refreshSession } = useSession(code);
+  const { session, loading: sessionLoading, error: sessionError, setSession, refresh: refreshSession } = useSession(code);
   const { items: queueItems, refresh } = useQueue(session?.id);
   const { participants, refresh: refreshParticipants } = useParticipants(session?.id);
   const independent = session?.playback_mode === 'independent';
@@ -105,10 +105,11 @@ export default function JamRoom({ independentEnabled }) {
     return (
       <div className="screen bg-[#f4f5f0] items-center px-6">
         <div className="flex-1 flex flex-col items-center justify-center max-w-sm w-full mx-auto text-center">
-          <h1 className="text-3xl font-black mb-2">Jam not found</h1>
+          <h1 className="text-3xl font-black mb-2">{sessionError ? 'Could not load jam' : 'Jam not found'}</h1>
           <p className="font-medium text-gray-600 mb-6">
-            This room doesn't exist or has ended.
+            {sessionError || "This room doesn't exist or has ended."}
           </p>
+          {sessionError && <button type="button" onClick={refreshSession} className="brutal-btn w-full py-4 mb-3">Retry</button>}
           <button
             onClick={() => navigate("/")}
             className="brutal-btn w-full py-4"
@@ -344,6 +345,9 @@ export default function JamRoom({ independentEnabled }) {
 
       {/* ── Main content — flex-1 scrolls only within the remaining screen height */}
       <main className="flex-1 overflow-y-auto overscroll-contain px-6 pt-6 pb-32">
+        {sessionError && <div role="alert" className="text-red-700 mb-4">
+          {sessionError} <button type="button" className="underline font-bold" onClick={refreshSession}>Retry</button>
+        </div>}
         <PlaybackModeControl session={session} userId={user?.id} enabled={independentEnabled} onChange={setSession} onRefresh={refreshSession} />
         {independent && <IndependentControls local={local} />}
         {/* Participants */}

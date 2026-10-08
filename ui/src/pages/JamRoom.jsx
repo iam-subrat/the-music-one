@@ -33,7 +33,7 @@ export default function JamRoom() {
     loading: authLoading,
     setPreferredPlatform,
   } = useAuth();
-  const { session, loading: sessionLoading, setSession, refresh: refreshSession } = useSession(code);
+  const { session, loading: sessionLoading, error: sessionError, setSession, refresh: refreshSession } = useSession(code);
   const {
     items: queueItems,
     ready: queueReady,
@@ -176,7 +176,10 @@ export default function JamRoom() {
         className={`page ${s.jamRoom} ${s[guiTheme]}`}
         style={{ justifyContent: "center", textAlign: "center" }}
       >
-        <p style={{ color: "var(--jam-muted)" }}>Session not found.</p>
+        <p role={sessionError ? "alert" : undefined} style={{ color: "var(--jam-muted)" }}>
+          {sessionError || "Session not found."}
+        </p>
+        {sessionError && <button type="button" className="btn" onClick={refreshSession} style={{ marginTop: 20 }}>Retry</button>}
         <a href="/" className="btn" style={{ marginTop: 20 }}>
           Go home
         </a>
@@ -294,6 +297,9 @@ export default function JamRoom() {
           </header>
 
           <main className={s.primaryColumn} aria-label="Jam room">
+            {sessionError && <div role="alert" className={s.playbackError}>
+              {sessionError} <button type="button" className="btn btn-ghost" onClick={refreshSession}>Retry</button>
+            </div>}
             <PlaybackModeControl session={session} userId={user?.id} onChange={setSession} onRefresh={refreshSession} />
             {independent ? <IndependentPlayer local={local} /> : <NowPlaying
               nowPlaying={nowPlaying}

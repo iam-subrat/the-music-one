@@ -23,7 +23,7 @@ async def room_db():
     for name in ['001_baseline.py', '002_playlist_queue_fields.py', '003_feature_flag_song_search.py',
                  'e4e47f494bb3_add_play_specific_and_play_previous.py', '004_fix_repeat_queue_order.py',
                  '005_dj_can_pass_dj.py', '006_skip_queued_song_vote.py', '007_never_play_skipped_songs.py',
-                 '008_fix_played_queue_skip_vote.py', '794d25c627f8_add_auto_pilot_to_sessions.py', '009_independent_playback.py']:
+                 '008_fix_played_queue_skip_vote.py', '794d25c627f8_add_auto_pilot_to_sessions.py', '009_independent_playback.py', '010_fix_session_expiry.py']:
         migration = _load_migration(name)
         await conn.execute(getattr(migration, '_UPGRADE_SQL', getattr(migration, '_SKIP_VOTE_SQL', '')))
     host, guest, sid, iid = uuid4(), uuid4(), uuid4(), uuid4()
@@ -119,5 +119,58 @@ async def test_downgrade_refuses_active_independent_rooms_then_restores_rpc(room
     with pytest.raises(asyncpg.RaiseError, match='End or convert'):
         await c.execute(migration._DOWNGRADE_SQL)
     await switch(c,sid,'dj',1)
+    await c.execute(_load_migration('010_fix_session_expiry.py')._DOWNGRADE_SQL)
     await c.execute(migration._DOWNGRADE_SQL)
     assert await c.fetchval('SELECT play_next($1)',sid) == iid
+
+
+@pytest.mark.asyncio
+async def test_orm_created_rooms_have_expiry(room_db):
+    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+    from app.repositories.session_repo import SessionRepository
+    from datetime import timedelta
+
+    c, host, _, _, _, url = room_db
+    engine = create_async_engine(url.replace('postgresql://', 'postgresql+asyncpg://'))
+    try:
+        async with AsyncSession(engine, expire_on_commit=False) as db:
+            room = await SessionRepository(db).create(host)
+            assert room.expires_at is not None
+            assert room.expires_at - room.created_at == timedelta(hours=24)
+            await c.execute("INSERT INTO queue_items(session_id,title,artist,status) VALUES($1,'New','Artist','queued')", room.id)
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_null_expiry_room_accepts_queued_songs(room_db):
+    c, _, _, sid, _, _ = room_db
+    await c.execute('UPDATE sessions SET expires_at=NULL WHERE id=$1', sid)
+    await switch(c, sid, 'independent', 0)
+    await c.execute("INSERT INTO queue_items(session_id,title,artist,status) VALUES($1,'New','Artist','queued')", sid)
+    assert await c.fetchval('SELECT count(*) FROM queue_items WHERE session_id=$1', sid) == 2
+
+
+@pytest.mark.asyncio
+async def test_expired_room_rejects_queued_songs(room_db):
+    c, _, _, sid, _, _ = room_db
+    await c.execute("UPDATE sessions SET expires_at=now()-interval '1 minute' WHERE id=$1", sid)
+    with pytest.raises(asyncpg.RaiseError, match='room is inactive'):
+        await c.execute("INSERT INTO queue_items(session_id,title,artist,status) VALUES($1,'New','Artist','queued')", sid)
+
+
+@pytest.mark.asyncio
+async def test_expiry_migration_repairs_old_rooms_without_reviving_them(room_db):
+    from datetime import timedelta
+    c, _, _, sid, _, _ = room_db
+    migration = _load_migration('010_fix_session_expiry.py')
+    await c.execute(migration._DOWNGRADE_SQL)
+    await c.execute("UPDATE sessions SET expires_at=NULL, created_at=now()-interval '2 days' WHERE id=$1", sid)
+    await c.execute(migration._UPGRADE_SQL)
+    room = await c.fetchrow('SELECT created_at,expires_at FROM sessions WHERE id=$1', sid)
+    assert room['expires_at'] - room['created_at'] == timedelta(hours=24)
+    assert await c.fetchval('SELECT expires_at < now() FROM sessions WHERE id=$1', sid)
+    with pytest.raises(asyncpg.RaiseError, match='room is inactive'):
+        await c.execute("INSERT INTO queue_items(session_id,title,artist,status) VALUES($1,'New','Artist','queued')", sid)
+    await c.execute(migration._DOWNGRADE_SQL)
+    assert await c.fetchval('SELECT expires_at FROM sessions WHERE id=$1', sid) == room['expires_at']

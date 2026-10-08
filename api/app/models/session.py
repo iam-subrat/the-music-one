@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 from typing import Optional
-from sqlalchemy import ForeignKey, func
+from sqlalchemy import ForeignKey, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base
 
@@ -22,7 +22,9 @@ class Session(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     ended_at: Mapped[Optional[datetime]]
     last_activity_at: Mapped[Optional[datetime]] = mapped_column(server_default=func.now())
-    expires_at: Mapped[Optional[datetime]]
+    expires_at: Mapped[Optional[datetime]] = mapped_column(
+        server_default=text("now() + interval '24 hours'")
+    )
 
 
 class SessionParticipant(Base):
