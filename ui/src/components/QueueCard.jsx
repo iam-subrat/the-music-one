@@ -4,6 +4,7 @@ import { useSkipVotes } from "../hooks/useSkipVotes";
 import { castSkipVote, playSpecificSong, removeSkipVote } from "../lib/queue";
 import s from "../styles/jam.module.css";
 import JamIcon from "./JamIcon";
+import DeleteVoteButton from "./DeleteVoteButton";
 
 export default function QueueCard({
   item,
@@ -61,13 +62,12 @@ export default function QueueCard({
       {!local && FLAGS.VOTE_TO_SKIP &&
         item.status !== "playing" &&
         item.status !== "skipped" && (
-        <button
+        <DeleteVoteButton
           className={`${s.queueVoteBtn} ${hasVoted ? s.queueVoteBtnVoted : ""}`}
+          title={item.title} count={skipVotes} threshold={skipThreshold} hasVoted={hasVoted}
           disabled={isVoting}
           onClick={handleSkipVote}
-        >
-          {hasVoted ? "Unvote" : "Skip"} ({skipVotes}/{skipThreshold})
-        </button>
+        />
       )}
 
       {(local || isDj) &&

@@ -55,7 +55,7 @@ const HELP_LINES = [
   ["play <n>", "DJ only — play song n from queue directly"],
   ["prev | previous", "DJ only — play previous song"],
 
-  ["skip [n]", "vote to skip current track or queue song n (DJ force-skips current)"],
+  ["skip [n]", "vote to delete current track or queue song n (DJ removes current immediately)"],
   ["unvote [n]", "remove your vote for current track or queue song n"],
   ["who | participants", "list participants with index/short-id"],
   ["dj <me|@name|N|prefix>", "host or DJ — pass DJ token (see `who`)"],
@@ -855,17 +855,11 @@ export default function TuiJamRoom() {
                   className={`${s.logLine} ${s.dim}`}
                   style={{ marginTop: 6 }}
                 >
-                  votes to skip:{" "}
-                  <b style={{ color: "var(--tui-amber)" }}>
+                  delete votes:{" "}
+                  <b title={hasVoted ? "Remove your vote with unvote" : isDJ ? "The DJ can remove the current track immediately with skip" : "Vote to remove from this room's queue with skip"}
+                    style={{ color: hasVoted ? "var(--tui-lime)" : "var(--tui-amber)" }}>
                     {skipVotes}/{skipThreshold}
                   </b>
-                  {hasVoted && (
-                    <span
-                      style={{ color: "var(--tui-lime)", marginLeft: 10 }}
-                    >
-                      · you voted
-                    </span>
-                  )}
                 </div>}
         </TuiPlayer>
         <TuiQueueList items={upcoming} currentId={independent ? local.state.item?.id : !nowPlaying ? displayItem?.id : undefined} autoPilot={!independent && session.auto_pilot} />

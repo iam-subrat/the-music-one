@@ -852,6 +852,8 @@
 .queuePlayBtn { width: 36px; height: 36px; border-radius: 50%; color: var(--jam-accent); }
 .queuePlayBtn:hover { background: var(--jam-control-hover); }
 .queueVoteBtn { min-height: 32px; padding: 5px 8px; font-size: .72rem; }
+.deleteVoteCount { padding-left: 6px; border-left: 1px solid currentColor; font-variant-numeric: tabular-nums; white-space: nowrap; opacity: .85; }
+.skipBtn, .queueVoteBtn { white-space: nowrap; flex-shrink: 0; }
 .participant { min-height: 46px; margin: 0; padding: 6px 0; border-bottom: 1px solid var(--jam-control-border); }
 .participant:last-child { border-bottom: 0; }
 .pAvatar { display: grid; place-items: center; width: 34px; height: 34px; color: var(--jam-text); font-size: .76rem; font-weight: 750; }

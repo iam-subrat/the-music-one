@@ -16,7 +16,7 @@ test('both modes render the same queue row; personal play never exposes room vot
   const view = render(<QueueList items={[song]} showAdd={false} local={local} participantCount={2} />);
   expect(view.container.querySelector('[data-queue-item="a"]').className).toBe(rowClass);
   expect(screen.getByText('by Alex')).toBeVisible();
-  expect(screen.queryByRole('button', { name: /skip/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /delete/i })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Play Dreams' }));
   expect(local.select).toHaveBeenCalledWith(song);
 });
@@ -24,14 +24,14 @@ test('both modes render the same queue row; personal play never exposes room vot
 test('previously played songs retain normal styling and voting when repeating the queue', () => {
   const view = render(<QueueList items={[{ ...song, status: 'played' }]} repeatMode="queue" showAdd={false} participantCount={3} />);
   const playedClass = view.container.querySelector('[data-queue-item="a"]').className;
-  expect(screen.getByRole('button', { name: /skip/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /delete dreams/i })).toHaveTextContent('0/2 votes');
   view.rerender(<QueueList items={[song]} repeatMode="queue" showAdd={false} participantCount={3} />);
   expect(view.container.querySelector('[data-queue-item="a"]').className).toBe(playedClass);
 });
 
 test('removes a majority-skipped queued song', () => {
   const view = render(<QueueList items={[song]} repeatMode="none" showAdd={false} participantCount={3} />);
-  expect(screen.getByRole('button', { name: /skip/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /delete dreams/i })).toBeInTheDocument();
   view.rerender(<QueueList items={[{ ...song, status: 'skipped' }]} repeatMode="none" showAdd={false} participantCount={3} />);
   expect(screen.queryByText(song.title)).not.toBeInTheDocument();
 });

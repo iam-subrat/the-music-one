@@ -85,14 +85,20 @@ describe("NowPlaying shared playback", () => {
     await waitFor(() => expect(mocks.playSpecificSong).toHaveBeenCalledWith("session-1", "item-1", 0));
   });
 
-  test("keeps a skip vote selected while its request is pending", () => {
+  test("keeps Delete labelled consistently and increases the vote count while pending", () => {
     mocks.flags.VOTE_TO_SKIP = true;
     mocks.castSkipVote.mockImplementationOnce(() => new Promise(() => {}));
     render(<JamPlaybackProvider><NowPlaying {...playingProps} isDJ={false} /></JamPlaybackProvider>);
 
-    fireEvent.click(screen.getByRole("button", { name: /skip/i }));
-
-    expect(screen.getByRole("button", { name: /unvote/i })).toBeDisabled();
+    const button = screen.getByRole("button", { name: /delete song/i });
+    expect(button).toHaveTextContent('Delete');
+    expect(button).toHaveTextContent('0/2 votes');
+    expect(button).toHaveAttribute('title', expect.stringContaining('Vote to remove'));
+    fireEvent.click(button);
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+    expect(button).toHaveTextContent('1/2 votes');
+    expect(button).not.toHaveTextContent(/Unvote|Voted/);
   });
 
   test("registers an active GUI song with the single provider-owned player", async () => {

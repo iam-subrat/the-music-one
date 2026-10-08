@@ -19,7 +19,8 @@ import IndependentControls from "../components/IndependentControls";
 import PlaybackModeControl from "../components/PlaybackModeControl";
 import { isAuthError, promptSignIn } from "../lib/authPrompt";
 import PlayerControls from "../components/PlayerControls";
-import { Search, Users, Copy, Check, Music, ArrowLeft, X, ThumbsDown } from "lucide-react";
+import { Search, Users, Copy, Check, Music, ArrowLeft, X } from "lucide-react";
+import DeleteVoteButton from "../../../ui/src/components/DeleteVoteButton";
 
 function QueueVoteButton({ item, sessionId, userId, participantCount, refresh, code }) {
   const { count, hasVoted } = useSkipVotes(item.id, userId, sessionId);
@@ -28,7 +29,7 @@ function QueueVoteButton({ item, sessionId, userId, participantCount, refresh, c
 
   const vote = async () => {
     if (!userId) {
-      promptSignIn("Please sign in to vote to skip this song.", `/jam/${code}`);
+      promptSignIn("Please sign in to vote to delete this song from the queue.", `/jam/${code}`);
       return;
     }
     setIsVoting(true);
@@ -41,9 +42,9 @@ function QueueVoteButton({ item, sessionId, userId, participantCount, refresh, c
       }
     } catch (error) {
       if (isAuthError(error)) {
-        promptSignIn("Your session expired. Would you like to sign in again to vote to skip?", `/jam/${code}`);
+        promptSignIn("Your session expired. Would you like to sign in again to vote to delete?", `/jam/${code}`);
       } else {
-        alert(`Could not vote to skip: ${error.message}`);
+        alert(`Could not vote to delete: ${error.message}`);
       }
     } finally {
       setIsVoting(false);
@@ -51,16 +52,12 @@ function QueueVoteButton({ item, sessionId, userId, participantCount, refresh, c
   };
 
   return (
-    <button
-      type="button"
+    <DeleteVoteButton
+      title={item.title} count={count} threshold={threshold} hasVoted={hasVoted}
       onClick={vote}
       disabled={isVoting}
-      className={`shrink-0 border-2 border-black rounded-lg px-2 py-2 text-xs font-black active:scale-95 ${hasVoted ? "bg-black text-lime-accent" : "bg-white"}`}
-      aria-label={`${hasVoted ? "Remove skip vote" : "Vote to skip"} ${item.title}`}
-    >
-      <ThumbsDown size={16} className="inline mr-1" />
-      {hasVoted ? "Unvote" : "Skip"} {count}/{threshold}
-    </button>
+      className={`ml-auto shrink-0 inline-flex items-center gap-1.5 border-2 border-black rounded-lg px-2 py-2 text-xs font-black active:scale-95 ${hasVoted ? "bg-black text-lime-accent" : "bg-white"}`}
+    />
   );
 }
 
@@ -409,7 +406,7 @@ export default function JamRoom({ independentEnabled }) {
           {upcomingItems.map((item, idx) => (
             <div
               key={item.id}
-              className={`w-full brutal-card p-4 flex items-center gap-4 transition-transform ${
+              className={`w-full brutal-card p-4 flex flex-wrap items-center gap-4 transition-transform ${
                 !independent && item.status === "played"
                   ? "opacity-50 hover:-translate-y-1"
                   : "hover:-translate-y-1"
@@ -434,7 +431,7 @@ export default function JamRoom({ independentEnabled }) {
                     : null
                 }
                 disabled={independent ? item.resolve_status === 'failed' || local.state.loading : !isDJ}
-                className="min-w-0 flex-1 flex items-center gap-4 text-left disabled:cursor-default"
+                className="min-w-0 w-full sm:w-auto sm:flex-1 flex items-center gap-4 text-left disabled:cursor-default"
               >
               <div className="w-8 h-8 flex items-center justify-center shrink-0 font-black text-gray-400 text-sm">
                 {idx + 1}

@@ -15,8 +15,8 @@ import PlayerLinks from "./PlayerLinks";
 import { useAnalytics } from "../lib/analytics";
 import { useResolvedYouTubeVideo } from "../playback/useResolvedYouTubeVideo";
 import { useJamPlayback } from "../playback/JamPlaybackContext";
-import JamIcon from "./JamIcon";
 import PlayerSurface from "./PlayerSurface";
+import DeleteVoteButton from "./DeleteVoteButton";
 import { readySong } from "../playback/queuePresentation";
 
 export default function NowPlaying({
@@ -364,14 +364,12 @@ export default function NowPlaying({
           </button>
         )}
         {FLAGS.VOTE_TO_SKIP && nowPlaying && (
-          <button
+          <DeleteVoteButton
             className={`${s.skipBtn} ${displayHasVoted ? s.skipBtnVoted : ""}`}
+            title={nowPlaying.title} count={displaySkipVotes} threshold={skipThreshold} hasVoted={displayHasVoted}
             disabled={isVoting}
             onClick={handleSkipVote}
-          >
-            <JamIcon name="skip" size={15} />
-            {displayHasVoted ? "Unvote" : "Skip"} ({displaySkipVotes}/{skipThreshold})
-          </button>
+          />
         )}
       </>}>
 
