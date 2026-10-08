@@ -78,6 +78,7 @@ test('confirms the invite link after copying it', async ({ page, context }) => {
   await page.getByRole('button', { name: 'Copy invite link' }).click();
   await expect(page.getByRole('button', { name: 'Invite link copied' })).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('http://127.0.0.1:4173/jam/room');
+  await expect(page.getByRole('button', { name: 'Copy invite link' })).toBeVisible();
 });
 
 test('keeps the same iframe and playback position across both mode switches', async ({ page }) => {
