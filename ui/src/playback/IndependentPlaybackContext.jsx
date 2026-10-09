@@ -126,6 +126,16 @@ export function IndependentPlaybackProvider({ children, resolveItem = defaultRes
     }
   }, [capable, save, playback.clearPlayback, select, stateUpdate]);
 
+  const play = useCallback(() => {
+    if (!roomActive(roomRef.current)) return;
+    const local = stateRef.current;
+    if (!local.item) { select(eligibleItems(roomRef.current.items)[0]); return; }
+    if (!local.videoId || (local.error && local.error !== 'Press Play to continue')) { select(local.item); return; }
+    endedToken.current = -1;
+    stateUpdate(s => ({ ...s, intent: true, started: true, error: '', atEnd: false })); playback.play();
+  }, [select, stateUpdate, playback.play]);
+  const pause = useCallback(() => { stateUpdate(s => ({ ...s, intent: false })); playback.pause(); save(); }, [stateUpdate, playback.pause, save]);
+
   useEffect(() => {
     const room = roomRef.current;
     if (!room?.active || !state.item || state.loading) return;
@@ -145,9 +155,10 @@ export function IndependentPlaybackProvider({ children, resolveItem = defaultRes
       videoId: state.videoId, enabled: !!state.videoId, autoplayOnChange: state.intent && !state.loading,
       metadata: { title: state.item.title, artist: state.item.artist, artwork: state.item.thumbnail_url },
       onEnded: () => { if (epoch === token.current) ended(); }, onNext: next, onPrevious: previous,
+      onPlay: play, onPause: pause, getBusy: () => stateRef.current.loading || !roomActive(roomRef.current),
       onReady, onError: message => { if (epoch === token.current) stateUpdate(s => ({ ...s, error: message, intent: false })); },
       onBlocked: () => { if (epoch === token.current) stateUpdate(s => ({ ...s, error: 'Press Play to continue', intent: false })); } });
-  }, [state.item?.id, state.videoId, state.intent, state.loading, ended, next, previous, playback.registerPlayback, stateUpdate, save]);
+  }, [state.item?.id, state.videoId, state.intent, state.loading, ended, next, previous, play, pause, playback.registerPlayback, stateUpdate, save]);
 
   useEffect(() => {
     const id = setInterval(save, 5000);
@@ -155,15 +166,6 @@ export function IndependentPlaybackProvider({ children, resolveItem = defaultRes
     return () => { clearInterval(id); window.removeEventListener('pagehide', save); };
   }, [save]);
 
-  const play = useCallback(() => {
-    if (!roomActive(roomRef.current)) return;
-    const local = stateRef.current;
-    if (!local.item) { select(eligibleItems(roomRef.current.items)[0]); return; }
-    if (!local.videoId || (local.error && local.error !== 'Press Play to continue')) { select(local.item); return; }
-    endedToken.current = -1;
-    stateUpdate(s => ({ ...s, intent: true, started: true, error: '', atEnd: false })); playback.play();
-  }, [select, stateUpdate, playback.play]);
-  const pause = useCallback(() => { stateUpdate(s => ({ ...s, intent: false })); playback.pause(); save(); }, [stateUpdate, playback.pause, save]);
   const repeat = useCallback(value => { if (['none', 'song', 'queue'].includes(value)) { stateUpdate(s => ({ ...s, repeat: value })); save(); } }, [stateUpdate, save]);
   const reset = useCallback((forget = false) => {
     const userId = roomRef.current?.userId ?? checkpointUser.current;

@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { JamPlaybackProvider, useJamPlayback } from "./JamPlaybackContext";
@@ -39,6 +39,38 @@ test.each([1, 2, 3, 0])('preserves DJ transport state %s when changing tracks', 
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.restoreAllMocks();
+});
+
+test('footer toggles the existing DJ player and follows its actual state', async () => {
+  const state = vi.spyOn(player, 'getState').mockReturnValue(2);
+  render(<JamPlaybackProvider><Registration descriptor={active} /></JamPlaybackProvider>);
+  fireEvent.click(await screen.findByRole('button', { name: 'Play current song' }));
+  expect(player.play).toHaveBeenCalledTimes(1);
+  state.mockReturnValue(1);
+  fireEvent.click(await screen.findByRole('button', { name: 'Pause current song' }));
+  expect(player.pause).toHaveBeenCalledTimes(1);
+  expect(screen.getAllByTestId('youtube-player')).toHaveLength(1);
+});
+
+test('footer uses local playback commands and prevents commands during resolution', async () => {
+  let busy = false;
+  const onPlay = vi.fn(), onPause = vi.fn();
+  const state = vi.spyOn(player, 'getState').mockReturnValue(2);
+  render(<JamPlaybackProvider><Registration descriptor={{ ...active, isDJ: false, independent: true,
+    onPlay, onPause, getBusy: () => busy }} /></JamPlaybackProvider>);
+  fireEvent.click(await screen.findByRole('button', { name: 'Play current song' }));
+  expect(onPlay).toHaveBeenCalledTimes(1);
+  expect(player.play).not.toHaveBeenCalled();
+  busy = true;
+  fireEvent.click(screen.getByRole('button', { name: 'Play current song' }));
+  expect(onPlay).toHaveBeenCalledTimes(1);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Play current song' })).toBeDisabled());
+  busy = false; state.mockReturnValue(1);
+  const pause = await screen.findByRole('button', { name: 'Pause current song' });
+  await waitFor(() => expect(pause).toBeEnabled());
+  fireEvent.click(pause);
+  expect(onPause).toHaveBeenCalledTimes(1);
 });
 
 function Registration({ descriptor }) {

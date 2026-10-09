@@ -148,6 +148,41 @@ test('two listeners play independently, preserve player across GUI/TUI, and relo
 
 for (const theme of ['pulse', 'studio']) {
   for (const width of [390, 1440]) {
+    for (const mode of ['dj', 'independent']) {
+      test(`Footer transport: ${mode} ${theme} at ${width}px`, async ({ page }, testInfo) => {
+        await page.setViewportSize({ width, height: 960 });
+        const { mutations } = await fixture(page, 'host', theme, mode);
+        await page.goto('/jam/SHARED');
+        const player = page.getByRole('region', { name: mode === 'dj' ? 'Playback' : 'Your playback', exact: true });
+        if (mode === 'dj') await player.getByRole('button', { name: 'Play playback', exact: true }).click();
+        const footer = page.getByRole('group', { name: 'Now playing footer' });
+        await expect(footer).toBeVisible();
+        if (mode === 'independent') {
+          await footer.getByRole('button', { name: 'Play current song' }).click();
+          await expect(player.getByRole('button', { name: 'Pause playback', exact: true })).toBeVisible();
+        }
+        await footer.getByRole('button', { name: 'Pause current song' }).click();
+        await expect(player.getByRole('button', { name: 'Play playback', exact: true })).toBeVisible();
+        await footer.getByRole('button', { name: 'Play current song' }).click();
+        await expect(player.getByRole('button', { name: 'Pause playback', exact: true })).toBeVisible();
+        await player.getByRole('button', { name: 'Pause playback', exact: true }).click();
+        await footer.locator('button').evaluate(button => button.click());
+        await expect(player.getByRole('button', { name: 'Pause playback', exact: true })).toBeVisible();
+        await player.getByRole('button', { name: 'Next track', exact: true }).click();
+        await expect(footer.getByText(mode === 'dj' ? 'Dreams' : 'Something About Us', { exact: true })).toBeVisible();
+        await expect(footer.getByRole('button', { name: 'Pause current song' })).toBeEnabled();
+        const copy = await footer.locator('.jam-persistent-player__copy').boundingBox();
+        const toggle = await page.getByRole('button', { name: 'Toggle terminal interface' }).boundingBox();
+        expect(copy.x + copy.width).toBeLessThanOrEqual(toggle.x - 8);
+        await page.screenshot({ path: testInfo.outputPath('footer-transport.png'), fullPage: true });
+        await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
+        await expect(footer).toBeHidden();
+        await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
+        await expect(footer.getByRole('button', { name: 'Pause current song' })).toBeEnabled();
+        expect(await page.evaluate(() => window.playerCreations)).toBe(1);
+        if (mode === 'independent') expect(mutations).toEqual([]);
+      });
+    }
     test(`Playback status spacing: ${theme} at ${width}px`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 960 });
       await fixture(page, 'host', theme);

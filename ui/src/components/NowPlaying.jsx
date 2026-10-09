@@ -277,6 +277,8 @@ export default function NowPlaying({
         artwork: nowPlaying.thumbnail_url,
       },
       onEnded: handleEnded,
+      onPlay: () => applyPlaybackState(1),
+      onPause: () => applyPlaybackState(2),
     });
   }, [sessionId, nowPlaying?.id, ytId, isDJ, repeatMode, registerPlayback, queueItems, onQueueChange, playbackReady, modeVersion]);
 
@@ -328,9 +330,12 @@ export default function NowPlaying({
       finally { setIsStarting(false); }
       return;
     }
-    const nextState = isPlaying ? 2 : 1;
+    applyPlaybackState(isPlaying ? 2 : 1);
+  }
+
+  function applyPlaybackState(nextState) {
     pendingTransportStateRef.current = nextState;
-    if (isPlaying) pause();
+    if (nextState === 2) pause();
     else play();
     setTransport((value) => ({ ...value, state: nextState }));
   }

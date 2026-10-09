@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Play, Pause } from "lucide-react";
 import YouTubeAutoPlayer from "../components/YouTubeAutoPlayer";
 import { useMediaSession } from "../hooks/useMediaSession";
 
@@ -14,6 +15,35 @@ function PersistentPlayer({ descriptor, playerRef, PlayerComponent, playerChrome
   const latestDescriptor = useRef(descriptor);
   useLayoutEffect(() => { latestDescriptor.current = descriptor; }, [descriptor]);
   const enabled = !!(descriptor?.enabled && descriptor?.videoId);
+  const [transport, setTransport] = useState({ playing: false, busy: true });
+  const readTransport = useCallback(() => {
+    const current = latestDescriptor.current;
+    const state = playerRef.current?.getState?.();
+    return { playing: state === 1 || state === 3,
+      busy: !current?.enabled || !(current.isDJ || current.independent)
+        || !playerRef.current || playerRef.current.isReady?.() === false
+        || !!current.busy || !!current.getBusy?.() };
+  }, [playerRef]);
+
+  useEffect(() => {
+    if (!enabled || !playerChrome) return undefined;
+    const sync = () => {
+      const next = readTransport();
+      setTransport(current => current.playing === next.playing && current.busy === next.busy ? current : next);
+    };
+    sync();
+    const timer = window.setInterval(sync, 500);
+    return () => window.clearInterval(timer);
+  }, [enabled, playerChrome, readTransport]);
+
+  function togglePlayback() {
+    const current = latestDescriptor.current;
+    const actual = readTransport();
+    if (actual.busy) return;
+    if (actual.playing) (current.onPause ?? (() => playerRef.current?.pause()))();
+    else (current.onPlay ?? (() => playerRef.current?.play()))();
+    setTransport(readTransport());
+  }
 
   useMediaSession({
     enabled,
@@ -26,7 +56,13 @@ function PersistentPlayer({ descriptor, playerRef, PlayerComponent, playerChrome
   if (!enabled) return null;
   return (
     <div className="jam-persistent-player" data-session-id={descriptor.sessionId} aria-label="Shared Jam player">
-      {playerChrome && <div className="jam-persistent-player__status" aria-hidden="true">
+      {playerChrome && <div className="jam-persistent-player__status" role="group" aria-label="Now playing footer">
+        <button type="button" className="jam-persistent-player__toggle" disabled={transport.busy}
+          onClick={togglePlayback} aria-label={transport.playing ? 'Pause current song' : 'Play current song'}
+          title={transport.playing ? 'Pause' : 'Play'}>
+          {transport.playing ? <Pause size={17} fill="currentColor" strokeWidth={0} aria-hidden="true" />
+            : <Play size={17} fill="currentColor" strokeWidth={0} aria-hidden="true" />}
+        </button>
         <span className="jam-persistent-player__cover">
           {descriptor.metadata?.artwork && <img src={descriptor.metadata.artwork} alt="" />}
         </span>
