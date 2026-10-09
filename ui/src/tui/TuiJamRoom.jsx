@@ -372,6 +372,14 @@ export default function TuiJamRoom() {
           append({ kind: "err", text: "✗ DJ only" });
           break;
         }
+        if (!nowPlaying && displayItem) {
+          const target = queueItems.filter(item => item.status !== 'skipped' && item.position < displayItem.position)
+            .sort((a, b) => b.position - a.position)[0];
+          if (!target) { append({ kind: "warn", text: "No previous song" }); break; }
+          try { await playSpecificSong(session.id, target.id, session.playback_mode_version ?? 0); refreshQueue(); }
+          catch (error) { append({ kind: "err", text: error.message }); }
+          break;
+        }
         if (
           session.repeat_mode === "song" ||
           getTime() > 3
@@ -399,6 +407,15 @@ export default function TuiJamRoom() {
       case "n":
         if (!isDJ) {
           append({ kind: "err", text: "✗ DJ only" });
+          break;
+        }
+        if (!nowPlaying && displayItem) {
+          const eligible = queueItems.filter(item => item.status !== 'skipped').sort((a, b) => a.position - b.position);
+          const target = eligible.find(item => item.position > displayItem.position)
+            ?? (session.repeat_mode === 'queue' ? eligible.find(item => item.id !== displayItem.id) : null);
+          if (!target) { append({ kind: "warn", text: "No next song" }); break; }
+          try { await playSpecificSong(session.id, target.id, session.playback_mode_version ?? 0); refreshQueue(); }
+          catch (error) { append({ kind: "err", text: error.message }); }
           break;
         }
         if (session.repeat_mode === "song") {

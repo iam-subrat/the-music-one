@@ -98,7 +98,7 @@ export default function NowPlaying({
       play();
       return;
     }
-    const playing = queueItems?.find((i) => i.status === "playing");
+    const playing = nowPlaying ?? item;
     const eligible = (queueItems || []).filter(
       (i) => i.status !== "skipped" && i.status !== "playing",
     );
@@ -114,6 +114,13 @@ export default function NowPlaying({
       : [];
     const nextItem =
       (repeatMode === "queue" ? [...after, ...before] : after)[0] || null;
+
+    if (!nowPlaying) {
+      if (!nextItem) { toast("No next song!"); return; }
+      try { await playSpecificSong(sessionId, nextItem.id, modeVersion); onQueueChange?.(); }
+      catch (error) { toast(error.message); }
+      return;
+    }
 
     try {
       const n = await playNext(sessionId, modeVersion);
@@ -149,7 +156,7 @@ export default function NowPlaying({
       return;
     }
 
-    const playing = queueItems?.find((i) => i.status === "playing");
+    const playing = nowPlaying ?? item;
     const eligible = (queueItems || []).filter(
       (i) => i.status !== "skipped" && i.status !== "playing",
     );
@@ -165,6 +172,13 @@ export default function NowPlaying({
       : [];
     const prevItem =
       (repeatMode === "queue" ? [...before, ...after] : before)[0] || null;
+
+    if (!nowPlaying) {
+      if (!prevItem) { toast("No previous song!"); return; }
+      try { await playSpecificSong(sessionId, prevItem.id, modeVersion); onQueueChange?.(); }
+      catch (error) { toast(error.message); }
+      return;
+    }
 
     try {
       const n = await playPrevious(sessionId);

@@ -33,10 +33,10 @@ export default function PlayerSurface({ item, status, playing, current = 0, dura
         style={{ '--seek-progress': `${duration ? position / duration * 100 : 0}%` }}
         onChange={event => onSeek?.(Number(event.target.value))} onPointerDown={onSeekStart} onPointerUp={onSeekEnd} onBlur={onSeekEnd} />
       {canControl && <div className={s.transportButtons}>
-        {started && <button className={s.iconButton} type="button" aria-label="Previous track" title="Previous track" disabled={busy} onClick={onPrevious}><JamIcon name="previous" size={20} /></button>}
+        <button className={s.iconButton} type="button" aria-label="Previous track" title="Previous track" disabled={busy} onClick={onPrevious}><JamIcon name="previous" size={20} /></button>
         <button className={s.playButton} type="button" aria-label={playing ? 'Pause playback' : 'Play playback'}
           title={playing ? 'Pause playback' : 'Play playback'} disabled={busy} onClick={playing ? onPause : onPlay}><JamIcon name={playing ? 'pause' : 'play'} size={24} /></button>
-        {started && <button className={s.iconButton} type="button" aria-label="Next track" title="Next track" disabled={busy} onClick={onNext}><JamIcon name="next" size={20} /></button>}
+        <button className={s.iconButton} type="button" aria-label="Next track" title="Next track" disabled={busy} onClick={onNext}><JamIcon name="next" size={20} /></button>
       </div>}
     </div>}
     <div className={s.playerFooter}><div className={s.playerOptions}>

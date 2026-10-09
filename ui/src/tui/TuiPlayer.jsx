@@ -23,10 +23,10 @@ export default function TuiPlayer({ item, snapshot, repeat, canControl, started,
       <div className={s.playerToolbar}>
         <div className={s.playerTransport}>
           {canControl && <>
-            {started && <button type="button" aria-label="Previous track" title="Previous track" disabled={busy} onClick={() => onCommand('prev')}><JamIcon name="previous" size={17} /></button>}
+            <button type="button" aria-label="Previous track" title="Previous track" disabled={busy} onClick={() => onCommand('prev')}><JamIcon name="previous" size={17} /></button>
             <button type="button" className={s.primaryPlay} aria-label={playing ? 'Pause playback' : 'Play playback'}
               title={playing ? 'Pause playback' : 'Play playback'} disabled={busy} onClick={() => onCommand(playing ? 'pause' : 'play')}><JamIcon name={playing ? 'pause' : 'play'} size={19} /></button>
-            {started && <button type="button" aria-label="Next track" title="Next track" disabled={busy} onClick={() => onCommand('next')}><JamIcon name="next" size={17} /></button>}
+            <button type="button" aria-label="Next track" title="Next track" disabled={busy} onClick={() => onCommand('next')}><JamIcon name="next" size={17} /></button>
           </>}
         </div>
         <RepeatMenu value={repeat} disabled={!canControl || busy} onChange={value => onCommand(`repeat ${value}`)} />

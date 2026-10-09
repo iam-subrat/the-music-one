@@ -71,6 +71,27 @@ async function fixture(page, user = 'host', theme = 'pulse', mode = 'independent
 
 for (const mode of ['dj', 'independent']) {
   for (const surface of ['gui', 'tui']) {
+    test(`loaded tracks can navigate before Play and after reload in ${mode} ${surface}`, async ({ page }) => {
+      const { mutations } = await fixture(page, 'host', 'pulse', mode);
+      await page.goto('/jam/SHARED');
+      if (surface === 'tui') await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
+      const selectedTitle = title => surface === 'tui' ? page.getByText(`▶ ${title}`, { exact: true })
+        : page.getByRole('region', { name: mode === 'dj' ? 'Playback' : 'Your playback', exact: true }).getByText(title, { exact: true });
+      const initial = mode === 'dj' ? 'Something About Us' : 'Midnight City';
+      const next = mode === 'dj' ? 'Dreams' : 'Something About Us';
+      await expect(selectedTitle(initial)).toBeVisible();
+      await page.getByRole('button', { name: 'Next track', exact: true }).click();
+      await expect(selectedTitle(next)).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Play playback', exact: true })).toBeVisible();
+      await page.getByRole('button', { name: 'Previous track', exact: true }).click();
+      await expect(selectedTitle(initial)).toBeVisible();
+      await page.reload();
+      await expect(page.getByRole('button', { name: 'Next track', exact: true })).toBeEnabled();
+      await expect(page.getByRole('button', { name: 'Previous track', exact: true })).toBeEnabled();
+      await page.getByRole('button', { name: 'Play playback', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Pause playback', exact: true })).toBeVisible();
+      if (mode === 'independent') expect(mutations).toEqual([]);
+    });
     test(`track navigation preserves playback in ${mode} ${surface}`, async ({ page }) => {
       await fixture(page, 'host', 'pulse', mode);
       await page.goto('/jam/SHARED');
@@ -133,7 +154,7 @@ for (const theme of ['pulse', 'studio']) {
       await page.goto('/jam/SHARED');
       await expect(page.getByRole('region', { name: 'Your playback' })).toBeVisible();
       await expect(page.getByRole('region', { name: 'Your playback' }).getByText('Ready', { exact: true })).toBeVisible();
-      await expect(page.getByRole('region', { name: 'Your playback' }).getByRole('button', { name: 'Next track', exact: true })).toHaveCount(0);
+      await expect(page.getByRole('region', { name: 'Your playback' }).getByRole('button', { name: 'Next track', exact: true })).toBeEnabled();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       await page.screenshot({ path: testInfo.outputPath('shared-queue.png'), fullPage: true });
       await page.getByRole('button', { name: 'Repeat: Off' }).click();
@@ -149,8 +170,8 @@ for (const theme of ['pulse', 'studio']) {
       await page.getByRole('button', { name: 'Change mode', exact: true }).click();
       const dj = page.getByRole('region', { name: 'Playback', exact: true });
       await expect(dj.getByText('Something About Us', { exact: true })).toBeVisible();
-      await expect(dj.getByRole('button', { name: 'Previous track', exact: true })).toHaveCount(0);
-      await expect(dj.getByRole('button', { name: 'Next track', exact: true })).toHaveCount(0);
+      await expect(dj.getByRole('button', { name: 'Previous track', exact: true })).toBeEnabled();
+      await expect(dj.getByRole('button', { name: 'Next track', exact: true })).toBeEnabled();
       await page.screenshot({ path: testInfo.outputPath('dj-ready.png'), fullPage: true });
       await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
       await expect(page.getByText('READY', { exact: true })).toBeVisible();
@@ -166,7 +187,7 @@ test('TUI cues the first DJ song, starts explicitly, and shares controls across 
   await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
   await expect(page.getByText('▶ Something About Us', { exact: true })).toBeVisible();
   await expect(page.getByText('READY', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Next track', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Next track', exact: true })).toBeEnabled();
   expect(await page.evaluate(() => window.playerCreations)).toBe(0);
   await page.getByRole('button', { name: 'Play playback', exact: true }).click();
   await expect(page.getByText('PLAYING', { exact: true })).toBeVisible();

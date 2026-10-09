@@ -6,14 +6,16 @@ import RepeatMenu from './RepeatMenu';
 
 afterEach(cleanup);
 
-test('personal playback is ready with just Play, without a redundant heading', () => {
+test('a loaded personal song has operational navigation before playback starts', () => {
   const local = { state: { item: { id: 'a', title: 'Dreams', artist: 'Fleetwood Mac', platform_links: {} }, repeat: 'none' },
-    getTime: () => 0, getDuration: () => 180, getState: () => 5, play: vi.fn(), repeat: vi.fn() };
+    getTime: () => 0, getDuration: () => 180, getState: () => 5, play: vi.fn(), previous: vi.fn(), next: vi.fn(), repeat: vi.fn() };
   render(<IndependentPlayer local={local} />);
   expect(screen.queryByText('Your playback')).not.toBeInTheDocument();
   expect(screen.getByText('Ready')).toBeVisible();
-  expect(screen.queryByRole('button', { name: 'Previous track' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Next track' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Previous track' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Next track' }));
+  expect(local.previous).toHaveBeenCalledTimes(1);
+  expect(local.next).toHaveBeenCalledTimes(1);
   fireEvent.click(screen.getByRole('button', { name: 'Play playback' }));
   expect(local.play).toHaveBeenCalledTimes(1);
 });
@@ -23,7 +25,16 @@ test('a cued personal player stays Ready even when the iframe reports paused', (
     getTime: () => 0, getDuration: () => 180, getState: () => 2 };
   render(<IndependentPlayer local={local} />);
   expect(screen.getByText('Ready')).toBeVisible();
-  expect(screen.queryByRole('button', { name: 'Next track' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Next track' })).toBeEnabled();
+});
+
+test('navigation stays visible while audio plays even without the started flag', () => {
+  const local = { state: { item: { id: 'a', title: 'Dreams', artist: 'Fleetwood Mac' }, repeat: 'none', started: false },
+    getTime: () => 12, getDuration: () => 180, getState: () => 1 };
+  render(<IndependentPlayer local={local} />);
+  expect(screen.getByRole('button', { name: 'Pause playback' })).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Previous track' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Next track' })).toBeEnabled();
 });
 
 test('repeat menu supports keyboard selection, Escape and focus restoration', () => {

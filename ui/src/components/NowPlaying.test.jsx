@@ -79,8 +79,8 @@ describe("NowPlaying shared playback", () => {
     expect(screen.getByText("Song", { exact: true })).toBeVisible();
     expect(screen.getByText("Ready", { exact: true })).toBeVisible();
     expect(screen.queryByTestId("youtube-player")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Previous track" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Next track" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Previous track" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Next track" })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "Play playback" }));
     await waitFor(() => expect(mocks.playSpecificSong).toHaveBeenCalledWith("session-1", "item-1", 0));
   });
