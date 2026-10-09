@@ -148,6 +148,34 @@ test('two listeners play independently, preserve player across GUI/TUI, and relo
 
 for (const theme of ['pulse', 'studio']) {
   for (const width of [390, 1440]) {
+    test(`Playback status spacing: ${theme} at ${width}px`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height: 960 });
+      await fixture(page, 'host', theme);
+      await page.goto('/jam/SHARED');
+      const player = page.getByRole('region', { name: 'Your playback' });
+      const status = player.getByRole('status');
+      await expect(status).toHaveText('Ready');
+      const mode = await page.getByRole('button', { name: 'Shared Queue', exact: true }).evaluate(button => button.parentElement.parentElement.getBoundingClientRect().bottom);
+      const label = status.locator(':scope > span').last();
+      expect((await label.boundingBox()).y - mode).toBeGreaterThanOrEqual(16);
+      await player.getByRole('button', { name: 'Play playback', exact: true }).click();
+      await expect(status).toHaveText('Playing');
+      const bars = status.locator('i');
+      await expect(bars).toHaveCount(3);
+      await expect(bars.first()).toBeVisible();
+      await page.screenshot({ path: testInfo.outputPath('playing-status.png'), fullPage: true });
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      expect(await bars.first().evaluate(bar => getComputedStyle(bar).animationName)).toBe('none');
+      await player.getByRole('button', { name: 'Pause playback', exact: true }).click();
+      await expect(status).toHaveText('Paused');
+      await expect(bars.first()).toBeHidden();
+      await page.getByRole('button', { name: 'DJ-led', exact: true }).click();
+      await page.getByRole('button', { name: 'Change mode', exact: true }).click();
+      const dj = page.getByRole('region', { name: 'Playback', exact: true });
+      await dj.getByRole('button', { name: 'Play playback', exact: true }).click();
+      await expect(dj.getByRole('status')).toHaveText('Playing');
+      await expect(dj.getByRole('status').locator('i').first()).toBeVisible();
+    });
     test(`Shared Queue layout: ${theme} at ${width}px`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 960 });
       await fixture(page, 'host', theme);

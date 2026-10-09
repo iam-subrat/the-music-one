@@ -35,6 +35,9 @@ test('navigation stays visible while audio plays even without the started flag',
   expect(screen.getByRole('button', { name: 'Pause playback' })).toBeVisible();
   expect(screen.getByRole('button', { name: 'Previous track' })).toBeEnabled();
   expect(screen.getByRole('button', { name: 'Next track' })).toBeEnabled();
+  const status = screen.getByRole('status');
+  expect(status).toHaveTextContent('Playing');
+  expect(status.querySelectorAll('[aria-hidden="true"] i')).toHaveLength(3);
 });
 
 test('repeat menu supports keyboard selection, Escape and focus restoration', () => {

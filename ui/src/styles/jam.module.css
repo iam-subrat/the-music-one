@@ -1001,9 +1001,18 @@
 .modeDialog h2 { font-size: 1.2rem; line-height: 1.3; margin: 0 0 16px; letter-spacing: 0; }
 .modeDialog p { font-size: .87rem; line-height: 1.6; margin: 10px 0; color: var(--jam-muted); }
 .modeDialogActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
-.playerStatus { display: flex; align-items: center; justify-content: flex-end; gap: 7px; min-height: 20px; color: var(--jam-muted); font-size: .75rem; }
+.playerStatus { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-height: 20px; padding: 16px 0 6px; color: var(--jam-muted); font-size: .75rem; line-height: 1.4; font-weight: 500; }
+.statusIndicator { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; flex-shrink: 0; }
 .statusDot { width: 5px; height: 5px; border-radius: 50%; background: var(--jam-muted); }
-.playerStatus[data-playing="true"] .statusDot { background: var(--jam-accent); }
+.statusEqualizer { display: none; align-items: flex-end; justify-content: center; gap: 2px; width: 14px; height: 12px; color: var(--jam-accent); }
+.statusEqualizer i { width: 2px; height: 8px; border-radius: 1px; background: currentColor; transform-origin: bottom; animation: statusEqualizerPulse .9s ease-in-out infinite alternate; }
+.statusEqualizer i:nth-child(2) { height: 12px; animation-delay: -.3s; }
+.statusEqualizer i:nth-child(3) { height: 6px; animation-delay: -.6s; }
+.playerStatus[data-playing="true"] { color: var(--jam-text); }
+.playerStatus[data-playing="true"] .statusDot { display: none; }
+.playerStatus[data-playing="true"] .statusEqualizer { display: flex; }
+@keyframes statusEqualizerPulse { from { transform: scaleY(.45); } to { transform: scaleY(1); } }
+@media(prefers-reduced-motion: reduce) { .statusEqualizer i { animation: none; } }
 .playerEmpty { padding: 32px 0; color: var(--jam-muted); text-align: center; font-size: .9rem; }
 .playerFooter { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 16px; margin-top: 2px; border-top: 1px solid var(--jam-control-border); }
 .playerOptions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }

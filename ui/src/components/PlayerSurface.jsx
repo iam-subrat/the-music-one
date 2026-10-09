@@ -14,7 +14,13 @@ export default function PlayerSurface({ item, status, playing, current = 0, dura
   repeat, onRepeat, repeatBusy, scope, actions, error, children, label = 'Playback' }) {
   const position = Math.min(Math.max(0, current), duration || 0);
   return <section className={s.nowPlaying} aria-label={label}>
-    <div className={s.playerStatus} role="status" data-playing={!!playing}><span className={s.statusDot} aria-hidden="true" />{status}</div>
+    <div className={s.playerStatus} role="status" data-playing={!!playing}>
+      <span className={s.statusIndicator} aria-hidden="true">
+        <span className={s.statusDot} />
+        <span className={s.statusEqualizer}><i /><i /><i /></span>
+      </span>
+      <span>{status}</span>
+    </div>
     {item ? <div className={s.nowPlayingMeta} data-artwork={!!item.thumbnail_url}>
       <div className={s.artworkStage}>
         <SongVisualizer isPlaying={playing} artworkUrl={item.thumbnail_url} />
