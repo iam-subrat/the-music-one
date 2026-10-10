@@ -40,7 +40,7 @@ const nextSong = {
  */
 async function installJamFixture(page, { currentUser = "dj-1", djUser = "dj-1" } = {}) {
   const state = {
-    votes: new Set(),
+    votes: new Map(),
     queue: [previousSong, currentSong, nextSong].map((item) => ({ ...item })),
     repeatMode: "none",
   };
@@ -77,14 +77,17 @@ async function installJamFixture(page, { currentUser = "dj-1", djUser = "dj-1" }
       return route.fulfill({ status: 200, contentType: "text/event-stream", body: "" });
     }
     if (pathname.endsWith("/sessions/session-1/join") || pathname.endsWith("/sessions/session-1/heartbeat")) return json({});
-    if (pathname.endsWith("/items/song-current/votes")) {
-      if (method === "GET") return json({ count: state.votes.size, user_ids: [...state.votes] });
+    if (/\/items\/[^/]+\/votes$/.test(pathname)) {
+      const id = pathname.split('/').at(-2);
+      if (!state.votes.has(id)) state.votes.set(id, new Set());
+      const votes = state.votes.get(id);
+      if (method === "GET") return json({ count: votes.size, user_ids: [...votes] });
       if (method === "POST") {
-        state.votes.add(currentUser);
+        votes.add(currentUser);
         return json({ skipped: false });
       }
       if (method === "DELETE") {
-        state.votes.delete(currentUser);
+        votes.delete(currentUser);
         return json({});
       }
     }
@@ -108,43 +111,72 @@ async function installJamFixture(page, { currentUser = "dj-1", djUser = "dj-1" }
   });
 }
 
-test("skip vote immediately becomes unvote and can be removed", async ({ page }) => {
+for (const theme of ['pulse', 'studio']) {
+  for (const width of [390, 1440]) {
+    test(`Delete voting layout: ${theme} at ${width}px`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height: 960 });
+      await page.addInitScript(theme => localStorage.setItem('musicone:gui-theme', theme), theme);
+      await installJamFixture(page);
+      await page.goto('/jam/room', { waitUntil: 'domcontentloaded' });
+      const button = page.getByRole('button', { name: /delete next track/i });
+      await expect(button).toHaveText('Delete0/2 votes');
+      await button.click();
+      await expect(button).toHaveText('Delete1/2 votes');
+      await expect(button).toHaveAttribute('aria-pressed', 'true');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.screenshot({ path: testInfo.outputPath('delete-votes.png'), fullPage: true });
+      await button.click();
+      await expect(button).toHaveText('Delete0/2 votes');
+      await expect(button).toHaveAttribute('aria-pressed', 'false');
+      await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
+      await expect(page.getByText(/delete votes:/)).toBeVisible();
+      await expect(page.getByText(/you voted/)).toHaveCount(0);
+    });
+  }
+}
+
+test("Delete keeps its label, increases its vote count, and allows withdrawing the vote", async ({ page }) => {
   await installJamFixture(page);
   await page.goto("/jam/room");
 
   // This catches removing the hook refresh after a successful non-majority vote.
-  const nowPlayingControls = page.locator('[class*="nowPlaying"] > [class*="djControls"]');
-  const skip = nowPlayingControls.getByRole("button", { name: /skip \(0\/2\)/i });
-  await expect(skip).toBeVisible();
-  await skip.click();
-  await expect(nowPlayingControls.getByRole("button", { name: /unvote \(1\/2\)/i })).toBeVisible();
-
-  await nowPlayingControls.getByRole("button", { name: /unvote \(1\/2\)/i }).click();
-  await expect(nowPlayingControls.getByRole("button", { name: /skip \(0\/2\)/i })).toBeVisible();
+  const nowPlayingControls = page.getByRole('region', { name: 'Playback', exact: true });
+  const button = nowPlayingControls.getByRole("button", { name: /delete current track/i });
+  await expect(button).toHaveText('Delete0/2 votes');
+  await expect(button).toHaveAttribute('title', /Vote to remove/);
+  await expect(button).toHaveAttribute('aria-pressed', 'false');
+  await button.click();
+  await expect(button).toHaveText('Delete1/2 votes');
+  await expect(button).toHaveAttribute('aria-pressed', 'true');
+  await button.click();
+  await expect(button).toHaveText('Delete0/2 votes');
+  await expect(button).toHaveAttribute('aria-pressed', 'false');
 });
 
-test("DJ can advance, go back, and cycle repeat mode", async ({ page }) => {
+test("DJ can advance, go back, and select repeat mode", async ({ page }) => {
   await installJamFixture(page);
   await page.goto("/jam/room");
   await expect(page.getByRole("main", { name: "Jam room" }).getByText("Current Track", { exact: true })).toBeVisible();
 
   await Promise.all([
     page.waitForRequest((request) => request.url().endsWith("/api/sessions/session-1/queue/next") && request.method() === "POST"),
-    page.getByRole("button", { name: /next/i }).click(),
+    page.getByRole("button", { name: 'Next track', exact: true }).click(),
   ]);
   await expect(page.getByRole("main", { name: "Jam room" }).getByText("Next Track", { exact: true })).toBeVisible();
 
   await Promise.all([
     page.waitForRequest((request) => request.url().endsWith("/api/sessions/session-1/queue/previous") && request.method() === "POST"),
-    page.getByRole("button", { name: /prev/i }).click(),
+    page.getByRole("button", { name: 'Previous track', exact: true }).click(),
   ]);
   await expect(page.getByRole("main", { name: "Jam room" }).getByText("Previous Track", { exact: true })).toBeVisible();
 
   const repeat = page.getByRole("button", { name: /repeat/i });
   await repeat.click();
-  await expect(page.getByRole("button", { name: /repeat song/i })).toBeVisible();
-  await page.getByRole("button", { name: /repeat song/i }).click();
-  await expect(page.getByRole("button", { name: /repeat queue/i })).toBeVisible();
+  await page.getByRole('menuitemradio', { name: 'Song', exact: true }).click();
+  await expect(page.getByRole("button", { name: 'Repeat: Song' })).toBeVisible();
+  await page.getByRole("button", { name: 'Repeat: Song' }).click();
+  await page.getByRole('menuitemradio', { name: 'Queue', exact: true }).click();
+  await expect(page.getByRole("button", { name: 'Repeat: Queue' })).toBeVisible();
 });
 
 test("listener cannot access DJ-only transport or queue-play controls", async ({ page }) => {
@@ -153,7 +185,7 @@ test("listener cannot access DJ-only transport or queue-play controls", async ({
 
   await expect(page.getByRole("button", { name: /prev/i })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /^next/i })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /repeat/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /repeat/i })).toBeDisabled();
   await expect(page.locator('button[title="Play this song"]')).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /skip \(0\/2\)/i }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /delete current track/i })).toHaveText('Delete0/2 votes');
 });

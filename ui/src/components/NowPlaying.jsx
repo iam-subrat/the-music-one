@@ -1,9 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import s from "../styles/jam.module.css";
-import {
-  preferredLink,
-  PLATFORM_META,
-} from "../lib/platform";
 import { FLAGS } from "../lib/flags";
 import { useSkipVotes } from "../hooks/useSkipVotes";
 import {
@@ -15,12 +11,13 @@ import {
 } from "../lib/queue";
 import { setRepeatMode, setAutoPilot } from "../lib/session";
 import { useToast } from "./Toast";
-import PlatformLinks from "./PlatformLinks";
+import PlayerLinks from "./PlayerLinks";
 import { useAnalytics } from "../lib/analytics";
 import { useResolvedYouTubeVideo } from "../playback/useResolvedYouTubeVideo";
 import { useJamPlayback } from "../playback/JamPlaybackContext";
-import JamIcon from "./JamIcon";
-import SongVisualizer from "./SongVisualizer";
+import PlayerSurface from "./PlayerSurface";
+import DeleteVoteButton from "./DeleteVoteButton";
+import { readySong } from "../playback/queuePresentation";
 
 export default function NowPlaying({
   nowPlaying,
@@ -36,6 +33,7 @@ export default function NowPlaying({
   onAutoPilotChange,
   queueItems,
   playbackReady = true,
+  modeVersion = 0,
 }) {
   const toast = useToast();
   const {
@@ -49,13 +47,16 @@ export default function NowPlaying({
   const ytFeatureFiredRef = useRef(false);
 
   const { videoId: ytId, resolvedTitle: ytResolvedTitle } = useResolvedYouTubeVideo(nowPlaying, isDJ);
-  const { registerPlayback, play, pause, seek, replay, getTime, getDuration, getState } = useJamPlayback();
+  const { registerPlayback, requestStart, play, pause, seek, replay, getTime, getDuration, getState } = useJamPlayback();
   const [transport, setTransport] = useState({ current: 0, duration: 0, state: -1 });
   const [isSeeking, setIsSeeking] = useState(false);
   const [isRepeatUpdating, setIsRepeatUpdating] = useState(false);
+  const [isAutoPilotUpdating, setIsAutoPilotUpdating] = useState(false);
   const [repeatOverride, setRepeatOverride] = useState(null);
   const [isVoting, setIsVoting] = useState(false);
   const [voteOverride, setVoteOverride] = useState(null);
+  const [isStarting, setIsStarting] = useState(false);
+  const item = nowPlaying ?? readySong(queueItems, repeatMode);
   const displayRepeatMode = repeatOverride ?? repeatMode;
   const displayHasVoted = voteOverride?.hasVoted ?? hasVoted;
   const displaySkipVotes = voteOverride?.count ?? skipVotes;
@@ -92,12 +93,12 @@ export default function NowPlaying({
 
   const handleNext = async () => {
     if (!isDJ) return;
-    if (repeatMode === "song") {
+    if (nowPlaying && repeatMode === "song") {
       seek(0);
       play();
       return;
     }
-    const playing = queueItems?.find((i) => i.status === "playing");
+    const playing = nowPlaying ?? item;
     const eligible = (queueItems || []).filter(
       (i) => i.status !== "skipped" && i.status !== "playing",
     );
@@ -114,12 +115,19 @@ export default function NowPlaying({
     const nextItem =
       (repeatMode === "queue" ? [...after, ...before] : after)[0] || null;
 
+    if (!nowPlaying) {
+      if (!nextItem) { toast("No next song!"); return; }
+      try { await playSpecificSong(sessionId, nextItem.id, modeVersion); onQueueChange?.(); }
+      catch (error) { toast(error.message); }
+      return;
+    }
+
     try {
-      const n = await playNext(sessionId);
+      const n = await playNext(sessionId, modeVersion);
       onQueueChange?.();
       if (!n?.next_item_id) {
         if (nextItem) {
-          await playSpecificSong(sessionId, nextItem.id);
+          await playSpecificSong(sessionId, nextItem.id, modeVersion);
           onQueueChange?.();
         } else {
           toast("Queue is empty!");
@@ -128,7 +136,7 @@ export default function NowPlaying({
     } catch (e) {
       if (nextItem) {
         try {
-          await playSpecificSong(sessionId, nextItem.id);
+          await playSpecificSong(sessionId, nextItem.id, modeVersion);
           onQueueChange?.();
         } catch (err) {
           toast(err.message);
@@ -142,13 +150,13 @@ export default function NowPlaying({
   const handlePrevious = async () => {
     if (!isDJ) return;
     const currentTime = getTime();
-    if (repeatMode === "song" || currentTime > 3) {
+    if (repeatMode === "song" || currentTime > 5) {
       seek(0);
       play();
       return;
     }
 
-    const playing = queueItems?.find((i) => i.status === "playing");
+    const playing = nowPlaying ?? item;
     const eligible = (queueItems || []).filter(
       (i) => i.status !== "skipped" && i.status !== "playing",
     );
@@ -164,6 +172,13 @@ export default function NowPlaying({
       : [];
     const prevItem =
       (repeatMode === "queue" ? [...before, ...after] : before)[0] || null;
+
+    if (!nowPlaying) {
+      if (!prevItem) { toast("No previous song!"); return; }
+      try { await playSpecificSong(sessionId, prevItem.id, modeVersion); onQueueChange?.(); }
+      catch (error) { toast(error.message); }
+      return;
+    }
 
     try {
       const n = await playPrevious(sessionId);
@@ -218,7 +233,7 @@ export default function NowPlaying({
       (repeatMode === "queue" ? [...after, ...before] : after)[0] || null;
 
     try {
-      const next = await playNext(sessionId);
+      const next = await playNext(sessionId, modeVersion);
       if (next?.next_item_id === nowPlaying?.id) {
         replay();
         onQueueChange?.();
@@ -227,7 +242,7 @@ export default function NowPlaying({
       onQueueChange?.();
       if (!next?.next_item_id) {
         if (nextItem) {
-          await playSpecificSong(sessionId, nextItem.id);
+          await playSpecificSong(sessionId, nextItem.id, modeVersion);
           onQueueChange?.();
         } else {
           toast("Queue is empty!");
@@ -236,7 +251,7 @@ export default function NowPlaying({
     } catch (e) {
       if (nextItem) {
         try {
-          await playSpecificSong(sessionId, nextItem.id);
+          await playSpecificSong(sessionId, nextItem.id, modeVersion);
           onQueueChange?.();
         } catch {}
       } else {
@@ -248,6 +263,7 @@ export default function NowPlaying({
   useEffect(() => {
     registerPlayback({
       owner: "gui",
+      modeVersion,
       ready: playbackReady,
       isDJ,
       sessionId,
@@ -261,8 +277,10 @@ export default function NowPlaying({
         artwork: nowPlaying.thumbnail_url,
       },
       onEnded: handleEnded,
+      onPlay: () => applyPlaybackState(1),
+      onPause: () => applyPlaybackState(2),
     });
-  }, [sessionId, nowPlaying?.id, ytId, isDJ, repeatMode, registerPlayback, queueItems, onQueueChange, playbackReady]);
+  }, [sessionId, nowPlaying?.id, ytId, isDJ, repeatMode, registerPlayback, queueItems, onQueueChange, playbackReady, modeVersion]);
 
   useEffect(() => {
     if (!nowPlaying) return undefined;
@@ -286,128 +304,50 @@ export default function NowPlaying({
     return () => window.clearInterval(interval);
   }, [nowPlaying?.id, getTime, getDuration, getState, isSeeking]);
 
-  if (!nowPlaying) {
-    return (
-      <div className={`${s.nowPlaying} ${s.nowPlayingIdle}`}>
-        <div className={s.nowPlayingLabel}>Now Playing</div>
-        <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
-          {isDJ
-            ? 'Click "Play Next" to start the queue.'
-            : "Waiting for the DJ to start…"}
-        </p>
-        {isDJ && (
-          <div
-            style={{ display: "flex", gap: "8px", justifyContent: "center" }}
-          >
-            <button className={s.idleTransportButton} onClick={handlePrevious}>
-              <JamIcon name="previous" size={17} /> Previous
-            </button>
-            <button className={s.idleTransportButton} onClick={handleNext}>
-              <JamIcon name="play" size={16} /> Play next
-            </button>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  const pref = preferredLink(nowPlaying.platform_links, preferredPlatform);
-  const query = `${nowPlaying.title} ${nowPlaying.artist}`;
-  const prefMeta = pref ? PLATFORM_META[pref.platform] : null;
-  const duration = Math.max(0, transport.duration || getDuration());
+  const duration = nowPlaying ? Math.max(0, transport.duration || getDuration()) : 0;
   const current = Math.min(Math.max(0, transport.current), duration || 0);
   // Player commands update asynchronously. Once transport has observed a state,
   // keep the control in sync with the optimistic tap state instead of briefly
   // reverting to the player's previous state.
   const playerState = transport.state === -1 ? getState() : transport.state;
-  const isPlaying = playerState === 1;
-  const formatTime = (seconds) => {
-    const safe = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
-    return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, "0")}`;
-  };
+  const isPlaying = !!nowPlaying && playerState === 1;
 
-  function handleSeek(event) {
-    const next = Number(event.target.value);
+  function handleSeek(next) {
     setTransport((value) => ({ ...value, current: next }));
     seek(next);
   }
 
-  function handleTogglePlayback() {
+  async function handleTogglePlayback() {
     if (!isDJ) return;
-    const nextState = isPlaying ? 2 : 1;
+    if (!nowPlaying) {
+      if (!item || isStarting || !playbackReady) return;
+      setIsStarting(true);
+      const cancelStart = requestStart(sessionId, item.id, modeVersion);
+      try {
+        await playSpecificSong(sessionId, item.id, modeVersion);
+        onQueueChange?.();
+      } catch (error) { cancelStart(); toast(error.message); }
+      finally { setIsStarting(false); }
+      return;
+    }
+    applyPlaybackState(isPlaying ? 2 : 1);
+  }
+
+  function applyPlaybackState(nextState) {
     pendingTransportStateRef.current = nextState;
-    if (isPlaying) pause();
+    if (nextState === 2) pause();
     else play();
     setTransport((value) => ({ ...value, state: nextState }));
   }
 
   return (
-    <div className={s.nowPlaying}>
-      <div className={s.nowPlayingLabel}>
-        <div className={s.pulseDot} /> Now Playing
-      </div>
-
-      <div className={s.nowPlayingMeta}>
-        <div className={s.artworkStage}>
-          <SongVisualizer isPlaying={isPlaying} artworkUrl={nowPlaying.thumbnail_url} />
-          {nowPlaying.thumbnail_url ? (
-            <img className={s.thumb} src={nowPlaying.thumbnail_url} alt="" />
-          ) : (
-            <div className={s.thumb} />
-          )}
-        </div>
-        <div className={s.nowPlayingText}>
-          <div className={s.nowPlayingTitle}>{nowPlaying.title}</div>
-          <div className={s.nowPlayingArtist}>{nowPlaying.artist}</div>
-          <div className={s.nowPlayingAdded}>
-            Added by {nowPlaying.profiles?.display_name || "someone"}
-          </div>
-        </div>
-      </div>
-
-      <div className={s.transport} aria-label="Playback controls">
-        <div className={s.timeRow}>
-          <span>{formatTime(current)}</span>
-          <span>{formatTime(duration)}</span>
-        </div>
-        <input
-          className={s.seekbar}
-          style={{ "--seek-progress": `${duration > 0 ? (current / duration) * 100 : 0}%` }}
-          aria-label="Playback position"
-          type="range"
-          min="0"
-          max={duration}
-          value={current}
-          disabled={!isDJ || duration <= 0}
-          onPointerDown={() => setIsSeeking(true)}
-          onPointerUp={() => setIsSeeking(false)}
-          onBlur={() => setIsSeeking(false)}
-          onChange={handleSeek}
-        />
-        {isDJ && (
-          <div className={s.transportButtons}>
-            <button className={s.iconButton} type="button" aria-label="Previous track" onClick={handlePrevious}>
-              <JamIcon name="previous" size={20} />
-            </button>
-            <button className={`${s.playButton} ${isPlaying ? s.playButtonActive : ""}`} type="button" aria-label={isPlaying ? "Pause playback" : "Play playback"} onClick={handleTogglePlayback}>
-              <JamIcon name={isPlaying ? "pause" : "play"} size={23} />
-            </button>
-            <button className={s.iconButton} type="button" aria-label="Next track" onClick={handleNext}>
-              <JamIcon name="next" size={20} />
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className={s.djControls}>
-        {isDJ && (
-          <button
-            className={`${s.repeatBtn} ${displayRepeatMode !== "none" ? s.repeatBtnActive : ""}`}
-            disabled={isRepeatUpdating}
-            onClick={async () => {
-              const next = { none: "song", song: "queue", queue: "none" }[
-                displayRepeatMode
-              ];
+    <PlayerSurface item={item} playing={isPlaying} current={current} duration={duration}
+      status={isStarting ? 'Loading' : !item ? 'Empty queue' : !nowPlaying ? 'Ready' : !isDJ ? 'DJ playing' : isPlaying ? 'Playing' : 'Paused'}
+      canControl={isDJ} started={!!nowPlaying} busy={isStarting || !playbackReady}
+      onPlay={handleTogglePlayback} onPause={handleTogglePlayback} onPrevious={handlePrevious} onNext={handleNext}
+      onSeek={handleSeek} onSeekStart={() => setIsSeeking(true)} onSeekEnd={() => setIsSeeking(false)}
+      repeat={displayRepeatMode} repeatBusy={isRepeatUpdating} scope={isDJ ? 'DJ controls' : 'Controlled by DJ'}
+      onRepeat={async (next) => {
               setRepeatOverride(next);
               setIsRepeatUpdating(true);
               onRepeatModeChange?.(next);
@@ -421,72 +361,38 @@ export default function NowPlaying({
                 setIsRepeatUpdating(false);
               }
             }}
-          >
-            <JamIcon name="repeat" size={15} />
-            {displayRepeatMode === "queue" ? "Repeat queue" : displayRepeatMode === "song" ? "Repeat song" : "Repeat"}
-          </button>
-        )}
+      actions={<>
         {isDJ && (
           <button
-            className={`${s.repeatBtn} ${autoPilot ? s.repeatBtnActive : ""}`}
-            onClick={() => {
+            className={s.autoPilotToggle}
+            type="button" role="switch" aria-label="Auto-Pilot" aria-checked={!!autoPilot}
+            title="Auto-Pilot"
+            disabled={isAutoPilotUpdating}
+            onClick={async () => {
               const next = !autoPilot;
+              setIsAutoPilotUpdating(true);
               onAutoPilotChange?.(next);
-              setAutoPilot(sessionId, next).catch((e) => {
+              try { await setAutoPilot(sessionId, next); } catch (e) {
                 onAutoPilotChange?.(autoPilot);
                 toast(e.message);
-              });
+              } finally { setIsAutoPilotUpdating(false); }
             }}
           >
-            <JamIcon name="play" size={15} />
-            Auto-Pilot {autoPilot ? "On" : "Off"}
+            <span className={s.toggleTrack} aria-hidden="true"><span /></span>
+            Auto-Pilot
           </button>
         )}
-        {FLAGS.VOTE_TO_SKIP && (
-          <button
+        {FLAGS.VOTE_TO_SKIP && nowPlaying && (
+          <DeleteVoteButton
             className={`${s.skipBtn} ${displayHasVoted ? s.skipBtnVoted : ""}`}
+            title={nowPlaying.title} count={displaySkipVotes} threshold={skipThreshold} hasVoted={displayHasVoted}
             disabled={isVoting}
             onClick={handleSkipVote}
-          >
-            <JamIcon name="skip" size={15} />
-            {displayHasVoted ? "Unvote" : "Skip"} ({displaySkipVotes}/{skipThreshold})
-          </button>
-        )}
-      </div>
-
-      <details className={s.listenDetails}>
-        <summary>Listen on other platforms</summary>
-        {pref && (
-          <a
-            className={s.preferredBtn}
-            href={pref.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ "--platform-color": prefMeta?.color }}
-          >
-            {prefMeta?.iconSvgUrl && (
-              <img
-                src={prefMeta.iconSvgUrl.replace(/\/[0-9A-Fa-f]{6}$/, "/ffffff")}
-                alt=""
-                width={16}
-                height={16}
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
-              />
-            )}
-            Open on {prefMeta?.name || pref.platform}
-          </a>
-        )}
-
-        <div className={s.platformSection}>
-          <div className={s.platformSectionLabel}>Listen on all platforms</div>
-          <PlatformLinks
-            platformLinks={nowPlaying.platform_links}
-            query={query}
-            activePlatform={pref?.platform}
           />
-        </div>
+        )}
+      </>}>
+
+      <PlayerLinks item={item} preferredPlatform={preferredPlatform}>
 
         {FLAGS.AUTO_PLAY_QUEUE && ytId && isDJ && ytResolvedTitle && (
           <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>
@@ -502,8 +408,8 @@ export default function NowPlaying({
             title="YouTube preview"
           />
         )}
-      </details>
-    </div>
+      </PlayerLinks>
+    </PlayerSurface>
   );
 
   async function handleSkipVote() {

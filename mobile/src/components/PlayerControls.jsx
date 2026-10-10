@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
 import MarqueeText from "./MarqueeText";
+import DeleteVoteButton from "../../../ui/src/components/DeleteVoteButton";
 import {
   playNext,
   playPrevious,
@@ -17,7 +18,6 @@ import {
   SkipBack,
   Repeat,
   Repeat1,
-  ThumbsDown,
 } from "lucide-react";
 
 // Module-level debounce guard: prevents double-fire from rapid song-end events
@@ -64,7 +64,7 @@ export default function PlayerControls({
     : 1;
 
   const { isPlaying, progress, duration, togglePlay, seek, audioElement } =
-    useAudioPlayer(playingItem);
+    useAudioPlayer(playingItem, (session.playback_mode_version ?? 0) > 0);
 
   const { count: skipVotes, hasVoted } = useSkipVotes(
     playingItem?.id,
@@ -121,7 +121,7 @@ export default function PlayerControls({
         const nextItem =
           (repeatMode === "queue" ? [...after, ...before] : after)[0] || null;
 
-        playNext(session.id)
+        playNext(session.id, session.playback_mode_version ?? 0)
           .then((res) => {
             if (res?.next_item_id === playingItem?.id) {
               audioElement.currentTime = 0;
@@ -130,7 +130,7 @@ export default function PlayerControls({
             } else if (res?.next_item_id) {
               refresh?.();
             } else if (nextItem) {
-              playSpecificSong(session.id, nextItem.id)
+              playSpecificSong(session.id, nextItem.id, session.playback_mode_version ?? 0)
                 .then(() => refresh?.())
                 .catch(console.error);
             } else {
@@ -145,7 +145,7 @@ export default function PlayerControls({
                 session?.invite_code ? `/jam/${session.invite_code}` : null,
               );
             } else if (nextItem) {
-              playSpecificSong(session.id, nextItem.id)
+              playSpecificSong(session.id, nextItem.id, session.playback_mode_version ?? 0)
                 .then(() => refresh?.())
                 .catch(console.error);
             }
@@ -161,7 +161,7 @@ export default function PlayerControls({
   const handleSkipVote = async () => {
     if (!userId) {
       promptSignIn(
-        "Please sign in to vote to skip this song.",
+        "Please sign in to vote to delete this song from the queue.",
         session?.invite_code ? `/jam/${session.invite_code}` : null,
       );
       return;
@@ -184,7 +184,7 @@ export default function PlayerControls({
       console.error("Skip vote failed:", e);
       if (isAuthError(e)) {
         promptSignIn(
-          "Your session expired. Would you like to sign in again to vote to skip?",
+          "Your session expired. Would you like to sign in again to vote to delete?",
           session?.invite_code ? `/jam/${session.invite_code}` : null,
         );
       }
@@ -334,12 +334,12 @@ export default function PlayerControls({
     const nextItem =
       (repeatMode === "queue" ? [...after, ...before] : after)[0] || null;
 
-    playNext(session.id)
+    playNext(session.id, session.playback_mode_version ?? 0)
       .then((res) => {
         if (res?.next_item_id) {
           refresh?.();
         } else if (nextItem) {
-          playSpecificSong(session.id, nextItem.id)
+          playSpecificSong(session.id, nextItem.id, session.playback_mode_version ?? 0)
             .then(() => refresh?.())
             .catch(console.error);
         } else {
@@ -358,7 +358,7 @@ export default function PlayerControls({
             session?.invite_code ? `/jam/${session.invite_code}` : null,
           );
         } else if (nextItem) {
-          playSpecificSong(session.id, nextItem.id)
+          playSpecificSong(session.id, nextItem.id, session.playback_mode_version ?? 0)
             .then(() => refresh?.())
             .catch(console.error);
         }
@@ -378,8 +378,8 @@ export default function PlayerControls({
     <div className="fixed bottom-0 left-0 right-0 bg-lime-accent border-t-4 border-black p-4 z-50 rounded-t-3xl shadow-[0_-8px_0_0_rgba(0,0,0,0.1)]">
       <div className="max-w-md mx-auto">
         {/* ── Song info + controls ────────────────────────────────────────── */}
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex-1 min-w-0 pr-4">
+        <div className="flex flex-col items-stretch gap-3 mb-4">
+          <div className="min-w-0">
             <MarqueeText
               as="h4"
               text={playingItem.title}
@@ -394,21 +394,18 @@ export default function PlayerControls({
 
           {/* DJ controls */}
           {isDJ && (
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Skip vote (visible to all, including DJ) */}
-              <button
+            <div className="flex flex-wrap justify-between items-center gap-2">
+              {/* Delete voting remains available to the DJ and listeners. */}
+              <DeleteVoteButton
+                title={playingItem.title} count={displaySkipVotes} threshold={skipThreshold} hasVoted={displayHasVoted}
                 onClick={handleSkipVote}
                 disabled={isVoting}
-                className={`relative w-10 h-10 border-2 border-black rounded-full flex items-center justify-center active:scale-90 transition-transform ${
+                className={`border-2 border-black rounded-lg px-2 py-2 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-transform ${
                   displayHasVoted ? "bg-black text-lime-400" : "bg-white text-black"
                 }`}
-              >
-                <ThumbsDown size={18} />
-                <div className="absolute -top-2 -right-2 bg-white border-2 border-black text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full">
-                  {displaySkipVotes}
-                </div>
-              </button>
+              />
 
+              <div className="flex items-center gap-2">
               {/* Repeat toggle — cycles none → song → queue */}
               <button
                 onClick={handleRepeatToggle}
@@ -445,7 +442,9 @@ export default function PlayerControls({
                   AI
                 </div>
               </button>
+              </div>
 
+              <div className="w-full flex justify-center items-center gap-3">
               {/* Previous */}
               <button
                 onClick={handlePrevious}
@@ -475,22 +474,21 @@ export default function PlayerControls({
               >
                 <SkipForward size={18} />
               </button>
+              </div>
             </div>
           )}
 
-          {/* Guest view: skip vote + status pill */}
+          {/* Guest view: delete vote + status pill */}
           {!isDJ && (
-            <div className="flex items-center gap-2 shrink-0">
-              <button
+            <div className="flex flex-wrap justify-end items-center gap-2">
+              <DeleteVoteButton
+                title={playingItem.title} count={displaySkipVotes} threshold={skipThreshold} hasVoted={displayHasVoted}
                 onClick={handleSkipVote}
                 disabled={isVoting}
-                className={`border-2 border-black rounded-full px-3 py-2 text-xs font-bold uppercase tracking-wider active:scale-95 transition-transform flex items-center gap-1.5 ${
+                className={`border-2 border-black rounded-lg px-2 py-2 text-xs font-bold active:scale-95 transition-transform flex items-center gap-1.5 ${
                   displayHasVoted ? "bg-black text-lime-400" : "bg-white text-black"
                 }`}
-              >
-                <ThumbsDown size={14} />
-                Skip ({displaySkipVotes}/{skipThreshold}) {displayHasVoted ? "✓" : ""}
-              </button>
+              />
               <div className="bg-white border-2 border-black rounded-full px-3 py-2 text-xs font-bold uppercase tracking-wider">
                 {isPlaying ? "Playing" : "Paused"}
               </div>

@@ -36,7 +36,7 @@ test('preserves the Jam room while switching visual theme and terminal mode', as
   await expect(page.getByRole('button', { name: 'Copy invite link' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
-  await expect(page.getByText(/now playing/i)).toBeVisible();
+  await expect(page.getByText('playback', { exact: true })).toBeVisible();
 });
 
 test('keeps one seekbar and accessible icon controls in the graphical room', async ({ page }) => {
@@ -78,6 +78,7 @@ test('confirms the invite link after copying it', async ({ page, context }) => {
   await page.getByRole('button', { name: 'Copy invite link' }).click();
   await expect(page.getByRole('button', { name: 'Invite link copied' })).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('http://127.0.0.1:4173/jam/room');
+  await expect(page.getByRole('button', { name: 'Copy invite link' })).toBeVisible();
 });
 
 test('keeps the same iframe and playback position across both mode switches', async ({ page }) => {
@@ -120,7 +121,7 @@ test('keeps the same iframe and playback position across both mode switches', as
   expect(await playerState()).toEqual({ instances: 1, time: 87 });
 
   await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
-  await expect(page.getByText(/now playing/i)).toBeVisible();
+  await expect(page.getByText('playback', { exact: true })).toBeVisible();
   await expect(iframe).toHaveAttribute('data-instance', '1');
   expect(await playerState()).toEqual({ instances: 1, time: 87 });
 

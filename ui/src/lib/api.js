@@ -2,12 +2,16 @@
 // Empty string in local dev — Vite proxy handles /api → localhost:8000.
 export const API_BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
 const CSRF_HEADER = { 'X-Requested-With': 'XMLHttpRequest' };
+let playbackModeVersion = 0;
+export function setPlaybackModeVersion(version) { playbackModeVersion = version ?? 0; }
 
 export async function api(path, options = {}) {
   const { headers = {}, ...rest } = options;
+  const requestHeaders = { 'Content-Type': 'application/json', ...CSRF_HEADER,
+    'X-Playback-Mode-Version': String(playbackModeVersion), ...headers };
   const res = await fetch(`${API_BASE}/api${path}`, {
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...CSRF_HEADER, ...headers },
+    headers: requestHeaders,
     ...rest,
   });
 
@@ -20,7 +24,7 @@ export async function api(path, options = {}) {
     if (!refreshed.ok) return res;
     return fetch(`${API_BASE}/api${path}`, {
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json', ...CSRF_HEADER, ...headers },
+      headers: requestHeaders,
       ...rest,
     });
   }

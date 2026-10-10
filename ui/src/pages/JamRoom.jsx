@@ -18,10 +18,13 @@ import { ToastProvider } from "../components/Toast";
 import { useTui } from "../tui/TuiContext";
 import { useJamPlayback } from "../playback/JamPlaybackContext";
 import s from "../styles/jam.module.css";
+import { useIndependentPlayback } from '../playback/IndependentPlaybackContext';
+import IndependentPlayer from '../components/IndependentPlayer';
+import PlaybackModeControl from '../components/PlaybackModeControl';
 
 export default function JamRoom() {
   const { guiTheme, setGuiTheme } = useTui();
-  const { clearPlayback } = useJamPlayback();
+  const { clearPlayback, requestStart } = useJamPlayback();
   const { code } = useParams();
   const navigate = useNavigate();
   const {
@@ -30,7 +33,7 @@ export default function JamRoom() {
     loading: authLoading,
     setPreferredPlatform,
   } = useAuth();
-  const { session, loading: sessionLoading, setSession } = useSession(code);
+  const { session, loading: sessionLoading, error: sessionError, setSession, refresh: refreshSession } = useSession(code);
   const {
     items: queueItems,
     ready: queueReady,
@@ -41,6 +44,9 @@ export default function JamRoom() {
     session?.id,
   );
   const { capture } = useAnalytics();
+  const independent = session?.playback_mode === 'independent';
+  const local = useIndependentPlayback(session, queueItems, user?.id,
+    queueReady && !authLoading && !sessionLoading && (!independent || participants.some(p => p.id === user?.id)));
   const joinedAtRef = useRef(null);
   const activeSecondsRef = useRef(0);
   const lastVisibleAtRef = useRef(null);
@@ -53,13 +59,14 @@ export default function JamRoom() {
   }, [authLoading, user, navigate, code]);
 
   useEffect(() => {
-    if (!session?.id || !user?.id || didFireJoinRef.current) return;
+    if (!session?.id || session.status !== 'active' || !user?.id || didFireJoinRef.current) return;
     didFireJoinRef.current = true;
     joinedAtRef.current = Date.now();
     lastVisibleAtRef.current =
       document.visibilityState === "visible" ? Date.now() : null;
 
-    joinSession(session.id).then(() => {
+    joinSession(session.id).then((data) => {
+      if (data.expires_at) setSession(prev => prev?.id === session.id ? { ...prev, expires_at: data.expires_at } : prev);
       refreshParticipants();
       capture("jam_session_joined", {
         session_code: code,
@@ -68,8 +75,8 @@ export default function JamRoom() {
       if (session.host_user_id === user.id) {
         capture("jam_session_created", { session_code: code });
       }
-    });
-  }, [session?.id, user?.id]);
+    }).catch(() => { didFireJoinRef.current = false; refreshSession(); });
+  }, [session?.id, session?.status, user?.id]);
 
   // Store session id in ref for cleanup
   const sessionIdRef = useRef(null);
@@ -115,19 +122,6 @@ export default function JamRoom() {
     };
   }, []);
 
-  // 30s heartbeat to keep session alive
-  useEffect(() => {
-    if (!session?.id) return;
-    const interval = setInterval(() => {
-      fetch(`${API_BASE}/api/sessions/${session.id}/heartbeat`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "X-Requested-With": "XMLHttpRequest" },
-      }).catch(() => {});
-    }, 30_000);
-    return () => clearInterval(interval);
-  }, [session?.id]);
-
   useEffect(() => {
     if (!session?.id) return;
 
@@ -170,7 +164,10 @@ export default function JamRoom() {
         className={`page ${s.jamRoom} ${s[guiTheme]}`}
         style={{ justifyContent: "center", textAlign: "center" }}
       >
-        <p style={{ color: "var(--jam-muted)" }}>Session not found.</p>
+        <p role={sessionError ? "alert" : undefined} style={{ color: "var(--jam-muted)" }}>
+          {sessionError || "Session not found."}
+        </p>
+        {sessionError && <button type="button" className="btn" onClick={refreshSession} style={{ marginTop: 20 }}>Retry</button>}
         <a href="/" className="btn" style={{ marginTop: 20 }}>
           Go home
         </a>
@@ -198,7 +195,7 @@ export default function JamRoom() {
           </header>
           <div className={s.endedBanner}>
             <p style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: 8, color: "var(--jam-text)" }}>
-              Session ended
+              {session.expired ? 'Session expired' : 'Session ended'}
             </p>
             <p>
               {played.length} song{played.length !== 1 ? "s" : ""} played
@@ -288,7 +285,11 @@ export default function JamRoom() {
           </header>
 
           <main className={s.primaryColumn} aria-label="Jam room">
-            <NowPlaying
+            {sessionError && <div role="alert" className={s.playbackError}>
+              {sessionError} <button type="button" className="btn btn-ghost" onClick={refreshSession}>Retry</button>
+            </div>}
+            <PlaybackModeControl session={session} userId={user?.id} onChange={setSession} onRefresh={refreshSession} />
+            {independent ? <IndependentPlayer local={local} preferredPlatform={profile?.preferred_platform} /> : <NowPlaying
               nowPlaying={nowPlaying}
               sessionId={session.id}
               isDJ={isDJ}
@@ -306,19 +307,20 @@ export default function JamRoom() {
               }
               queueItems={queueItems}
               playbackReady={queueReady && !authLoading && !sessionLoading}
-            />
+              modeVersion={session.playback_mode_version ?? 0}
+            />}
             <QueueList
+              local={independent ? local : undefined}
+              modeVersion={session.playback_mode_version ?? 0}
               items={queueItems}
+              onStartPlayback={item => !nowPlaying ? requestStart(session.id, item.id, session.playback_mode_version ?? 0) : undefined}
               repeatMode={session.repeat_mode ?? "none"}
               autoPilot={session.auto_pilot ?? false}
               sessionId={session.id}
               userId={user?.id}
               participantCount={participants.length}
               profile={profile}
-              isDj={
-                session?.dj_user_id === user?.id ||
-                session?.host_user_id === user?.id
-              }
+              isDj={isDJ}
               onPlatformDetected={setPreferredPlatform}
               onAdded={(item) => {
                 addItem(item);

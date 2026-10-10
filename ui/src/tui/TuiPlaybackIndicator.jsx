@@ -15,6 +15,7 @@ export default function TuiPlaybackIndicator({
   currentTime,
   duration,
   repeatMode = "none",
+  statusLabel,
 }) {
   const isPlaying = playerState === 1;
   const isPaused = playerState === 2;
@@ -74,7 +75,7 @@ export default function TuiPlaybackIndicator({
         ))}
       </span>
       <span className={s.playbackState}>
-        {isPlaying ? "PLAYING" : isPaused ? "PAUSED" : "READY"}
+        {statusLabel || (isPlaying ? "PLAYING" : isPaused ? "PAUSED" : "READY")}
       </span>
       <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
       <span>↻ {repeatLabel}</span>

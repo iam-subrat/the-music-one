@@ -6,8 +6,10 @@ from sqlalchemy import select, update, delete, text, func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from app.models.session import Session, SessionParticipant
 from app.models.profile import Profile
+from app.models.feature_flag import FeatureFlag
 from app.repositories.base import AbstractRepository
 from app.repositories.db_auth import set_jwt_claims
+from fastapi import HTTPException
 
 _INVITE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
@@ -17,6 +19,12 @@ def _gen_code() -> str:
 
 
 class SessionRepository(AbstractRepository):
+    async def independent_enabled(self) -> bool:
+        return bool(await self.db.scalar(select(FeatureFlag.enabled).where(FeatureFlag.key == 'INDEPENDENT_PLAYBACK'))) and await self.embed_enabled()
+
+    async def embed_enabled(self) -> bool:
+        return bool(await self.db.scalar(select(FeatureFlag.enabled).where(FeatureFlag.key == 'YOUTUBE_EMBED')))
+
     async def get_by_id(self, id: UUID) -> Optional[Session]:
         result = await self.db.execute(select(Session).where(Session.id == id))
         return result.scalar_one_or_none()
@@ -39,11 +47,20 @@ class SessionRepository(AbstractRepository):
             host_user_id=host_user_id,
             dj_user_id=host_user_id,
             status="active",
+            playback_mode=kwargs.get('playback_mode', 'dj'),
         )
         self.db.add(session)
         await self.db.commit()
         await self.db.refresh(session)
         return session
+
+    async def set_playback_mode(self, session_id: UUID, mode: str, expected_version: int, user_id: UUID) -> Session:
+        await set_jwt_claims(self.db, user_id)
+        await self.db.execute(text('SELECT set_playback_mode(:sid, :mode, :version)'),
+                              {'sid': str(session_id), 'mode': mode, 'version': expected_version})
+        await self.db.commit()
+        self.db.expire_all()
+        return await self.get_by_id(session_id)
 
     async def end(self, session_id: UUID) -> None:
         await self.db.execute(
@@ -53,7 +70,14 @@ class SessionRepository(AbstractRepository):
         )
         await self.db.commit()
 
-    async def join(self, session_id: UUID, user_id: UUID) -> None:
+    async def join(self, session_id: UUID, user_id: UUID):
+        result = await self.db.execute(
+            update(Session).where(Session.id == session_id, Session.status == 'active', Session.expires_at > func.now())
+            .values(last_activity_at=func.now()).returning(Session.expires_at)
+        )
+        expiry = result.scalar_one_or_none()
+        if expiry is None:
+            raise HTTPException(409, 'Session expired or ended. Start a new session.')
         stmt = (
             pg_insert(SessionParticipant)
             .values(session_id=session_id, user_id=user_id)
@@ -61,6 +85,7 @@ class SessionRepository(AbstractRepository):
         )
         await self.db.execute(stmt)
         await self.db.commit()
+        return expiry
 
     async def leave(self, session_id: UUID, user_id: UUID) -> None:
         await self.db.execute(
@@ -70,13 +95,18 @@ class SessionRepository(AbstractRepository):
         )
         await self.db.commit()
 
-    async def touch(self, session_id: UUID) -> None:
-        await self.db.execute(
+    async def touch(self, session_id: UUID):
+        result = await self.db.execute(
             update(Session)
-            .where(Session.id == session_id)
-            .values(last_activity_at=datetime.utcnow())
+            .where(Session.id == session_id, Session.status == 'active', Session.expires_at > func.now())
+            .values(last_activity_at=func.now())
+            .returning(Session.expires_at)
         )
+        expiry = result.scalar_one_or_none()
+        if expiry is None:
+            raise HTTPException(409, 'Session expired or ended. Start a new session.')
         await self.db.commit()
+        return expiry
 
     async def get_participants(self, session_id: UUID) -> list:
         result = await self.db.execute(

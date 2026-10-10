@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import TerminalShell from "./TerminalShell";
 import TuiPlaylistPicker from "./TuiPlaylistPicker";
-import TuiPlaybackIndicator from "./TuiPlaybackIndicator";
+import TuiPlayer from "./TuiPlayer";
+import TuiQueueList from "./TuiQueueList";
+import { readySong } from "../playback/queuePresentation";
 import { useAuth } from "../hooks/useAuth";
 import { useSession } from "../hooks/useSession";
 import { useQueue } from "../hooks/useQueue";
@@ -14,6 +16,7 @@ import {
   passDjToken,
   setRepeatMode,
   setAutoPilot,
+  setPlaybackMode,
 } from "../lib/session";
 import {
   addToQueue,
@@ -37,9 +40,11 @@ import { FLAGS } from "../lib/flags";
 import { getUpcoming } from "../components/QueueList";
 import { useResolvedYouTubeVideo } from "../playback/useResolvedYouTubeVideo";
 import { useJamPlayback } from "../playback/JamPlaybackContext";
+import { useIndependentPlayback } from "../playback/IndependentPlaybackContext";
 import s from "./tui.module.css";
 
 const HELP_LINES = [
+  ["mode [dj|independent]", "room playback mode (host only to change)"],
   ["add <url>", "queue a song or playlist (yt/yt-music/spotify) by URL"],
   ['add "<name>" [artist]', "queue by name search"],
   ["play | resume", "DJ only — resume playback"],
@@ -50,7 +55,7 @@ const HELP_LINES = [
   ["play <n>", "DJ only — play song n from queue directly"],
   ["prev | previous", "DJ only — play previous song"],
 
-  ["skip [n]", "vote to skip current track or queue song n (DJ force-skips current)"],
+  ["skip [n]", "vote to delete current track or queue song n (DJ removes current immediately)"],
   ["unvote [n]", "remove your vote for current track or queue song n"],
   ["who | participants", "list participants with index/short-id"],
   ["dj <me|@name|N|prefix>", "host or DJ — pass DJ token (see `who`)"],
@@ -89,7 +94,7 @@ export default function TuiJamRoom() {
   const navigate = useNavigate();
   const auth = useAuth();
   const { user, profile, loading: authLoading } = auth;
-  const { session, loading: sessionLoading, setSession } = useSession(code);
+  const { session, loading: sessionLoading, error: sessionError, setSession, refresh: refreshSession } = useSession(code);
   const {
     items: queueItems,
     ready: queueReady,
@@ -119,18 +124,31 @@ export default function TuiJamRoom() {
   const inputRef = useRef(null);
   const didJoinRef = useRef(false);
   const sessionIdRef = useRef(null);
+  const controlsBusyRef = useRef(false);
+  const [controlsBusy, setControlsBusy] = useState(false);
 
-  const nowPlaying = queueItems.find((i) => i.status === "playing") ?? null;
-  const isDJ = !!session && session.dj_user_id === user?.id;
+  async function playerCommand(command) {
+    if (controlsBusyRef.current) return;
+    controlsBusyRef.current = true; setControlsBusy(true);
+    try { await exec(command); }
+    finally { controlsBusyRef.current = false; setControlsBusy(false); }
+  }
+
+  const independent = session?.playback_mode === "independent";
+  const local = useIndependentPlayback(session, queueItems, user?.id,
+    queueReady && !authLoading && !sessionLoading && (!independent || participants.some(p => p.id === user?.id)));
+  const nowPlaying = independent ? local.state.item : queueItems.find((i) => i.status === "playing") ?? null;
+  const displayItem = nowPlaying ?? readySong(queueItems, session?.repeat_mode);
+  const isDJ = !independent && !!session && session.dj_user_id === user?.id;
   const isHost = !!session && session.host_user_id === user?.id;
   const { count: skipVotes, hasVoted } = useSkipVotes(
-    nowPlaying?.id,
+    independent ? null : nowPlaying?.id,
     user?.id,
     session?.id,
   );
   const skipThreshold = Math.floor(participants.length / 2) + 1;
   const { videoId: ytId } = useResolvedYouTubeVideo(nowPlaying, isDJ);
-  const { registerPlayback, clearPlayback, play, pause, seek, replay, getTime, getDuration, getState } = useJamPlayback();
+  const { registerPlayback, requestStart, clearPlayback, play, pause, seek, replay, getTime, getDuration, getState } = useJamPlayback();
 
   function append(...lines) {
     setLog((prev) => [...prev, ...lines]);
@@ -141,11 +159,12 @@ export default function TuiJamRoom() {
   }, [authLoading, user, code, navigate]);
 
   useEffect(() => {
-    if (!session?.id || !user?.id || didJoinRef.current) return;
+    if (!session?.id || session.status !== 'active' || !user?.id || didJoinRef.current) return;
     didJoinRef.current = true;
     sessionIdRef.current = session.id;
     joinSession(session.id)
-      .then(() => {
+      .then((data) => {
+        if (data.expires_at) setSession(prev => prev?.id === session.id ? { ...prev, expires_at: data.expires_at } : prev);
         refreshParticipants();
         append(
           { kind: "ok", text: `✓ joined session ${session.invite_code}` },
@@ -165,7 +184,7 @@ export default function TuiJamRoom() {
       );
     // Run once per session+user pair; didJoinRef guards against re-fire.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.id, user?.id]);
+  }, [session?.id, session?.status, user?.id]);
 
   useEffect(() => {
     sessionIdRef.current = session?.id ?? null;
@@ -183,30 +202,20 @@ export default function TuiJamRoom() {
   }, []);
 
   useEffect(() => {
-    if (!session?.id) return;
-    const id = setInterval(() => {
-      fetch(`${API_BASE}/api/sessions/${session.id}/heartbeat`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "X-Requested-With": "XMLHttpRequest" },
-      }).catch(() => {});
-    }, 30_000);
-    return () => clearInterval(id);
-  }, [session?.id]);
-
-  useEffect(() => {
     if (session?.status === "ended") clearPlayback(session.id);
   }, [session?.id, session?.status, clearPlayback]);
 
   useEffect(() => {
+    if (independent) return;
     registerPlayback({
       owner: "tui",
       ready: queueReady && !authLoading && !sessionLoading,
       isDJ,
       sessionId: session?.id ?? null,
+      modeVersion: session?.playback_mode_version ?? 0,
       queueItemId: nowPlaying?.id ?? null,
       videoId: ytId,
-      enabled: !!(FLAGS.AUTO_PLAY_QUEUE && isDJ && nowPlaying && ytId),
+      enabled: !!(session?.status === 'active' && FLAGS.AUTO_PLAY_QUEUE && isDJ && nowPlaying && ytId),
       repeat: session?.repeat_mode === "song",
       metadata: nowPlaying && {
         title: nowPlaying.title,
@@ -216,7 +225,7 @@ export default function TuiJamRoom() {
       onEnded: async () => {
         if (!session?.id || !isDJ) return;
         try {
-          const next = await playNext(session.id);
+          const next = await playNext(session.id, session.playback_mode_version ?? 0);
           if (next?.next_item_id === nowPlaying?.id) replay();
           refreshQueue();
           if (!next?.next_item_id) append({ kind: "warn", text: "~ queue empty" });
@@ -225,7 +234,7 @@ export default function TuiJamRoom() {
         }
       },
     });
-  }, [session?.id, nowPlaying?.id, ytId, isDJ, session?.repeat_mode, registerPlayback, refreshQueue, queueReady, authLoading, sessionLoading]);
+  }, [independent, session?.status, session?.playback_mode_version, session?.id, nowPlaying?.id, ytId, isDJ, session?.repeat_mode, registerPlayback, refreshQueue, queueReady, authLoading, sessionLoading]);
 
   useEffect(() => {
     if (!nowPlaying) {
@@ -283,12 +292,52 @@ export default function TuiJamRoom() {
     const [head, ...rest] = cmd.split(/\s+/);
     const arg = rest.join(" ");
 
+    if (head === "mode") {
+      if (!arg) { append({ kind: "info", text: `mode: ${independent ? "Shared Queue" : "DJ-led"}` }); return; }
+      if (!isHost) { append({ kind: "err", text: "Host only" }); return; }
+      if (!["dj", "independent"].includes(arg) || (arg === "independent" && !(FLAGS.INDEPENDENT_PLAYBACK && FLAGS.YOUTUBE_EMBED))) {
+        append({ kind: "warn", text: "usage: mode <dj|independent> (Shared Queue must be enabled)" }); return;
+      }
+      const version = session.playback_mode_version ?? 0;
+      setPendingConfirm({ action: async () => {
+        try { setSession(await setPlaybackMode(session.id, arg, version)); append({ kind: "ok", text: "Room mode changed. Playback is paused." }); }
+        catch (error) { append({ kind: "err", text: error.message }); }
+      } });
+      append({ kind: "warn", text: `Switch to ${arg === "dj" ? "DJ-led" : "Shared Queue"} for everyone? Playback will pause. [y/N]` });
+      return;
+    }
+    if (independent) {
+      const command = head.toLowerCase();
+      if (["unvote", "dj", "autopilot"].includes(command)) {
+        append({ kind: "warn", text: "Unavailable in Shared Queue. Playback controls affect this device only." }); return;
+      }
+      if (["play", "resume", "pause", "p", "next", "n", "skip", "prev", "previous", "repeat", "seek", "seekend"].includes(command)) {
+        if (command === "play" && arg) {
+          const number = Number(arg), item = upcoming[number - 1];
+          if (!Number.isInteger(number) || !item) { append({ kind: "warn", text: "usage: play <queue number>" }); return; }
+          if (['failed', 'resolving'].includes(item.resolve_status)) { append({ kind: "warn", text: "Song is not ready for playback" }); return; }
+          await local.select(item);
+        } else if (["play", "resume"].includes(command)) local.play();
+        else if (["pause", "p"].includes(command)) local.pause();
+        else if (["next", "n", "skip"].includes(command)) await local.next();
+        else if (["prev", "previous"].includes(command)) local.previous();
+        else if (command === "repeat") {
+          if (!["none", "song", "queue"].includes(arg)) { append({ kind: "warn", text: "usage: repeat <none|song|queue>" }); return; }
+          local.repeat(arg);
+        } else {
+          const value = Number(arg);
+          if (!arg || !Number.isFinite(value) || (command === "seekend" && value < 0)) { append({ kind: "warn", text: "Enter a valid number of seconds" }); return; }
+          local.seek(Math.max(0, command === "seekend" ? local.getDuration() - value : /^[+-]/.test(arg) ? local.getTime() + value : value));
+        }
+        append({ kind: "ok", text: command === "skip" ? "Skipped on this device" : `${command}: this device only` }); return;
+      }
+    }
     switch (head.toLowerCase()) {
       case "help":
       case "?":
         append({ kind: "info", text: "commands:" });
-        HELP_LINES.forEach(([c, d]) =>
-          append({ kind: "dim", text: `  ${c.padEnd(26)} ${d}` }),
+        HELP_LINES.filter(([c]) => !independent || !/^(unvote|dj |autopilot)/.test(c)).forEach(([c, d]) =>
+          append({ kind: "dim", text: `  ${c.padEnd(26)} ${independent ? c.startsWith("skip") ? "skip on this device" : d.replace("DJ only —", "This device —") : d}` }),
         );
         break;
       case "clear":
@@ -312,9 +361,17 @@ export default function TuiJamRoom() {
           append({ kind: "err", text: "✗ DJ only" });
           break;
         }
+        if (!nowPlaying && displayItem) {
+          const target = queueItems.filter(item => item.status !== 'skipped' && item.position < displayItem.position)
+            .sort((a, b) => b.position - a.position)[0];
+          if (!target) { append({ kind: "warn", text: "No previous song" }); break; }
+          try { await playSpecificSong(session.id, target.id, session.playback_mode_version ?? 0); refreshQueue(); }
+          catch (error) { append({ kind: "err", text: error.message }); }
+          break;
+        }
         if (
           session.repeat_mode === "song" ||
-          getTime() > 3
+          getTime() > 5
         ) {
           seek(0);
           play();
@@ -339,6 +396,15 @@ export default function TuiJamRoom() {
       case "n":
         if (!isDJ) {
           append({ kind: "err", text: "✗ DJ only" });
+          break;
+        }
+        if (!nowPlaying && displayItem) {
+          const eligible = queueItems.filter(item => item.status !== 'skipped').sort((a, b) => a.position - b.position);
+          const target = eligible.find(item => item.position > displayItem.position)
+            ?? (session.repeat_mode === 'queue' ? eligible.find(item => item.id !== displayItem.id) : null);
+          if (!target) { append({ kind: "warn", text: "No next song" }); break; }
+          try { await playSpecificSong(session.id, target.id, session.playback_mode_version ?? 0); refreshQueue(); }
+          catch (error) { append({ kind: "err", text: error.message }); }
           break;
         }
         if (session.repeat_mode === "song") {
@@ -384,17 +450,29 @@ export default function TuiJamRoom() {
             break;
           }
           const target = upcoming[n - 1];
+          if (['failed', 'resolving'].includes(target.resolve_status)) { append({ kind: "warn", text: "Song is not ready for playback" }); break; }
+          const cancelStart = !nowPlaying ? requestStart(session.id, target.id, session.playback_mode_version ?? 0) : null;
           try {
-            await playSpecificSong(session.id, target.id);
+            await playSpecificSong(session.id, target.id, session.playback_mode_version ?? 0);
             append({ kind: "ok", text: `▶ jumping to #${n}: ${target.title}` });
             refreshQueue();
           } catch (e) {
+            cancelStart?.();
             append({ kind: "err", text: `✗ ${e.message}` });
           }
           break;
         }
         if (!isDJ) {
           append({ kind: "err", text: "✗ DJ only" });
+          break;
+        }
+        if (!nowPlaying && displayItem) {
+          const cancelStart = requestStart(session.id, displayItem.id, session.playback_mode_version ?? 0);
+          try {
+            await playSpecificSong(session.id, displayItem.id, session.playback_mode_version ?? 0);
+            refreshQueue();
+            append({ kind: "ok", text: `▶ started ${displayItem.title}` });
+          } catch (error) { cancelStart(); append({ kind: "err", text: error.message }); }
           break;
         }
         if (getState() === -1) {
@@ -712,10 +790,11 @@ export default function TuiJamRoom() {
   }
   if (!session) {
     return (
-      <TerminalShell title="musicone.sh ~ jam" status="not found" auth={auth}>
+      <TerminalShell title="musicone.sh ~ jam" status={sessionError ? "connection failed" : "not found"} auth={auth}>
         <div className={`${s.logLine} ${s.err}`}>
-          ✗ session not found: {code}
+          {sessionError || `session not found: ${code}`}
         </div>
+        {sessionError && <button type="button" className={s.authBtn} onClick={refreshSession}>Retry</button>}
         <div className={s.hint}>
           <a href="/">
             cd ~
@@ -730,9 +809,9 @@ export default function TuiJamRoom() {
       ["played", "playing", "skipped"].includes(i.status),
     );
     return (
-      <TerminalShell title="musicone.sh ~ jam" status="ended" auth={auth}>
+      <TerminalShell title="musicone.sh ~ jam" status={session.expired ? 'expired' : 'ended'} auth={auth}>
         <div className={`${s.logLine} ${s.warn}`}>
-          ~ session ended · {played.length} song{played.length !== 1 ? "s" : ""}{" "}
+          ~ session {session.expired ? 'expired' : 'ended'} · {played.length} song{played.length !== 1 ? "s" : ""}{" "}
           played
         </div>
         <div className={s.divider}>──────── recap ────────</div>
@@ -757,9 +836,9 @@ export default function TuiJamRoom() {
     );
   }
 
-  const upcoming = getUpcoming(queueItems, session.repeat_mode ?? "none");
+  const upcoming = getUpcoming(queueItems, session.repeat_mode ?? "none", independent);
   const autoPilotStatus = session.auto_pilot ? " · AI ✈️" : "";
-  const statusLine = `${participants.length} online${isDJ ? " · you are DJ" : ""}${isHost ? " · host" : ""}${autoPilotStatus}`;
+  const statusLine = `${independent ? "Shared Queue · this device" : "DJ-led"} · ${participants.length} online${isDJ ? " · you are DJ" : ""}${isHost ? " · host" : ""}${autoPilotStatus}`;
 
   return (
     <TerminalShell
@@ -769,96 +848,27 @@ export default function TuiJamRoom() {
       auth={auth}
     >
 
+      {sessionError && <div role="alert" className={`${s.logLine} ${s.err}`}>
+        {sessionError} <button type="button" className={s.authBtn} onClick={refreshSession}>Retry</button>
+      </div>}
       <div className={s.jamGrid}>
-        <div className={`${s.panel} ${s.panelSpan2}`}>
-          <div className={s.panelLabel}>now playing</div>
-          {nowPlaying ? (
-            <div className={s.nowPlayingBlock}>
-              {nowPlaying.thumbnail_url && (
-                <img src={nowPlaying.thumbnail_url} alt="" />
-              )}
-              <div>
-                <div style={{ color: "var(--tui-accent)", fontWeight: 600 }}>
-                  ▶ {nowPlaying.title}
-                </div>
-                <div style={{ color: "var(--tui-fg-dim)" }}>
-                  {nowPlaying.artist}
-                </div>
-                <TuiPlaybackIndicator
-                  playerState={playbackSnapshot.playerState}
-                  currentTime={playbackSnapshot.currentTime}
-                  duration={playbackSnapshot.duration}
-                  repeatMode={session.repeat_mode}
-                />
-                <div
+        <TuiPlayer item={displayItem} snapshot={nowPlaying ? playbackSnapshot : { playerState: -1, currentTime: 0, duration: 0 }}
+          repeat={independent ? local.state.repeat : session.repeat_mode} canControl={independent || isDJ}
+          started={independent ? !!local.state.started : !!nowPlaying}
+          busy={controlsBusy || (independent ? local.state.loading : !queueReady)}
+          error={independent ? local.state.error : null} scope={independent ? 'This device' : isDJ ? 'DJ controls' : 'Controlled by DJ'} onCommand={playerCommand}>
+                {!independent && nowPlaying && <div
                   className={`${s.logLine} ${s.dim}`}
                   style={{ marginTop: 6 }}
                 >
-                  votes to skip:{" "}
-                  <b style={{ color: "var(--tui-amber)" }}>
+                  delete votes:{" "}
+                  <b title={hasVoted ? "Remove your vote with unvote" : isDJ ? "The DJ can remove the current track immediately with skip" : "Vote to remove from this room's queue with skip"}
+                    style={{ color: hasVoted ? "var(--tui-lime)" : "var(--tui-amber)" }}>
                     {skipVotes}/{skipThreshold}
                   </b>
-                  {hasVoted && (
-                    <span
-                      style={{ color: "var(--tui-lime)", marginLeft: 10 }}
-                    >
-                      · you voted
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div style={{ color: "var(--tui-fg-mute)", fontStyle: "italic" }}>
-              ~ nothing playing · type `add &lt;url&gt;` to queue a song
-            </div>
-          )}
-        </div>
-
-        <div className={s.panel}>
-          <div className={s.panelLabel}>
-            queue ({upcoming.length})
-            {session.auto_pilot && <span style={{ color: "var(--tui-lime)", marginLeft: 8 }}>[AI-DJ Active]</span>}
-          </div>
-          {upcoming.length === 0 ? (
-            <div className={`${s.logLine} ${s.mute}`}>
-              ~ queue empty {session.auto_pilot && "· AI will queue next"}
-            </div>
-          ) : (
-            <table className={s.queueTable}>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>title</th>
-                  <th>by</th>
-                </tr>
-              </thead>
-              <tbody>
-                {upcoming.map((it, i) => (
-                  <tr key={it.id}>
-                    <td className={s.idx}>{String(i + 1).padStart(2, "0")}</td>
-                    <td>
-                      {it.title}
-                      <span style={{ color: "var(--tui-fg-mute)" }}>
-                        {" "}
-                        — {it.artist}
-                      </span>
-                      {it.resolve_status === "resolving" && (
-                        <span style={{ color: "var(--tui-amber)" }}> ⟳</span>
-                      )}
-                      {it.resolve_status === "failed" && (
-                        <span style={{ color: "var(--tui-red)" }}> !</span>
-                      )}
-                    </td>
-                    <td className={s.dim}>
-                      {it.profiles?.display_name || "someone"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+                </div>}
+        </TuiPlayer>
+        <TuiQueueList items={upcoming} currentId={independent ? local.state.item?.id : !nowPlaying ? displayItem?.id : undefined} autoPilot={!independent && session.auto_pilot} />
 
         <div className={s.panel}>
           <div className={s.panelLabel}>

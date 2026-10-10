@@ -1,4 +1,5 @@
 export const FLAGS = {
+  INDEPENDENT_PLAYBACK: JSON.parse(__FLAG_INDEPENDENT_PLAYBACK__),
   JAM_SESSION:         JSON.parse(__FLAG_JAM_SESSION__),
   VOTE_TO_SKIP:        JSON.parse(__FLAG_VOTE_TO_SKIP__),
   DJ_TOKEN:            JSON.parse(__FLAG_DJ_TOKEN__),

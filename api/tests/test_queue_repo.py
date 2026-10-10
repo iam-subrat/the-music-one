@@ -53,7 +53,9 @@ async def test_mark_resolved_executes_update():
         await repo.mark_resolved(item_id, meta, user_id)
         mock_jwt.assert_called_once_with(db, user_id)
 
-    db.execute.assert_called_once()
+    assert db.execute.call_count == 2
+    assert "require_dj_playback" in str(db.execute.call_args_list[0].args[0])
+    assert "UPDATE queue_items" in str(db.execute.call_args_list[1].args[0])
     db.commit.assert_called_once()
 
 

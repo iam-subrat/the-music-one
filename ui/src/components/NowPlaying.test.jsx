@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   castSkipVote: vi.fn(),
   removeSkipVote: vi.fn(),
   setRepeatMode: vi.fn(),
+  playSpecificSong: vi.fn(),
   flags: { AUTO_PLAY_QUEUE: true, YOUTUBE_EMBED: false, VOTE_TO_SKIP: false },
 }));
 
@@ -34,7 +35,7 @@ vi.mock("../playback/useResolvedYouTubeVideo", () => ({
 }));
 vi.mock("../hooks/useSkipVotes", () => ({ useSkipVotes: () => ({ count: 0, hasVoted: false }) }));
 vi.mock("../lib/analytics", () => ({ useAnalytics: () => ({ capture: vi.fn() }) }));
-vi.mock("../lib/queue", () => ({ castSkipVote: mocks.castSkipVote, removeSkipVote: mocks.removeSkipVote, playNext: vi.fn(), playPrevious: vi.fn(), playSpecificSong: vi.fn() }));
+vi.mock("../lib/queue", () => ({ castSkipVote: mocks.castSkipVote, removeSkipVote: mocks.removeSkipVote, playNext: vi.fn(), playPrevious: vi.fn(), playSpecificSong: mocks.playSpecificSong }));
 vi.mock("../lib/session", () => ({ setRepeatMode: mocks.setRepeatMode }));
 vi.mock("./Toast", () => ({ useToast: () => vi.fn() }));
 vi.mock("./PlatformLinks", () => ({ default: () => null }));
@@ -65,20 +66,39 @@ describe("NowPlaying shared playback", () => {
     const onRepeatModeChange = vi.fn();
     render(<JamPlaybackProvider><NowPlaying {...playingProps} onRepeatModeChange={onRepeatModeChange} /></JamPlaybackProvider>);
 
-    fireEvent.click(screen.getByRole("button", { name: "Repeat" }));
+    fireEvent.click(screen.getByRole("button", { name: "Repeat: Off" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Song" }));
 
     expect(onRepeatModeChange).toHaveBeenCalledWith("song");
-    expect(screen.getByRole("button", { name: "Repeat song" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Repeat: Song" })).toBeDisabled();
   });
 
-  test("keeps a skip vote selected while its request is pending", () => {
+  test("previews the first queued song without audio and starts that song explicitly", async () => {
+    const first = { ...playingProps.nowPlaying, status: "queued", position: 1 };
+    render(<JamPlaybackProvider><NowPlaying {...playingProps} nowPlaying={null} queueItems={[first]} /></JamPlaybackProvider>);
+    expect(screen.getByText("Song", { exact: true })).toBeVisible();
+    expect(screen.getByText("Ready", { exact: true })).toBeVisible();
+    expect(screen.queryByTestId("youtube-player")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Previous track" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Next track" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Play playback" }));
+    await waitFor(() => expect(mocks.playSpecificSong).toHaveBeenCalledWith("session-1", "item-1", 0));
+  });
+
+  test("keeps Delete labelled consistently and increases the vote count while pending", () => {
     mocks.flags.VOTE_TO_SKIP = true;
     mocks.castSkipVote.mockImplementationOnce(() => new Promise(() => {}));
     render(<JamPlaybackProvider><NowPlaying {...playingProps} isDJ={false} /></JamPlaybackProvider>);
 
-    fireEvent.click(screen.getByRole("button", { name: /skip/i }));
-
-    expect(screen.getByRole("button", { name: /unvote/i })).toBeDisabled();
+    const button = screen.getByRole("button", { name: /delete song/i });
+    expect(button).toHaveTextContent('Delete');
+    expect(button).toHaveTextContent('0/2 votes');
+    expect(button).toHaveAttribute('title', expect.stringContaining('Vote to remove'));
+    fireEvent.click(button);
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+    expect(button).toHaveTextContent('1/2 votes');
+    expect(button).not.toHaveTextContent(/Unvote|Voted/);
   });
 
   test("registers an active GUI song with the single provider-owned player", async () => {

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { extractYouTubeId } from '../lib/platform';
 import { api } from '../lib/api';
 
-export function useAudioPlayer(playingItem) {
+export function useAudioPlayer(playingItem, initialPaused = false) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -16,6 +16,7 @@ export function useAudioPlayer(playingItem) {
   const durationRef = useRef(0);
   const progressRef = useRef(0);
   const endedFiredForVideoRef = useRef(null);
+  const loadedAny = useRef(false);
 
   const triggerEnded = () => {
     if (endedFiredForVideoRef.current === currentVideoIdRef.current) return;
@@ -53,7 +54,7 @@ export function useAudioPlayer(playingItem) {
         case 'READY':
           // The bridge is fully loaded and ready
           if (iframeRef.current?.pendingVideoId) {
-            iframeRef.current.contentWindow.postMessage({ type: 'LOAD', videoId: iframeRef.current.pendingVideoId }, '*');
+            iframeRef.current.contentWindow.postMessage({ type: 'LOAD', ...iframeRef.current.pendingVideoId }, 'https://themusic.one');
             iframeRef.current.pendingVideoId = null;
           }
           break;
@@ -106,7 +107,11 @@ export function useAudioPlayer(playingItem) {
     };
 
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+    return () => {
+      iframe.contentWindow?.postMessage({ type: 'PAUSE' }, 'https://themusic.one');
+      iframe.remove();
+      window.removeEventListener('message', handleMessage);
+    };
   }, []);
 
   useEffect(() => {
@@ -146,8 +151,10 @@ export function useAudioPlayer(playingItem) {
         
         // We can't guarantee if it's "READY" yet, so we post the message.
         // If it isn't ready, the bridge won't respond, so we also save pending check:
-        iframeRef.current.pendingVideoId = yId;
-        iframeRef.current.contentWindow.postMessage({ type: 'LOAD', videoId: yId }, '*');
+        const message = { videoId: yId, autoplay: !(initialPaused && !loadedAny.current) };
+        loadedAny.current = true;
+        iframeRef.current.pendingVideoId = message;
+        iframeRef.current.contentWindow.postMessage({ type: 'LOAD', ...message }, 'https://themusic.one');
       }
     };
 
