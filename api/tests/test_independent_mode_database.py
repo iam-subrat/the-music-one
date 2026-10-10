@@ -23,7 +23,7 @@ async def room_db():
     for name in ['001_baseline.py', '002_playlist_queue_fields.py', '003_feature_flag_song_search.py',
                  'e4e47f494bb3_add_play_specific_and_play_previous.py', '004_fix_repeat_queue_order.py',
                  '005_dj_can_pass_dj.py', '006_skip_queued_song_vote.py', '007_never_play_skipped_songs.py',
-                 '008_fix_played_queue_skip_vote.py', '794d25c627f8_add_auto_pilot_to_sessions.py', '009_independent_playback.py', '010_fix_session_expiry.py', '011_activity_based_expiry.py']:
+                 '008_fix_played_queue_skip_vote.py', '794d25c627f8_add_auto_pilot_to_sessions.py', '009_independent_playback.py', '010_fix_session_expiry.py', '011_activity_based_expiry.py', '012_session_expiry_cron.py']:
         migration = _load_migration(name)
         await conn.execute(getattr(migration, '_UPGRADE_SQL', getattr(migration, '_SKIP_VOTE_SQL', '')))
     host, guest, sid, iid = uuid4(), uuid4(), uuid4(), uuid4()

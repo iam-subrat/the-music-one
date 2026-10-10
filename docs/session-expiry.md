@@ -15,8 +15,9 @@ expiry cannot revive a room; manually ended rooms remain ended.
 
 The API runs cleanup at startup and every 12 hours. Cleanup marks expired
 rooms ended and publishes a room update. It retries logged failures and is safe
-with multiple API workers. It does not require `pg_cron`; an existing hourly
-cron job can coexist because both use the same deadline. Client expiry timers
+with multiple API workers. It does not require `pg_cron`. Migration `012`
+creates or updates `expire-stale-sessions` to run every 12 hours when the
+extension is enabled. Both cleanup paths use the same deadline. Client expiry timers
 remove playback controls at the deadline, even before cleanup updates status.
 Without an existing cron job, persisted ended status and expiry notifications
 can lag the 15-day inactivity deadline by up to 12 hours. This delay does not
@@ -28,3 +29,8 @@ with outdated creation-based deadlines remain usable; truly inactive rooms are
 ended. Already ended rooms are never reopened. Downgrade removes renewal and
 restores creation-based deadlines for non-ended rooms, but preserves ended
 status and timestamps.
+
+Enable `pg_cron` before applying migration `012`. If the extension is absent,
+the migration emits a notice and leaves the API worker as the fallback. Enabling
+the extension later does not replay the migration; the cron job must then be
+scheduled separately. Downgrading `012` restores the original hourly schedule.
