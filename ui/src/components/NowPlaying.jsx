@@ -150,7 +150,7 @@ export default function NowPlaying({
   const handlePrevious = async () => {
     if (!isDJ) return;
     const currentTime = getTime();
-    if (repeatMode === "song" || currentTime > 3) {
+    if (repeatMode === "song" || currentTime > 5) {
       seek(0);
       play();
       return;

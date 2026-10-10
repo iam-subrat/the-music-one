@@ -371,7 +371,7 @@ export default function TuiJamRoom() {
         }
         if (
           session.repeat_mode === "song" ||
-          getTime() > 3
+          getTime() > 5
         ) {
           seek(0);
           play();

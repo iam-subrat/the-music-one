@@ -11,13 +11,29 @@ vi.mock('../components/YouTubeAutoPlayer', () => ({ default: forwardRef(({ video
   useEffect(() => { onReady?.(); }, [videoId]);
   return <div data-testid="player" data-video={videoId} />;
 }) }));
-afterEach(() => { cleanup(); sessionStorage.clear(); vi.clearAllMocks(); });
+afterEach(() => { cleanup(); sessionStorage.clear(); vi.clearAllMocks(); vi.restoreAllMocks(); });
 const session = { id: 'room', status: 'active', playback_mode: 'independent', playback_mode_version: 1 };
 const items = [{ id: 'a', position: 1, status: 'queued', title: 'One' }, { id: 'b', position: 2, status: 'queued', title: 'Two' }];
 function Probe({ surface = 'gui', room = session }) {
   const local = useIndependentPlayback(room, items, 'user');
   return <><span>{surface}: {local.state.item?.title}</span><button onClick={local.next}>next</button><button onClick={local.previous}>previous</button><button onClick={local.play}>play</button><button onClick={local.pause}>pause</button><button onClick={() => local.reset()}>leave</button></>;
 }
+
+test.each([4, 5, 5.1])('previous uses a five-second restart cutoff at %s seconds', async seconds => {
+  vi.spyOn(player, 'getTime').mockReturnValue(seconds);
+  render(<JamPlaybackProvider><IndependentPlaybackProvider resolveItem={async item => ({ video_id: item.id })}><Probe /></IndependentPlaybackProvider></JamPlaybackProvider>);
+  await waitFor(() => expect(screen.getByTestId('player')).toHaveAttribute('data-video', 'a'));
+  fireEvent.click(screen.getByRole('button', { name: 'next' }));
+  await waitFor(() => expect(screen.getByTestId('player')).toHaveAttribute('data-video', 'b'));
+  player.seek.mockClear();
+  fireEvent.click(screen.getByRole('button', { name: 'previous' }));
+  if (seconds > 5) {
+    expect(player.seek).toHaveBeenCalledWith(0);
+    expect(screen.getByTestId('player')).toHaveAttribute('data-video', 'b');
+  } else {
+    await waitFor(() => expect(screen.getByTestId('player')).toHaveAttribute('data-video', 'a'));
+  }
+});
 
 test('next and previous preserve active or paused playback intent', async () => {
   render(<JamPlaybackProvider><IndependentPlaybackProvider resolveItem={async item => ({ video_id: item.id })}><Probe /></IndependentPlaybackProvider></JamPlaybackProvider>);

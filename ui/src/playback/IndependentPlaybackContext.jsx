@@ -90,7 +90,7 @@ export function IndependentPlaybackProvider({ children, resolveItem = defaultRes
   const previous = useCallback(() => {
     if (!roomActive(roomRef.current)) return;
     const intent = stateRef.current.intent;
-    if (playback.getTime() > 3) { playback.seek(0); if (intent) playback.play(); return; }
+    if (playback.getTime() > 5) { playback.seek(0); if (intent) playback.play(); return; }
     select(previousItem(roomRef.current.items, stateRef.current.item), intent);
   }, [playback.getTime, playback.seek, playback.play, select]);
 
