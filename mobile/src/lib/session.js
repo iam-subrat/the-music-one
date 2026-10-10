@@ -26,7 +26,10 @@ export async function getSessionByCode(code) {
 }
 
 export async function joinSession(sessionId) {
-  await api(`/sessions/${sessionId}/join`, { method: 'POST' });
+  const res = await api(`/sessions/${sessionId}/join`, { method: 'POST' });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || 'Could not join session');
+  return data;
 }
 
 export async function leaveSession(sessionId) {

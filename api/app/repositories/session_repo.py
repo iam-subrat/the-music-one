@@ -9,6 +9,7 @@ from app.models.profile import Profile
 from app.models.feature_flag import FeatureFlag
 from app.repositories.base import AbstractRepository
 from app.repositories.db_auth import set_jwt_claims
+from fastapi import HTTPException
 
 _INVITE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
@@ -69,7 +70,14 @@ class SessionRepository(AbstractRepository):
         )
         await self.db.commit()
 
-    async def join(self, session_id: UUID, user_id: UUID) -> None:
+    async def join(self, session_id: UUID, user_id: UUID):
+        result = await self.db.execute(
+            update(Session).where(Session.id == session_id, Session.status == 'active', Session.expires_at > func.now())
+            .values(last_activity_at=func.now()).returning(Session.expires_at)
+        )
+        expiry = result.scalar_one_or_none()
+        if expiry is None:
+            raise HTTPException(409, 'Session expired or ended. Start a new session.')
         stmt = (
             pg_insert(SessionParticipant)
             .values(session_id=session_id, user_id=user_id)
@@ -77,6 +85,7 @@ class SessionRepository(AbstractRepository):
         )
         await self.db.execute(stmt)
         await self.db.commit()
+        return expiry
 
     async def leave(self, session_id: UUID, user_id: UUID) -> None:
         await self.db.execute(
@@ -86,13 +95,18 @@ class SessionRepository(AbstractRepository):
         )
         await self.db.commit()
 
-    async def touch(self, session_id: UUID) -> None:
-        await self.db.execute(
+    async def touch(self, session_id: UUID):
+        result = await self.db.execute(
             update(Session)
-            .where(Session.id == session_id)
-            .values(last_activity_at=datetime.utcnow())
+            .where(Session.id == session_id, Session.status == 'active', Session.expires_at > func.now())
+            .values(last_activity_at=func.now())
+            .returning(Session.expires_at)
         )
+        expiry = result.scalar_one_or_none()
+        if expiry is None:
+            raise HTTPException(409, 'Session expired or ended. Start a new session.')
         await self.db.commit()
+        return expiry
 
     async def get_participants(self, session_id: UUID) -> list:
         result = await self.db.execute(

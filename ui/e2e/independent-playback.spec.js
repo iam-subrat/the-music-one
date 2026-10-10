@@ -41,6 +41,11 @@ async function fixture(page, user = 'host', theme = 'pulse', mode = 'independent
     if (path.endsWith('/sessions/SHARED')) return json(session);
     if (path.endsWith('/participants')) return json([{ id: 'host', display_name: 'Alex' }, { id: 'listener', display_name: 'Sam' }]);
     if (path.endsWith('/queue')) return json(queue);
+    if (path.endsWith('/join') && session.expires_at) {
+      if (Date.parse(session.expires_at) <= Date.now()) return route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ detail: 'Session expired' }) });
+      session.expires_at = new Date(Date.now() + 86400000).toISOString();
+      return json({ ok: true, expires_at: session.expires_at });
+    }
     if (path.endsWith('/repeat-mode')) { session.repeat_mode = request.postDataJSON().mode; return json(session); }
     if (/\/(next|previous)$/.test(path)) {
       const current = queue.findIndex(item => item.status === 'playing');
@@ -66,10 +71,48 @@ async function fixture(page, user = 'host', theme = 'pulse', mode = 'independent
     if (path.endsWith('/votes')) return json({ count: 0, user_ids: [] });
     return json({});
   });
-  return { mutations, session };
+  return { mutations, session, queue };
 }
 
 for (const mode of ['dj', 'independent']) {
+  for (const surface of ['gui', 'tui']) test(`joining renews a near-expiry room in ${mode} ${surface}`, async ({ page }) => {
+    const { session } = await fixture(page, 'host', 'pulse', mode);
+    session.expires_at = new Date(Date.now() + 10000).toISOString();
+    await page.clock.install();
+    await page.goto('/jam/SHARED');
+    if (surface === 'tui') await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
+    await expect(page.getByRole('button', { name: /^Repeat:/ })).toBeVisible();
+    await page.clock.fastForward(15000);
+    await expect(page.getByRole('button', { name: /^Repeat:/ })).toBeVisible();
+    await expect(page.getByText('Session expired', { exact: true })).toHaveCount(0);
+  });
+  for (const surface of ['gui', 'tui']) test(`expired active room has no playback controls in ${mode} ${surface}`, async ({ page }) => {
+    const { session, queue } = await fixture(page, 'host', 'pulse', mode);
+    session.expires_at = '2020-01-01T00:00:00Z';
+    queue[0].status = 'playing';
+    await page.goto('/jam/SHARED');
+    if (surface === 'tui') await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
+    await expect(page.getByText(surface === 'tui' ? /~ session expired/ : 'Session expired', { exact: surface === 'gui' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Repeat:/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Play playback', exact: true })).toHaveCount(0);
+    expect(await page.evaluate(() => window.playerCreations)).toBe(0);
+  });
+  for (const width of [390, 1440]) test(`TUI repeat dropdown changes every option in ${mode} at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await fixture(page, 'host', 'pulse', mode);
+    await page.goto('/jam/SHARED');
+    await page.getByRole('button', { name: 'Toggle terminal interface' }).click();
+    for (const label of ['Song', 'Queue', 'Off']) {
+      await page.getByRole('button', { name: /^Repeat:/ }).click();
+      await page.getByRole('menuitemradio', { name: label, exact: true }).click();
+      await expect(page.getByRole('button', { name: `Repeat: ${label}`, exact: true })).toBeVisible();
+    }
+    await page.getByRole('button', { name: 'Repeat: Off', exact: true }).focus();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('button', { name: 'Repeat: Song', exact: true })).toBeVisible();
+  });
   for (const surface of ['gui', 'tui']) {
     test(`loaded tracks can navigate before Play and after reload in ${mode} ${surface}`, async ({ page }) => {
       const { mutations } = await fixture(page, 'host', 'pulse', mode);

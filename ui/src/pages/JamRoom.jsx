@@ -59,13 +59,14 @@ export default function JamRoom() {
   }, [authLoading, user, navigate, code]);
 
   useEffect(() => {
-    if (!session?.id || !user?.id || didFireJoinRef.current) return;
+    if (!session?.id || session.status !== 'active' || !user?.id || didFireJoinRef.current) return;
     didFireJoinRef.current = true;
     joinedAtRef.current = Date.now();
     lastVisibleAtRef.current =
       document.visibilityState === "visible" ? Date.now() : null;
 
-    joinSession(session.id).then(() => {
+    joinSession(session.id).then((data) => {
+      if (data.expires_at) setSession(prev => prev?.id === session.id ? { ...prev, expires_at: data.expires_at } : prev);
       refreshParticipants();
       capture("jam_session_joined", {
         session_code: code,
@@ -74,8 +75,8 @@ export default function JamRoom() {
       if (session.host_user_id === user.id) {
         capture("jam_session_created", { session_code: code });
       }
-    });
-  }, [session?.id, user?.id]);
+    }).catch(() => { didFireJoinRef.current = false; refreshSession(); });
+  }, [session?.id, session?.status, user?.id]);
 
   // Store session id in ref for cleanup
   const sessionIdRef = useRef(null);
@@ -120,19 +121,6 @@ export default function JamRoom() {
       }
     };
   }, []);
-
-  // 30s heartbeat to keep session alive
-  useEffect(() => {
-    if (!session?.id) return;
-    const interval = setInterval(() => {
-      fetch(`${API_BASE}/api/sessions/${session.id}/heartbeat`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "X-Requested-With": "XMLHttpRequest" },
-      }).catch(() => {});
-    }, 30_000);
-    return () => clearInterval(interval);
-  }, [session?.id]);
 
   useEffect(() => {
     if (!session?.id) return;
@@ -207,7 +195,7 @@ export default function JamRoom() {
           </header>
           <div className={s.endedBanner}>
             <p style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: 8, color: "var(--jam-text)" }}>
-              Session ended
+              {session.expired ? 'Session expired' : 'Session ended'}
             </p>
             <p>
               {played.length} song{played.length !== 1 ? "s" : ""} played

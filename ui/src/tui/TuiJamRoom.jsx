@@ -159,11 +159,12 @@ export default function TuiJamRoom() {
   }, [authLoading, user, code, navigate]);
 
   useEffect(() => {
-    if (!session?.id || !user?.id || didJoinRef.current) return;
+    if (!session?.id || session.status !== 'active' || !user?.id || didJoinRef.current) return;
     didJoinRef.current = true;
     sessionIdRef.current = session.id;
     joinSession(session.id)
-      .then(() => {
+      .then((data) => {
+        if (data.expires_at) setSession(prev => prev?.id === session.id ? { ...prev, expires_at: data.expires_at } : prev);
         refreshParticipants();
         append(
           { kind: "ok", text: `✓ joined session ${session.invite_code}` },
@@ -183,7 +184,7 @@ export default function TuiJamRoom() {
       );
     // Run once per session+user pair; didJoinRef guards against re-fire.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.id, user?.id]);
+  }, [session?.id, session?.status, user?.id]);
 
   useEffect(() => {
     sessionIdRef.current = session?.id ?? null;
@@ -201,18 +202,6 @@ export default function TuiJamRoom() {
   }, []);
 
   useEffect(() => {
-    if (!session?.id) return;
-    const id = setInterval(() => {
-      fetch(`${API_BASE}/api/sessions/${session.id}/heartbeat`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "X-Requested-With": "XMLHttpRequest" },
-      }).catch(() => {});
-    }, 30_000);
-    return () => clearInterval(id);
-  }, [session?.id]);
-
-  useEffect(() => {
     if (session?.status === "ended") clearPlayback(session.id);
   }, [session?.id, session?.status, clearPlayback]);
 
@@ -226,7 +215,7 @@ export default function TuiJamRoom() {
       modeVersion: session?.playback_mode_version ?? 0,
       queueItemId: nowPlaying?.id ?? null,
       videoId: ytId,
-      enabled: !!(FLAGS.AUTO_PLAY_QUEUE && isDJ && nowPlaying && ytId),
+      enabled: !!(session?.status === 'active' && FLAGS.AUTO_PLAY_QUEUE && isDJ && nowPlaying && ytId),
       repeat: session?.repeat_mode === "song",
       metadata: nowPlaying && {
         title: nowPlaying.title,
@@ -245,7 +234,7 @@ export default function TuiJamRoom() {
         }
       },
     });
-  }, [independent, session?.playback_mode_version, session?.id, nowPlaying?.id, ytId, isDJ, session?.repeat_mode, registerPlayback, refreshQueue, queueReady, authLoading, sessionLoading]);
+  }, [independent, session?.status, session?.playback_mode_version, session?.id, nowPlaying?.id, ytId, isDJ, session?.repeat_mode, registerPlayback, refreshQueue, queueReady, authLoading, sessionLoading]);
 
   useEffect(() => {
     if (!nowPlaying) {
@@ -820,9 +809,9 @@ export default function TuiJamRoom() {
       ["played", "playing", "skipped"].includes(i.status),
     );
     return (
-      <TerminalShell title="musicone.sh ~ jam" status="ended" auth={auth}>
+      <TerminalShell title="musicone.sh ~ jam" status={session.expired ? 'expired' : 'ended'} auth={auth}>
         <div className={`${s.logLine} ${s.warn}`}>
-          ~ session ended · {played.length} song{played.length !== 1 ? "s" : ""}{" "}
+          ~ session {session.expired ? 'expired' : 'ended'} · {played.length} song{played.length !== 1 ? "s" : ""}{" "}
           played
         </div>
         <div className={s.divider}>──────── recap ────────</div>

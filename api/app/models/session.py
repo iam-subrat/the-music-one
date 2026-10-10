@@ -23,7 +23,7 @@ class Session(Base):
     ended_at: Mapped[Optional[datetime]]
     last_activity_at: Mapped[Optional[datetime]] = mapped_column(server_default=func.now())
     expires_at: Mapped[Optional[datetime]] = mapped_column(
-        server_default=text("now() + interval '24 hours'")
+        server_default=text("now() + interval '15 days'")
     )
 
 

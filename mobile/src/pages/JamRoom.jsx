@@ -74,7 +74,10 @@ export default function JamRoom({ independentEnabled }) {
     !authLoading && !sessionLoading && (!independent || participants.some(p => p.id === user?.id)));
   useEffect(() => {
     if (!user || !session?.id || session.status !== 'active') return;
-    joinSession(session.id).then(refreshParticipants).catch(() => {});
+    joinSession(session.id).then(data => {
+      if (data.expires_at) setSession(prev => prev?.id === session.id ? { ...prev, expires_at: data.expires_at } : prev);
+      refreshParticipants();
+    }).catch(() => {});
   }, [user, session?.id, session?.status, refreshParticipants]);
 
   const [query, setQuery] = useState("");

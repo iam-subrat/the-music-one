@@ -1,4 +1,5 @@
-from contextlib import asynccontextmanager
+import asyncio
+from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import DBAPIError
@@ -8,6 +9,7 @@ from app.config import settings
 from app.logging_config import configure_logging
 from app.middleware import LoggingMiddleware, RateLimitMiddleware, RateLimiter
 from app.services.event_bus import bus
+from app.services.session_cleanup import run_session_cleanup
 from app.routers import (
     auth,
     sessions,
@@ -26,8 +28,14 @@ configure_logging(settings.log_level)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    yield
-    bus.shutdown()
+    cleanup = asyncio.create_task(run_session_cleanup(), name='session-expiry-cleanup')
+    try:
+        yield
+    finally:
+        cleanup.cancel()
+        with suppress(asyncio.CancelledError):
+            await cleanup
+        bus.shutdown()
 
 
 app = FastAPI(title="MusicOne API", root_path=settings.root_path, lifespan=lifespan)

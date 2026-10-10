@@ -30,8 +30,8 @@ class SessionService:
     async def get_by_id(self, session_id: UUID) -> Optional[Session]:
         return await self.store.sessions.get_by_id(session_id)
 
-    async def join(self, session_id: UUID, user_id: UUID) -> None:
-        await self.store.sessions.join(session_id, user_id)
+    async def join(self, session_id: UUID, user_id: UUID):
+        return await self.store.sessions.join(session_id, user_id)
 
     async def leave(self, session_id: UUID, user_id: UUID) -> None:
         await self.store.sessions.leave(session_id, user_id)
@@ -58,8 +58,8 @@ class SessionService:
         if not await self.store.sessions.is_participant(session_id, user_id):
             raise PermissionError(f"User {user_id} is not a participant of session {session_id}")
 
-    async def touch(self, session_id: UUID) -> None:
-        await self.store.sessions.touch(session_id)
+    async def touch(self, session_id: UUID):
+        return await self.store.sessions.touch(session_id)
 
     async def get_participants(self, session_id: UUID) -> list:
         return await self.store.sessions.get_participants(session_id)

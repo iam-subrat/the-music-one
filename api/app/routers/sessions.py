@@ -42,9 +42,11 @@ async def join_session(
     user_id: UUID = Depends(get_current_user),
     svc=Depends(get_session_service),
 ):
-    await svc.join(session_id, user_id)
+    expiry = await svc.join(session_id, user_id)
     await bus.publish(str(session_id), "participants_changed", {})
-    return {"ok": True}
+    if expiry:
+        await bus.publish(str(session_id), 'session_updated', {'expires_at': expiry.isoformat()})
+    return {"ok": True, "expires_at": expiry}
 
 
 @router.delete("/{session_id}/leave")
@@ -148,8 +150,10 @@ async def heartbeat(
         await svc.require_participant(session_id, user_id)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
-    await svc.touch(session_id)
-    return {"ok": True}
+    expiry = await svc.touch(session_id)
+    if expiry:
+        await bus.publish(str(session_id), 'session_updated', {'expires_at': expiry.isoformat()})
+    return {"ok": True, "expires_at": expiry}
 
 
 @router.get("/{session_id}/participants")
