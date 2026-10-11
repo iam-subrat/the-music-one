@@ -15,6 +15,7 @@ beforeEach(() => {
     getPlayerState: vi.fn(() => 1),
     destroy: vi.fn(),
     loadVideoById: vi.fn(),
+    cueVideoById: vi.fn(),
   };
 
   window.YT = {
@@ -33,6 +34,21 @@ afterEach(() => {
 });
 
 describe("YouTubeAutoPlayer", () => {
+  test('selecting the same video with a new playback identity restarts it', () => {
+    const view = render(<YouTubeAutoPlayer videoId="same-video" playbackKey="one" />);
+    act(() => window.onYouTubeIframeAPIReady());
+    view.rerender(<YouTubeAutoPlayer videoId="same-video" playbackKey="two" />);
+    expect(player.loadVideoById).toHaveBeenCalledWith('same-video');
+    view.rerender(<YouTubeAutoPlayer videoId="same-video" playbackKey="epoch-two" autoplayOnChange={false} />);
+    expect(player.cueVideoById).toHaveBeenCalledWith('same-video');
+  });
+  test('cues independent song changes without starting audio', () => {
+    const view = render(<YouTubeAutoPlayer videoId="video-1" autoplayOnChange={false} />);
+    act(() => window.onYouTubeIframeAPIReady());
+    view.rerender(<YouTubeAutoPlayer videoId="video-2" autoplayOnChange={false} />);
+    expect(player.cueVideoById).toHaveBeenCalledWith('video-2');
+    expect(player.loadVideoById).not.toHaveBeenCalled();
+  });
   test("starts the initial video paused", () => {
     render(<YouTubeAutoPlayer videoId="video-1" onEnded={vi.fn()} repeat={false} />);
 
@@ -48,6 +64,7 @@ describe("YouTubeAutoPlayer", () => {
 
     act(() => window.onYouTubeIframeAPIReady());
 
+    act(() => player.onStateChange({ data: 1 }));
     act(() => player.onStateChange({ data: window.YT.PlayerState.ENDED }));
     expect(onEnded).toHaveBeenCalledTimes(1);
 
@@ -55,6 +72,7 @@ describe("YouTubeAutoPlayer", () => {
     expect(player.seekTo).toHaveBeenCalledWith(0, true);
     expect(player.playVideo).toHaveBeenCalledTimes(1);
 
+    act(() => player.onStateChange({ data: 1 }));
     act(() => player.onStateChange({ data: window.YT.PlayerState.ENDED }));
     expect(onEnded).toHaveBeenCalledTimes(2);
   });

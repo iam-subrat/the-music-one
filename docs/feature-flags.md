@@ -9,6 +9,7 @@ Flags are compile-time injected by Vite (`FLAG_*` env vars). Runtime state (with
 
 | Flag | Default |
 |------|---------|
+| `INDEPENDENT_PLAYBACK` | ❌ off |
 | `JAM_SESSION` | ✅ on |
 | `VOTE_TO_SKIP` | ✅ on |
 | `DJ_TOKEN` | ✅ on |
@@ -37,8 +38,9 @@ Flags are compile-time injected by Vite (`FLAG_*` env vars). Runtime state (with
 - `AUTO_PLAY_QUEUE`
 - `PLATFORM_AUTODETECT`
 
-## Disabled by default (12)
+## Disabled by default (13)
 
+- `INDEPENDENT_PLAYBACK`
 - `REACTIONS`
 - `CHAT`
 - `SESSION_HISTORY`

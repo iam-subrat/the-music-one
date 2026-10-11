@@ -89,6 +89,8 @@ class RateLimiter:
             return self.default_limit, "default"
 
         # Strict rate limits on expensive / sensitive endpoints
+        if path.startswith("/api/items/") and path.endswith("/resolve-playback"):
+            return self.strict_limit, "strict"
         if any(path == p or path.startswith(p + "/") for p in self.strict_prefixes):
             return self.strict_limit, "strict"
 

@@ -1,19 +1,21 @@
 import s from "../styles/jam.module.css";
 import QueueCard from "./QueueCard";
 import AddSongForm from "./AddSongForm";
+import { readySong } from '../playback/queuePresentation';
 
-export function getUpcoming(items, repeatMode) {
+export function getUpcoming(items, repeatMode, independent = false) {
   if (!items || items.length === 0) return [];
+  if (independent) return items.filter(item => item.status !== 'skipped').sort((a, b) => a.position - b.position);
   const playing = items.find((i) => i.status === "playing");
 
   if (repeatMode === "song") {
-    return playing ? [{ ...playing, status: "queued" }] : [];
+    if (playing) return [{ ...playing, status: "queued" }];
   }
 
   const eligible = items.filter(
     (i) => i.status !== "skipped" && i.status !== "playing",
   );
-  if (!playing) return eligible;
+  if (!playing) return eligible.filter(item => repeatMode === 'queue' || item.status === 'queued').sort((a, b) => a.position - b.position);
 
   // Songs after current playing position till the last song added
   const after = eligible
@@ -43,8 +45,12 @@ export default function QueueList({
   onAdded,
   onQueueChange,
   showAdd = true,
+  local,
+  modeVersion = 0,
+  onStartPlayback,
 }) {
-  const upcoming = getUpcoming(items, repeatMode);
+  const upcoming = getUpcoming(items, repeatMode, !!local);
+  const selectedId = local ? local.state.item?.id : items?.some(item => item.status === 'playing') ? null : readySong(items, repeatMode)?.id;
   return (
     <section className={s.queueSection} aria-labelledby="queue-heading">
       {showAdd && (
@@ -89,6 +95,10 @@ export default function QueueList({
               userId={userId}
               participantCount={participantCount}
               onQueueChange={onQueueChange}
+              local={local}
+              modeVersion={modeVersion}
+              selected={item.id === selectedId}
+              onStartPlayback={onStartPlayback}
             />
           ))
         )}

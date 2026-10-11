@@ -1,5 +1,7 @@
 export const API_BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
 const CSRF_HEADER = { 'X-Requested-With': 'XMLHttpRequest' };
+let playbackModeVersion = 0;
+export function setPlaybackModeVersion(version) { playbackModeVersion = version ?? 0; }
 
 const TOKEN_KEY = 'musicone_access_token';
 const REFRESH_TOKEN_KEY = 'musicone_refresh_token';
@@ -98,6 +100,7 @@ export async function api(path, options = {}) {
   const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
 
   const requestHeaders = {
+    'X-Playback-Mode-Version': String(playbackModeVersion),
     'Content-Type': 'application/json',
     ...CSRF_HEADER,
     ...authHeader,
@@ -129,6 +132,7 @@ export async function api(path, options = {}) {
       credentials: 'include',
       cache: 'no-store',
       headers: {
+        'X-Playback-Mode-Version': requestHeaders['X-Playback-Mode-Version'],
         'Content-Type': 'application/json',
         ...CSRF_HEADER,
         ...newAuthHeader,

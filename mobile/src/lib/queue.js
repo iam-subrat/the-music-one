@@ -33,8 +33,8 @@ export async function getQueue(sessionId) {
   return res.ok ? res.json() : [];
 }
 
-export async function playNext(sessionId) {
-  const res = await api(`/sessions/${sessionId}/queue/next`, { method: 'POST' });
+export async function playNext(sessionId, version) {
+  const res = await api(`/sessions/${sessionId}/queue/next`, { method: 'POST', ...(version != null ? { headers: { 'X-Playback-Mode-Version': String(version) } } : {}) });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const err = new Error(body.detail || 'Failed to advance queue');
@@ -87,8 +87,8 @@ export async function patchYouTubeLink(itemId, youtubeUrl) {
   });
 }
 
-export async function playSpecificSong(sessionId, itemId) {
-  const res = await api(`/sessions/${sessionId}/queue/items/${itemId}/play`, { method: "POST" });
+export async function playSpecificSong(sessionId, itemId, version) {
+  const res = await api(`/sessions/${sessionId}/queue/items/${itemId}/play`, { method: "POST", ...(version != null ? { headers: { 'X-Playback-Mode-Version': String(version) } } : {}) });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const err = new Error(body.detail || "Failed to play specific song");

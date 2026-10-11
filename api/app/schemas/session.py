@@ -1,7 +1,7 @@
 from uuid import UUID
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel
+from typing import Literal, Optional
+from pydantic import BaseModel, Field
 from app.schemas.profile import ProfileResponse
 
 
@@ -12,6 +12,8 @@ class SessionResponse(BaseModel):
     dj_user_id: Optional[UUID] = None
     status: str
     repeat_mode: str
+    playback_mode: Literal['dj', 'independent'] = 'dj'
+    playback_mode_version: int = 0
     auto_pilot: bool
     max_participants: int
     created_at: datetime
@@ -23,6 +25,15 @@ class SessionResponse(BaseModel):
 
 class RepeatModeUpdate(BaseModel):
     mode: str  # "none" | "song" | "queue"
+
+
+class SessionCreate(BaseModel):
+    playback_mode: Literal['dj', 'independent'] = 'dj'
+
+
+class PlaybackModeUpdate(BaseModel):
+    mode: Literal['dj', 'independent']
+    expected_version: int = Field(ge=0)
 
 
 class AutoPilotUpdate(BaseModel):

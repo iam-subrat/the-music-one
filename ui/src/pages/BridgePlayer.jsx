@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 export default function BridgePlayer() {
   const playerRef = useRef(null);
   const progressInterval = useRef(null);
+  const requestedVideo = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -20,15 +21,19 @@ export default function BridgePlayer() {
           rel: 0
         },
         events: {
-          onReady: (event) => window.parent.postMessage({ type: "READY" }, "*"),
+          onReady: () => window.parent.postMessage({ type: "READY", protocol: 2 }, "*"),
           onStateChange: (event) => {
-            window.parent.postMessage({ type: "STATE_CHANGE", state: event.data }, "*");
+            const actualVideo = event.target?.getVideoData?.().video_id;
+            if (actualVideo && actualVideo !== requestedVideo.current) return;
+            window.parent.postMessage({ type: "STATE_CHANGE", state: event.data, videoId: requestedVideo.current,
+              duration: playerRef.current?.getDuration?.() || 0 }, "*");
             if (event.data === window.YT.PlayerState.PLAYING) {
               if (progressInterval.current) clearInterval(progressInterval.current);
               progressInterval.current = setInterval(() => {
                 if (playerRef.current && playerRef.current.getCurrentTime) {
                   window.parent.postMessage({
                     type: "PROGRESS",
+                    videoId: requestedVideo.current,
                     currentTime: playerRef.current.getCurrentTime(),
                     duration: playerRef.current.getDuration()
                   }, "*");
@@ -38,7 +43,8 @@ export default function BridgePlayer() {
               if (progressInterval.current) clearInterval(progressInterval.current);
             }
           },
-          onError: (event) => window.parent.postMessage({ type: "ERROR", error: event.data }, "*")
+          onError: (event) => window.parent.postMessage({ type: "ERROR", error: event.data, videoId: requestedVideo.current }, "*"),
+          onAutoplayBlocked: () => window.parent.postMessage({ type: "BLOCKED", videoId: requestedVideo.current }, "*")
         }
       });
     };
@@ -53,20 +59,28 @@ export default function BridgePlayer() {
       initPlayer();
     }
     
-    return () => { isMounted = false; };
+    return () => { isMounted = false; clearInterval(progressInterval.current); playerRef.current?.destroy?.(); };
   }, []);
 
   useEffect(() => {
     const handleMessage = (event) => {
       const data = event.data;
-      if (!data || !playerRef.current || !playerRef.current.loadVideoById) return;
+      if (event.source !== window.parent || !data || !playerRef.current || !playerRef.current.loadVideoById) return;
       
       const player = playerRef.current;
       try {
         switch (data.type) {
           case "LOAD":
-            if (data.videoId) player.loadVideoById(data.videoId);
+            requestedVideo.current = data.videoId;
+            if (data.videoId) {
+              if (data.autoplay === false) player.cueVideoById(data.videoId);
+              else player.loadVideoById(data.videoId);
+            }
             else player.stopVideo();
+            break;
+          case "CUE":
+            requestedVideo.current = data.videoId;
+            if (/^[A-Za-z0-9_-]{11}$/.test(data.videoId)) player.cueVideoById(data.videoId);
             break;
           case "PLAY": player.playVideo(); break;
           case "PAUSE": player.pauseVideo(); break;

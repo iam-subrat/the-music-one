@@ -8,6 +8,15 @@ from app.services.event_bus import bus
 router = APIRouter()
 
 
+@router.post('/{item_id}/resolve-playback')
+async def resolve_playback(item_id: UUID, user_id: UUID = Depends(get_current_user),
+                           svc=Depends(get_queue_service)):
+    result = await svc.resolve_independent(item_id, user_id)
+    item = await svc.store.queue.get_by_id(item_id)
+    await bus.publish(str(item.session_id), 'queue_changed', {})
+    return result
+
+
 @router.put("/{item_id}/youtube-link")
 async def patch_youtube_link(
     item_id: UUID,

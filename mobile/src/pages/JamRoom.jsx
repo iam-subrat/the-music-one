@@ -13,10 +13,14 @@ import {
   removeSkipVote,
 } from "../lib/queue";
 import { useSkipVotes } from "../hooks/useSkipVotes";
-import { endSession, setRepeatMode, setAutoPilot } from "../lib/session";
+import { endSession, setRepeatMode, setAutoPilot, joinSession } from "../lib/session";
+import { useIndependentPlayback } from "../../../ui/src/playback/IndependentPlaybackContext";
+import IndependentControls from "../components/IndependentControls";
+import PlaybackModeControl from "../components/PlaybackModeControl";
 import { isAuthError, promptSignIn } from "../lib/authPrompt";
 import PlayerControls from "../components/PlayerControls";
-import { Search, Users, Copy, Check, Music, ArrowLeft, X, ThumbsDown } from "lucide-react";
+import { Search, Users, Copy, Check, Music, ArrowLeft, X } from "lucide-react";
+import DeleteVoteButton from "../../../ui/src/components/DeleteVoteButton";
 
 function QueueVoteButton({ item, sessionId, userId, participantCount, refresh, code }) {
   const { count, hasVoted } = useSkipVotes(item.id, userId, sessionId);
@@ -25,7 +29,7 @@ function QueueVoteButton({ item, sessionId, userId, participantCount, refresh, c
 
   const vote = async () => {
     if (!userId) {
-      promptSignIn("Please sign in to vote to skip this song.", `/jam/${code}`);
+      promptSignIn("Please sign in to vote to delete this song from the queue.", `/jam/${code}`);
       return;
     }
     setIsVoting(true);
@@ -38,9 +42,9 @@ function QueueVoteButton({ item, sessionId, userId, participantCount, refresh, c
       }
     } catch (error) {
       if (isAuthError(error)) {
-        promptSignIn("Your session expired. Would you like to sign in again to vote to skip?", `/jam/${code}`);
+        promptSignIn("Your session expired. Would you like to sign in again to vote to delete?", `/jam/${code}`);
       } else {
-        alert(`Could not vote to skip: ${error.message}`);
+        alert(`Could not vote to delete: ${error.message}`);
       }
     } finally {
       setIsVoting(false);
@@ -48,27 +52,33 @@ function QueueVoteButton({ item, sessionId, userId, participantCount, refresh, c
   };
 
   return (
-    <button
-      type="button"
+    <DeleteVoteButton
+      title={item.title} count={count} threshold={threshold} hasVoted={hasVoted}
       onClick={vote}
       disabled={isVoting}
-      className={`shrink-0 border-2 border-black rounded-lg px-2 py-2 text-xs font-black active:scale-95 ${hasVoted ? "bg-black text-lime-accent" : "bg-white"}`}
-      aria-label={`${hasVoted ? "Remove skip vote" : "Vote to skip"} ${item.title}`}
-    >
-      <ThumbsDown size={16} className="inline mr-1" />
-      {hasVoted ? "Unvote" : "Skip"} {count}/{threshold}
-    </button>
+      className={`ml-auto shrink-0 inline-flex items-center gap-1.5 border-2 border-black rounded-lg px-2 py-2 text-xs font-black active:scale-95 ${hasVoted ? "bg-black text-lime-accent" : "bg-white"}`}
+    />
   );
 }
 
-export default function JamRoom() {
+export default function JamRoom({ independentEnabled }) {
   const { code } = useParams();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
-  const { session, loading: sessionLoading, setSession } = useSession(code);
+  const { session, loading: sessionLoading, error: sessionError, setSession, refresh: refreshSession } = useSession(code);
   const { items: queueItems, refresh } = useQueue(session?.id);
-  const { participants } = useParticipants(session?.id);
+  const { participants, refresh: refreshParticipants } = useParticipants(session?.id);
+  const independent = session?.playback_mode === 'independent';
+  const local = useIndependentPlayback(session, queueItems, user?.id,
+    !authLoading && !sessionLoading && (!independent || participants.some(p => p.id === user?.id)));
+  useEffect(() => {
+    if (!user || !session?.id || session.status !== 'active') return;
+    joinSession(session.id).then(data => {
+      if (data.expires_at) setSession(prev => prev?.id === session.id ? { ...prev, expires_at: data.expires_at } : prev);
+      refreshParticipants();
+    }).catch(() => {});
+  }, [user, session?.id, session?.status, refreshParticipants]);
 
   const [query, setQuery] = useState("");
   const [isAdding, setIsAdding] = useState(false);
@@ -95,10 +105,11 @@ export default function JamRoom() {
     return (
       <div className="screen bg-[#f4f5f0] items-center px-6">
         <div className="flex-1 flex flex-col items-center justify-center max-w-sm w-full mx-auto text-center">
-          <h1 className="text-3xl font-black mb-2">Jam not found</h1>
+          <h1 className="text-3xl font-black mb-2">{sessionError ? 'Could not load jam' : 'Jam not found'}</h1>
           <p className="font-medium text-gray-600 mb-6">
-            This room doesn't exist or has ended.
+            {sessionError || "This room doesn't exist or has ended."}
           </p>
+          {sessionError && <button type="button" onClick={refreshSession} className="brutal-btn w-full py-4 mb-3">Retry</button>}
           <button
             onClick={() => navigate("/")}
             className="brutal-btn w-full py-4"
@@ -154,7 +165,7 @@ export default function JamRoom() {
   // Mirror exactly how the web computes isHost: only the session host_user_id.
   // Do NOT mix in dj_user_id — that grants separate DJ controls on the web.
   const isHost = session.host_user_id === user?.id;
-  const isDJ = session.dj_user_id === user?.id || isHost;
+  const isDJ = !independent && (session.dj_user_id === user?.id || isHost);
 
   const playingItem = queueItems.find((i) => i.status === "playing") ?? null;
 
@@ -221,7 +232,7 @@ export default function JamRoom() {
     return after;
   }
 
-  const upcomingItems = getUpcoming(queueItems, repeatMode);
+  const upcomingItems = independent ? queueItems.filter(item => item.status !== 'skipped').sort((a, b) => a.position - b.position) : getUpcoming(queueItems, repeatMode);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
   const handleSearch = async (e) => {
@@ -334,6 +345,11 @@ export default function JamRoom() {
 
       {/* ── Main content — flex-1 scrolls only within the remaining screen height */}
       <main className="flex-1 overflow-y-auto overscroll-contain px-6 pt-6 pb-32">
+        {sessionError && <div role="alert" className="text-red-700 mb-4">
+          {sessionError} <button type="button" className="underline font-bold" onClick={refreshSession}>Retry</button>
+        </div>}
+        <PlaybackModeControl session={session} userId={user?.id} enabled={independentEnabled} onChange={setSession} onRefresh={refreshSession} />
+        {independent && <IndependentControls local={local} />}
         {/* Participants */}
         <div className="flex gap-4 mb-6 overflow-x-auto pb-2">
           {participants.map((p) => (
@@ -372,8 +388,8 @@ export default function JamRoom() {
         </form>
 
         {/* Start button when nothing is playing yet */}
-        <h2 className="text-xl font-black mb-4">Up Next</h2>
-        {!playingItem && queueItems.length > 0 && (
+        <h2 className="text-xl font-black mb-4">{independent ? 'Shared Queue' : 'Up Next'}</h2>
+        {!independent && !playingItem && queueItems.length > 0 && (
           <button
             onClick={() =>
               isDJ
@@ -393,8 +409,8 @@ export default function JamRoom() {
           {upcomingItems.map((item, idx) => (
             <div
               key={item.id}
-              className={`w-full brutal-card p-4 flex items-center gap-4 transition-transform ${
-                item.status === "played"
+              className={`w-full brutal-card p-4 flex flex-wrap items-center gap-4 transition-transform ${
+                !independent && item.status === "played"
                   ? "opacity-50 hover:-translate-y-1"
                   : "hover:-translate-y-1"
               }`}
@@ -402,7 +418,7 @@ export default function JamRoom() {
               <button
                 type="button"
                 onClick={() =>
-                  isDJ
+                  independent ? local.select(item) : isDJ
                     ? playSpecificSong(session.id, item.id)
                         .then(() => refresh())
                         .catch((e) => {
@@ -417,8 +433,8 @@ export default function JamRoom() {
                         })
                     : null
                 }
-                disabled={!isDJ}
-                className="min-w-0 flex-1 flex items-center gap-4 text-left disabled:cursor-default"
+                disabled={independent ? item.resolve_status === 'failed' || local.state.loading : !isDJ}
+                className="min-w-0 w-full sm:w-auto sm:flex-1 flex items-center gap-4 text-left disabled:cursor-default"
               >
               <div className="w-8 h-8 flex items-center justify-center shrink-0 font-black text-gray-400 text-sm">
                 {idx + 1}
@@ -439,9 +455,11 @@ export default function JamRoom() {
                 <p className="text-sm font-medium text-gray-600 truncate">
                   {item.artist || "Unknown Artist"}
                 </p>
+                {independent && local.state.item?.id === item.id && <p className="text-xs font-bold text-green-800">On your device</p>}
+                {independent && item.resolve_status === 'failed' && <p className="text-xs text-red-700">Unavailable</p>}
               </div>
               </button>
-              {item.status === "queued" && (
+              {!independent && item.status === "queued" && (
                 <QueueVoteButton
                   item={item}
                   sessionId={session.id}
@@ -467,7 +485,7 @@ export default function JamRoom() {
       </main>
 
       {/* ── Fixed player bar ───────────────────────────────────────────────── */}
-      <PlayerControls
+      {!independent && <PlayerControls
         session={session}
         playingItem={playingItem}
         isHost={isHost}
@@ -480,7 +498,7 @@ export default function JamRoom() {
         onRepeatModeChange={handleRepeatModeChange}
         autoPilot={autoPilot}
         onAutoPilotChange={handleAutoPilotChange}
-      />
+      />}
     </div>
   );
 }

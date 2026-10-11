@@ -20,10 +20,25 @@ jobs:
   test-api:
     name: API Tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: musicone_test_shared_queue
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     # Tests mock external services, but importing the FastAPI app requires these settings.
     # Keep placeholders here rather than exposing deployment secrets to pull requests.
     env:
-      DATABASE_URL: postgresql://localhost:5432/musicone_test
+      DATABASE_URL: postgresql://postgres:test@localhost:5432/musicone_test_shared_queue
+      TEST_DATABASE_URL: postgresql://postgres:test@localhost:5432/musicone_test_shared_queue
       SUPABASE_URL: https://example.test
       SUPABASE_ANON_KEY: test-anon-key
     steps:
@@ -70,3 +85,23 @@ jobs:
       - name: Run Vitest
         working-directory: ui
         run: npm run test
+
+      - name: Install mobile dependencies
+        working-directory: mobile
+        run: npm ci
+
+      - name: Build web
+        working-directory: ui
+        run: npm run build
+
+      - name: Build mobile
+        working-directory: mobile
+        run: npm run build
+
+      - name: Install Chromium
+        working-directory: ui
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser acceptance tests
+        working-directory: ui
+        run: npx playwright test

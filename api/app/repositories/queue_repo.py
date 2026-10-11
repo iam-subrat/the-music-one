@@ -1,19 +1,69 @@
 import json
+import re
+from datetime import datetime, timezone
+from contextlib import asynccontextmanager
 from typing import Optional
 from uuid import UUID, uuid4
 from sqlalchemy import select, text
 from sqlalchemy.orm import selectinload
 from app.models.queue_item import QueueItem
+from app.models.session import Session
+from fastapi import HTTPException
 from app.repositories.base import AbstractRepository
 from app.repositories.db_auth import set_jwt_claims
 
 
 class QueueRepository(AbstractRepository):
+    @asynccontextmanager
+    async def independent_resolution_lock(self, item_id):
+        await self.db.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+                              {"key": "independent-resolution:" + str(item_id)})
+        try:
+            yield
+        finally:
+            await self.db.rollback()
+
+    async def validate_dj_playback(self, session_id, user_id, release=True):
+        await set_jwt_claims(self.db, user_id)
+        await self.db.execute(text("SELECT require_dj_playback(:sid)"), {"sid": str(session_id)})
+        session = await self.db.scalar(select(Session).where(Session.id == session_id))
+        if user_id not in (session.dj_user_id, session.host_user_id):
+            raise PermissionError("Only the host or DJ can control playback")
+        if release:
+            await self.db.rollback()
+
+    async def create_dj(self, session_id, user_id, **kwargs):
+        await self.validate_dj_playback(session_id, user_id, release=False)
+        return await self.create(session_id=session_id, **kwargs)
+
+    async def persist_independent_resolution(self, item_id, session_id, version, meta, youtube_url):
+        session = await self.db.scalar(select(Session).where(Session.id == session_id)
+            .with_for_update().execution_options(populate_existing=True))
+        if not session or session.status != 'active' or session.playback_mode != 'independent' or session.playback_mode_version != version or (session.expires_at and session.expires_at <= datetime.now(timezone.utc)):
+            raise HTTPException(409, 'Room mode changed. Refresh the room.')
+        item = await self.db.scalar(select(QueueItem).where(QueueItem.id == item_id)
+            .with_for_update().execution_options(populate_existing=True))
+        if not item or item.status == 'skipped':
+            raise HTTPException(409, 'This song is no longer available')
+        if meta and item.resolve_status == 'resolving':
+            item.title, item.artist = meta['title'], meta['artist']
+            item.thumbnail_url = meta.get('thumbnailUrl')
+            item.platform_links = meta.get('platformLinks', {})
+            item.resolve_status = 'resolved'
+        links = dict(item.platform_links or {})
+        existing = links.get('youtube', '')
+        if not re.fullmatch(r'https://www\.youtube\.com/watch\?v=[A-Za-z0-9_-]{11}', existing):
+            links['youtube'] = youtube_url
+        item.platform_links = links
+        await self.db.commit()
+        return links['youtube']
+
     async def _get_with_profile(self, id: UUID) -> Optional[QueueItem]:
         result = await self.db.execute(
             select(QueueItem)
             .where(QueueItem.id == id)
             .options(selectinload(QueueItem.profiles))
+            .execution_options(populate_existing=True)
         )
         return result.scalar_one_or_none()
 
@@ -138,6 +188,8 @@ class QueueRepository(AbstractRepository):
     async def mark_resolved(self, item_id: UUID, meta: dict, user_id: UUID) -> None:
         await self.db.rollback()
         await set_jwt_claims(self.db, user_id)
+        await self.db.execute(text("SELECT require_dj_playback((SELECT session_id FROM queue_items WHERE id=:id))"),
+                              {"id": str(item_id)})
         await self.db.execute(
             text("""
                 UPDATE queue_items

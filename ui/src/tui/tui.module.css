@@ -2,6 +2,38 @@
    TUI — phosphor terminal aesthetic
    ============================================================ */
 
+.playerPanel {
+  --jam-text: var(--tui-fg);
+  --jam-muted: var(--tui-fg-dim);
+  --jam-accent: var(--tui-accent);
+  --jam-surface: #06110d;
+  --jam-control-border: var(--tui-border);
+  --jam-control-fill: rgba(95,255,175,.04);
+  --jam-control-hover: rgba(95,255,175,.09);
+}
+.playerHeading { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 16px; font-size: 11px; }
+.playerHeading .panelLabel { position: static; margin: 0; padding: 0; background: transparent; letter-spacing: 0; }
+.playerPanel { padding: 18px; }
+.queueTable { table-layout: fixed; }
+.queueTable td { overflow-wrap: anywhere; }
+.queueTable th:first-child { width: 34px; }
+.queueTable th:last-child { width: 24%; }
+.playerMeta { min-width: 0; }
+.trackTitle { font-size: 15px; color: var(--tui-accent); font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.trackArtist { color: var(--tui-fg-dim); margin-top: 4px; overflow-wrap: anywhere; }
+.trackBy { color: var(--tui-fg-dim); font-size: 11px; margin: 8px 0 12px; }
+.playerToolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; border-top: 1px solid var(--tui-border); padding-top: 16px; margin-top: 18px; }
+.playerTransport { display: grid; grid-template-columns: 36px 40px 36px; gap: 8px; align-items: center; }
+.playerTransport button { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--tui-border); border-radius: 4px; background: transparent; color: var(--tui-fg-dim); cursor: pointer; }
+.playerTransport .primaryPlay { grid-column: 2; grid-row: 1; width: 40px; height: 40px; color: var(--tui-accent); background: rgba(95,255,175,.08); }
+.playerTransport button:first-child:not(.primaryPlay) { grid-column: 1; grid-row: 1; }
+.playerTransport button:last-child:not(.primaryPlay) { grid-column: 3; grid-row: 1; }
+.playerTransport button:hover { color: var(--tui-accent); background: rgba(95,255,175,.12); }
+.playerPanel button:focus-visible { outline: 1px solid var(--tui-accent); outline-offset: 3px; }
+.playerTransport button:disabled { opacity: .4; cursor: default; }
+.queueArtist { color: var(--tui-fg-dim); }
+.queueAutoPilot { color: var(--tui-lime); margin-left: 8px; }
+
 :global(html[data-tui="1"]) {
   --tui-bg: #02060a;
   --tui-bg-deep: #000305;

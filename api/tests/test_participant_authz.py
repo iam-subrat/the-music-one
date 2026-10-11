@@ -211,6 +211,7 @@ async def test_sse_stream_auto_joins_non_participant(mocker):
     mock_svc = AsyncMock()
     mock_svc.get_by_id = AsyncMock(return_value=mock_session)
     mock_svc.store = MagicMock()
+    mock_svc.store.rollback = AsyncMock()
     mock_svc.store.sessions = AsyncMock()
     mock_svc.store.sessions.is_participant = AsyncMock(return_value=False)
 

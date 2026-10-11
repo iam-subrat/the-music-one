@@ -15,6 +15,7 @@ export default defineConfig({
     },
   },
   define: {
+    __FLAG_INDEPENDENT_PLAYBACK__: JSON.stringify(process.env.FLAG_INDEPENDENT_PLAYBACK ?? 'false'),
     __FLAG_JAM_SESSION__:         JSON.stringify(process.env.FLAG_JAM_SESSION         ?? 'true'),
     __FLAG_VOTE_TO_SKIP__:        JSON.stringify(process.env.FLAG_VOTE_TO_SKIP        ?? 'true'),
     __FLAG_DJ_TOKEN__:            JSON.stringify(process.env.FLAG_DJ_TOKEN            ?? 'true'),

@@ -106,9 +106,17 @@ html[data-gui-theme="studio"][data-tui="0"] .jam-persistent-player {
 .jam-persistent-player__copy { display: grid; min-width: 120px; max-width: 230px; font-size: .78rem; line-height: 1.3; }
 .jam-persistent-player__copy strong, .jam-persistent-player__copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .jam-persistent-player__copy small { font-size: .7rem; color: #9499aa; }
+.jam-persistent-player__toggle { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: 0 0 44px; padding: 0; border: 1px solid rgba(255,255,255,.12); border-radius: 50%; background: rgba(255,255,255,.04); color: inherit; cursor: pointer; transition: background .15s, border-color .15s; }
+.jam-persistent-player__toggle:hover { background: rgba(184,255,103,.09); border-color: #b8ff67; }
+.jam-persistent-player__toggle:focus-visible { outline: 2px solid #b8ff67; outline-offset: 3px; }
+.jam-persistent-player__toggle:disabled { opacity: .45; cursor: default; }
+html[data-gui-theme="studio"] .jam-persistent-player__toggle { border-color: #c9cec5; background: rgba(32,35,31,.035); }
+html[data-gui-theme="studio"] .jam-persistent-player__toggle:hover { background: #e1e8dd; border-color: #54705b; }
+html[data-gui-theme="studio"] .jam-persistent-player__toggle:focus-visible { outline-color: #54705b; }
+html[data-tui="1"] .jam-persistent-player__status { display: none; }
 html[data-gui-theme="studio"] .jam-persistent-player__copy small { color: #687067; }
 @media (max-width: 700px) {
-  .jam-persistent-player__status { padding: 9px 112px 9px 15px; }
+  .jam-persistent-player__status { padding: 9px 150px 9px 15px; }
   .jam-persistent-player__note { display: none; }
   .jam-persistent-player__copy { min-width: 0; max-width: 150px; }
 }

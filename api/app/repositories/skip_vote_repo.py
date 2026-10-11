@@ -30,6 +30,7 @@ class SkipVoteRepository(AbstractRepository):
         return bool(row[0]) if row else False
 
     async def remove_vote(self, queue_item_id: UUID, user_id: UUID) -> None:
+        await set_jwt_claims(self.db, user_id)
         await self.db.execute(
             delete(SkipVote)
             .where(SkipVote.queue_item_id == queue_item_id)

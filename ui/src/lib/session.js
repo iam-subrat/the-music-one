@@ -1,9 +1,18 @@
 import { api } from './api';
 
-export async function createSession() {
-  const res = await api('/sessions/', { method: 'POST' });
+export async function createSession(playbackMode = 'dj') {
+  const res = await api('/sessions/', { method: 'POST', body: JSON.stringify({ playback_mode: playbackMode }) });
   if (!res.ok) throw new Error('Failed to create session');
   return res.json();
+}
+
+export async function setPlaybackMode(sessionId, mode, expectedVersion) {
+  const res = await api(`/sessions/${sessionId}/playback-mode`, {
+    method: 'PATCH', body: JSON.stringify({ mode, expected_version: expectedVersion }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || 'Could not change the room mode');
+  return data;
 }
 
 export async function getSessionByCode(code) {
@@ -12,7 +21,10 @@ export async function getSessionByCode(code) {
 }
 
 export async function joinSession(sessionId) {
-  await api(`/sessions/${sessionId}/join`, { method: 'POST' });
+  const res = await api(`/sessions/${sessionId}/join`, { method: 'POST' });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || 'Could not join session');
+  return data;
 }
 
 export async function leaveSession(sessionId) {
@@ -29,7 +41,10 @@ export async function setRepeatMode(sessionId, mode) {
     method: 'PATCH',
     body: JSON.stringify({ mode }),
   });
-  if (!res.ok) throw new Error('Failed to set repeat mode');
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || 'Failed to set repeat mode');
+  }
 }
 
 export async function setAutoPilot(sessionId, enabled) {

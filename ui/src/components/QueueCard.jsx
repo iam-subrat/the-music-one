@@ -4,6 +4,7 @@ import { useSkipVotes } from "../hooks/useSkipVotes";
 import { castSkipVote, playSpecificSong, removeSkipVote } from "../lib/queue";
 import s from "../styles/jam.module.css";
 import JamIcon from "./JamIcon";
+import DeleteVoteButton from "./DeleteVoteButton";
 
 export default function QueueCard({
   item,
@@ -13,9 +14,15 @@ export default function QueueCard({
   userId,
   participantCount,
   onQueueChange,
+  local,
+  modeVersion = 0,
+  selected = false,
+  onStartPlayback,
 }) {
-  const { count: skipVotes, hasVoted, refresh: refreshVotes } = useSkipVotes(item.id, userId, sessionId, false);
+  const { count: skipVotes, hasVoted, refresh: refreshVotes } = useSkipVotes(local ? null : item.id, userId, sessionId, false);
   const [isVoting, setIsVoting] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [playError, setPlayError] = useState('');
   const skipThreshold = Math.floor(participantCount / 2) + 1;
   const statusCls =
     item.status === "skipped"
@@ -27,7 +34,8 @@ export default function QueueCard({
           : "";
 
   return (
-    <div className={`${s.queueCard} ${statusCls}`}>
+    <div data-queue-item={item.id} aria-current={selected ? 'true' : undefined} className={`${s.queueCard} ${statusCls} ${selected ? s.personalCurrent : ''}`}>
+      {index != null && <div className={s.queuePos}>{index}</div>}
       {item.thumbnail_url ? (
         <img className={s.queueThumb} src={item.thumbnail_url} alt="" />
       ) : (
@@ -37,13 +45,17 @@ export default function QueueCard({
         <div className={s.queueTitle} title={item.title}>
           {item.title}
         </div>
-        <div className={s.queueArtist} title={item.artist}>
-          {item.artist}
+        <div className={s.queueSecondary}>
+          <div className={s.queueArtist} title={item.artist}>
+            {item.artist}
+          </div>
+          <div className={s.queueBy} title={`Added by ${item.profiles?.display_name || "someone"}`}>
+            by {item.profiles?.display_name || "someone"}
+          </div>
         </div>
-        <div className={s.queueBy}>
-          by {item.profiles?.display_name || "someone"}
-        </div>
+        {playError && <div role="alert" className={s.playbackError}>{playError}</div>}
       </div>
+      <div className={s.queueActions}>
       {item.resolve_status === "resolving" && (
         <span className={s.resolvingBadge}>Resolving…</span>
       )}
@@ -51,35 +63,39 @@ export default function QueueCard({
         <span className={s.failedBadge}>Failed</span>
       )}
 
-      {FLAGS.VOTE_TO_SKIP &&
+      {!local && FLAGS.VOTE_TO_SKIP &&
         item.status !== "playing" &&
         item.status !== "skipped" && (
-        <button
+        <DeleteVoteButton
           className={`${s.queueVoteBtn} ${hasVoted ? s.queueVoteBtnVoted : ""}`}
+          title={item.title} count={skipVotes} threshold={skipThreshold} hasVoted={hasVoted}
           disabled={isVoting}
           onClick={handleSkipVote}
-        >
-          {hasVoted ? "Unvote" : "Skip"} ({skipVotes}/{skipThreshold})
-        </button>
+        />
       )}
 
-      {isDj &&
-        item.status !== "playing" &&
+      {(local || isDj) &&
+        (local || item.status !== "playing") &&
         item.status !== "skipped" &&
         item.resolve_status !== "failed" && (
           <button
             className={s.queuePlayBtn}
-            onClick={() =>
-              playSpecificSong(sessionId, item.id).catch((e) =>
-                console.error(e),
-              )
-            }
-            title="Play this song"
+            disabled={item.resolve_status === 'resolving' || local?.state.loading || isStarting}
+            onClick={async () => {
+              if (local) { local.select(item); return; }
+              setIsStarting(true); setPlayError('');
+              const cancelStart = onStartPlayback?.(item);
+              try { await playSpecificSong(sessionId, item.id, modeVersion); onQueueChange?.(); }
+              catch (error) { cancelStart?.(); setPlayError(error.message); }
+              finally { setIsStarting(false); }
+            }}
+            aria-label={`Play ${item.title}`}
+            title={`Play ${item.title}`}
           >
             <JamIcon name="play" size={15} />
           </button>
         )}
-      {index != null && <div className={s.queuePos}>#{index}</div>}
+      </div>
     </div>
   );
 

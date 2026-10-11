@@ -11,9 +11,13 @@ export function useAuth() {
   const { capture, identify, reset } = useAnalytics();
 
   useEffect(() => {
+    let loggedOut = false;
+    const logout = () => { loggedOut = true; setUser(null); setProfile(null); };
+    window.addEventListener('musicone:logout', logout);
     api('/auth/me')
       .then(res => res.ok ? res.json() : null)
       .then(data => {
+        if (loggedOut) return;
         if (data) {
           setUser({ id: data.id });
           setProfile(data);
@@ -43,6 +47,7 @@ export function useAuth() {
         }
       })
       .finally(() => setLoading(false));
+    return () => window.removeEventListener('musicone:logout', logout);
   }, []);
 
   function signInWithGoogle(returnTo) {
@@ -53,6 +58,7 @@ export function useAuth() {
   }
 
   async function signOut() {
+    window.dispatchEvent(new Event('musicone:logout'));
     await api('/auth/logout', { method: 'POST' });
     capture('user_signed_out');
     reset();
