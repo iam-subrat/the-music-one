@@ -1,5 +1,8 @@
 # Shared Queue: Proposed Behavior and UX
 
+> Historical record: the standalone mobile client and its hosted `/bridge` player
+> have been removed. Current supported clients are Web UI and TUI.
+
 Status: design review draft. No product implementation is authorized by this document.
 
 ## Goal

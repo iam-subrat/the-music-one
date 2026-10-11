@@ -86,16 +86,8 @@ jobs:
         working-directory: ui
         run: npm run test
 
-      - name: Install mobile dependencies
-        working-directory: mobile
-        run: npm ci
-
       - name: Build web
         working-directory: ui
-        run: npm run build
-
-      - name: Build mobile
-        working-directory: mobile
         run: npm run build
 
       - name: Install Chromium

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-for (const surface of ['gui', 'tui', 'mobile']) {
+for (const surface of ['gui', 'tui']) {
   test(`${surface}: room API failures are retryable, not missing rooms`, async ({ page }, testInfo) => {
     if (surface === 'tui') await page.addInitScript(() => localStorage.setItem('musicone:tui-mode', '1'));
     let failed = true;
@@ -19,7 +19,7 @@ for (const surface of ['gui', 'tui', 'mobile']) {
       if (path.endsWith('/stream')) return route.fulfill({ contentType: 'text/event-stream', body: '' });
       return json({});
     });
-    await page.goto(surface === 'mobile' ? 'http://127.0.0.1:4185/jam/ERRORS' : '/jam/ERRORS');
+    await page.goto('/jam/ERRORS');
     await expect(page.getByText('Could not load the room. Please try again.', { exact: true })).toBeVisible();
     await expect(page.getByText('Session not found.', { exact: true })).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath('room-load-error.png'), fullPage: true });

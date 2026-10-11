@@ -1,5 +1,8 @@
 # Shared Queue Implementation Plan
 
+> Historical record: the standalone mobile client and its hosted `/bridge` player
+> have been removed. Current supported clients are Web UI and TUI.
+
 > **For agentic workers:** Use superpowers:executing-plans for inline execution after design and plan approval. No product code should be written during this design review. This is a proposed plan based on the linked draft spec; reconcile approved changes before execution.
 
 **Goal:** Add a host-selected Shared Queue room mode with independent per-device playback across GUI, TUI, and the checked-in mobile client.

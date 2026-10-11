@@ -1,5 +1,8 @@
 # Shared Queue Execution Ledger
 
+> Historical record: the standalone mobile client and its hosted `/bridge` player
+> have been removed. Current supported clients are Web UI and TUI.
+
 Plan: shared-queue-plan.md. Spec: shared-queue-design.md. User approved implementation and a PR to main.
 
 Workspace: isolated native worktree, branch codex/shared-queue, based on origin/main.
