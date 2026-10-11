@@ -35,6 +35,7 @@ export default function QueueCard({
 
   return (
     <div data-queue-item={item.id} aria-current={selected ? 'true' : undefined} className={`${s.queueCard} ${statusCls} ${selected ? s.personalCurrent : ''}`}>
+      {index != null && <div className={s.queuePos}>{index}</div>}
       {item.thumbnail_url ? (
         <img className={s.queueThumb} src={item.thumbnail_url} alt="" />
       ) : (
@@ -44,14 +45,17 @@ export default function QueueCard({
         <div className={s.queueTitle} title={item.title}>
           {item.title}
         </div>
-        <div className={s.queueArtist} title={item.artist}>
-          {item.artist}
-        </div>
-        <div className={s.queueBy}>
-          by {item.profiles?.display_name || "someone"}
+        <div className={s.queueSecondary}>
+          <div className={s.queueArtist} title={item.artist}>
+            {item.artist}
+          </div>
+          <div className={s.queueBy} title={`Added by ${item.profiles?.display_name || "someone"}`}>
+            by {item.profiles?.display_name || "someone"}
+          </div>
         </div>
         {playError && <div role="alert" className={s.playbackError}>{playError}</div>}
       </div>
+      <div className={s.queueActions}>
       {item.resolve_status === "resolving" && (
         <span className={s.resolvingBadge}>Resolving…</span>
       )}
@@ -91,7 +95,7 @@ export default function QueueCard({
             <JamIcon name="play" size={15} />
           </button>
         )}
-      {index != null && <div className={s.queuePos}>#{index}</div>}
+      </div>
     </div>
   );
 

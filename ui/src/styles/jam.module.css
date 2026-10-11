@@ -1033,7 +1033,7 @@
 .autoPilotToggle[aria-checked="true"] .toggleTrack { background: var(--jam-accent); }
 .autoPilotToggle[aria-checked="true"] .toggleTrack span { transform: translateX(12px); background: var(--jam-canvas); }
 .autoPilotToggle:disabled { opacity: .5; cursor: default; }
-.personalCurrent { background: var(--jam-control-hover); border-color: var(--jam-control-border); }
+.queueCard.personalCurrent, .studio .queueCard.personalCurrent { position: relative; background: transparent; }
 .personalMarker { color: var(--jam-accent); font-size: .7rem; max-width: 70px; flex-shrink: 0; line-height: 1.4; }
 .queueIndex { color: var(--jam-muted); font-size: .76rem; width: 22px; flex-shrink: 0; text-align: center; }
 .queueInfo { flex: 1; min-width: 0; }
@@ -1060,17 +1060,35 @@
 .transportButtons .playButton { grid-column: 2; grid-row: 1; width: 56px; height: 56px; }
 .transportButtons .iconButton:first-child { grid-column: 1; grid-row: 1; }
 .transportButtons .iconButton:last-child { grid-column: 3; grid-row: 1; }
-.queueCard, .studio .queueCard { flex-wrap: nowrap; }
-.queuePos { flex-shrink: 0; font-variant-numeric: tabular-nums; }
-.personalCurrent { box-shadow: inset 2px 0 var(--jam-accent); }
+.queueList { gap: 0; }
+.queueCard, .studio .queueCard { display: grid; grid-template-columns: 24px 44px minmax(0, 1fr) auto; align-items: center; column-gap: 12px; row-gap: 8px; min-height: 76px; padding: 14px 8px; }
+.queuePos { order: 0; width: auto; font-variant-numeric: tabular-nums; color: var(--jam-muted); font-size: .75rem; }
+.queueThumb { width: 44px; height: 44px; border-radius: 6px; }
+.queueMeta { min-width: 0; }
+.queueTitle { font-size: .88rem; line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.queueSecondary { display: flex; align-items: baseline; gap: 8px; margin-top: 3px; min-width: 0; }
+.queueArtist, .queueBy { margin: 0; font-size: .75rem; line-height: 1.5; color: var(--jam-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.queueArtist { min-width: 0; }
+.queueBy { min-width: 0; max-width: 45%; border-left: 1px solid var(--jam-border); padding-left: 8px; }
+.queueActions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 36px; }
+.queueActions .queuePlayBtn { flex-shrink: 0; }
+.queueActions .queueVoteBtn { border-radius: 6px; }
+.queueCard:hover, .studio .queueCard:hover, .queueCard:focus-within { background: color-mix(in srgb, var(--jam-accent) 3%, transparent); }
+.queueCard .queuePlayBtn:focus-visible, .queueCard .queueVoteBtn:focus-visible { outline: 2px solid var(--jam-accent); outline-offset: 2px; }
+.personalCurrent::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 2px; height: 32px; max-height: calc(100% - 20px); border-radius: 1px; background: var(--jam-accent); pointer-events: none; }
 @media(max-width: 760px) {
   .nowPlayingTitle { font-size: 1.5rem; }
   .studio .nowPlayingMeta[data-artwork="false"] { grid-template-columns: 112px minmax(0, 1fr); }
   .studio .nowPlayingMeta[data-artwork="false"] .artworkStage { width: 112px; height: 112px; }
   .playerOptions { gap: 12px; }
   .playerFooter > .modeScope { margin-left: auto; }
-  .queueCard { gap: 8px; }
-  .queueTitle { white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
+  .queueCard, .studio .queueCard { grid-template-columns: 20px 40px minmax(0, 1fr) auto; column-gap: 10px; padding: 12px 6px; }
+  .queueThumb { width: 40px; height: 40px; }
+  .queueSecondary { display: block; margin-top: 2px; }
+  .queueBy { max-width: none; border: 0; padding: 0; font-size: .7rem; }
+  .queueActions:has(.queueVoteBtn) { grid-column: 3 / -1; grid-row: 2; }
+  .queueCard:has(.queueVoteBtn) .queuePos, .queueCard:has(.queueVoteBtn) .queueThumb { grid-row: 1 / 3; }
+  .queueCard:has(.queueVoteBtn) .queueMeta { grid-column: 3 / -1; grid-row: 1; }
   .queueVoteBtn { font-size: .68rem; }
 }
 @media(max-width: 400px) { .modeSegment { width: 100%; } .personalMarker { max-width: 44px; } }

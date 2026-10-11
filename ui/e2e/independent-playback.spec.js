@@ -8,7 +8,7 @@ const songs = [
 
 async function fixture(page, user = 'host', theme = 'pulse', mode = 'independent') {
   const mutations = [];
-  const queue = songs.map(item => ({ ...item, platform_links: { youtube: `https://youtu.be/${item.id}1234567890` } }));
+  const queue = songs.map(item => ({ ...item, profiles: { ...item.profiles }, platform_links: { youtube: `https://youtu.be/${item.id}1234567890` } }));
   const session = { id: 'room', invite_code: 'SHARED', host_user_id: 'host', dj_user_id: 'host',
     status: 'active', playback_mode: mode, playback_mode_version: 1, repeat_mode: 'none' };
   await page.addInitScript(theme => {
@@ -256,11 +256,45 @@ for (const theme of ['pulse', 'studio']) {
     });
     test(`Shared Queue layout: ${theme} at ${width}px`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 960 });
-      await fixture(page, 'host', theme);
+      const { queue } = await fixture(page, 'host', theme);
+      queue[2].title = 'Dreams - Full Live Performance | Fleetwood Mac | An unusually long song title to verify queue alignment';
+      queue[2].artist = 'Fleetwood Mac and a very long collaboration credit';
+      queue[2].profiles.display_name = 'Alex with a very long display name';
       await page.goto('/jam/SHARED');
       await expect(page.getByRole('region', { name: 'Your playback' })).toBeVisible();
       await expect(page.getByRole('region', { name: 'Your playback' }).getByText('Ready', { exact: true })).toBeVisible();
       await expect(page.getByRole('region', { name: 'Your playback' }).getByRole('button', { name: 'Next track', exact: true })).toBeEnabled();
+      const selectedRow = page.locator('[data-queue-item][aria-current="true"]');
+      await expect(selectedRow).toHaveCount(1);
+      const rowStyle = await selectedRow.evaluate(row => {
+        const style = getComputedStyle(row), marker = getComputedStyle(row, '::before');
+        return { background: style.backgroundColor, shadow: style.boxShadow,
+          height: row.getBoundingClientRect().height, markerHeight: parseFloat(marker.height),
+          markerTop: parseFloat(marker.top), markerLeft: marker.left, markerWidth: marker.width };
+      });
+      expect(rowStyle.background).toBe('rgba(0, 0, 0, 0)');
+      expect(rowStyle.shadow).toBe('none');
+      expect(rowStyle.markerLeft).toBe('0px');
+      expect(rowStyle.markerWidth).toBe('2px');
+      expect(rowStyle.markerHeight).toBeLessThan(rowStyle.height - 10);
+      expect(Math.abs(rowStyle.markerTop - rowStyle.height / 2)).toBeLessThanOrEqual(1);
+      const columns = await page.locator('[data-queue-item]').evaluateAll(rows => rows.map(row => {
+        const [number, artwork, metadata, actions] = row.children;
+        const title = metadata.firstElementChild;
+        return { number: number.getBoundingClientRect().left, artwork: artwork.getBoundingClientRect().left,
+          metadata: metadata.getBoundingClientRect().left, actionsRight: actions.getBoundingClientRect().right,
+          titleWrap: getComputedStyle(title).whiteSpace, titleOverflow: getComputedStyle(title).textOverflow,
+          contained: row.scrollWidth <= row.clientWidth };
+      }));
+      for (const row of columns) {
+        expect(row.number).toBeCloseTo(columns[0].number);
+        expect(row.artwork).toBeCloseTo(columns[0].artwork);
+        expect(row.metadata).toBeCloseTo(columns[0].metadata);
+        expect(row.actionsRight).toBeCloseTo(columns[0].actionsRight);
+        expect(row.titleWrap).toBe('nowrap');
+        expect(row.titleOverflow).toBe('ellipsis');
+        expect(row.contained).toBe(true);
+      }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       await page.screenshot({ path: testInfo.outputPath('shared-queue.png'), fullPage: true });
       await page.getByRole('button', { name: 'Repeat: Off' }).click();
