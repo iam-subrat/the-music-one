@@ -4,7 +4,7 @@ Sessions expire after 15 days without activity, not 15 days after creation.
 `expires_at` is the materialized deadline: `last_activity_at + 15 days`.
 
 Authenticated participants send a heartbeat every 30 seconds while a room is
-open in GUI, TUI, or mobile. A paused room therefore stays alive while someone
+open in GUI or TUI. A paused room therefore stays alive while someone
 keeps it open and their heartbeats reach the API. Adding a queue item also
 updates activity. Joining a still-active room renews its deadline immediately.
 Merely retaining an invite link or participant row does not.

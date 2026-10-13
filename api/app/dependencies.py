@@ -39,7 +39,7 @@ async def _decode(token: str):
     return jwt.decode(token, key, algorithms=["ES256"], audience="authenticated")
 
 
-_CSRF_EXEMPT_SUFFIXES = ("/leave", "/mobile/exchange", "/mobile/refresh")
+_CSRF_EXEMPT_SUFFIXES = ("/leave",)
 
 
 def _require_xrw(request: Request) -> None:

@@ -8,7 +8,6 @@ Paste a music URL → get links for all 9 platforms (Spotify, Apple Music, YouTu
 |---------|------|------------|
 | **Web UI** | React 18 + Vite SPA | `ui/src/App.jsx` → `/jam/:code` |
 | **TUI** | Terminal UI (same routes) | `ui/src/tui/` → toggled in Web UI |
-| **Mobile** | Expo SDK 56 React Native | `mobile/` → iOS-first |
 | **API** | FastAPI + Supabase Postgres | `api/app/main.py` |
 
 ---
@@ -30,9 +29,6 @@ cp ui/.env.local.example ui/.env.local
 
 # API
 cp api/.env.example api/.env
-
-# Mobile (optional)
-cp mobile/.env.example mobile/.env
 ```
 
 Fill in Supabase `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
@@ -58,15 +54,6 @@ npm run dev
 
 Runs on `http://localhost:5173`. API proxied via `vite.config.js`.
 
-**4. Mobile (optional)**
-
-```bash
-cd mobile
-npm install
-expo start
-expo run:ios  # iOS simulator
-```
-
 ---
 
 ## Architecture
@@ -86,8 +73,7 @@ FastAPI backend (via RPC or HTTP)
   └─ play_next() / cast_skip_vote() / pass_dj_token()
 ```
 
-- **Web UI + TUI:** Supabase Realtime for state sync
-- **Mobile:** SSE (Server-Sent Events) via `react-native-sse`
+- **Web UI + TUI:** SSE (Server-Sent Events) for state sync
 
 ### Key concepts
 
@@ -135,25 +121,6 @@ Terminal-style interface running in same React app. Toggled via `TuiToggle` butt
 
 **TUI commands:** `add <url>`, `add "<name>" [artist]`, `play/resume`, `pause`, `seek`, `next`, `skip`, `who`, `dj <me|@name>`, `repeat`, `invite`, `end`, `leave`, `help`.
 
-### Mobile (`mobile/`)
-
-```
-mobile/src/
-  ├─ lib/              Utils (api.ts, sse.ts, auth.ts)
-  ├─ hooks/            Custom hooks (useSession, useQueue, etc.)
-  ├─ components/       React Native components
-  ├─ screens/          Navigation screens
-  └─ navigation/       React Navigation setup
-
-npm run dev           Expo dev server
-expo run:ios          Build + run on iOS simulator
-expo run:android      Build + run on Android emulator
-```
-
-**Auth:** Expo's `expo-auth-session` (Google OAuth) → JWT stored in `expo-secure-store`. Token refresh via `/api/auth/mobile/refresh`.
-
-**Realtime:** SSE (not Supabase Realtime). Hooks re-fetch on SSE reconnect and `AppState → 'active'`.
-
 ### API (`api/`)
 
 ```
@@ -186,9 +153,9 @@ uv run alembic revision --autogenerate -m "msg"   Create migration
 | Layer | Stack |
 |-------|-------|
 | **Auth** | Supabase (Google OAuth, PKCE flow), JWT (RS256) |
-| **State** | Supabase Realtime (Web/TUI), SSE (Mobile) |
-| **UI** | React 18 (Web), React Native (Mobile) |
-| **Build** | Vite (Web), Expo (Mobile) |
+| **State** | SSE (Web/TUI) |
+| **UI** | React 18 (Web/TUI) |
+| **Build** | Vite |
 | **API** | FastAPI + Uvicorn |
 | **Database** | Supabase Postgres + Alembic migrations |
 | **Observability** | Loki + Grafana |
@@ -238,10 +205,10 @@ See **[docs/feature-flags.md](docs/feature-flags.md)** (auto-generated).
 
 ## Deployment
 
-| Env | Branch | DB | UI | Mobile |
-|-----|--------|-----|----|----|
-| Staging | `staging` | Supabase stg | Cloudflare Pages | EAS build (dev) |
-| Prod | `main` | Supabase prod | GitHub Pages | EAS build (prod) |
+| Env | Branch | DB | UI |
+|-----|--------|-----|----|
+| Staging | `staging` | Supabase stg | Cloudflare Pages |
+| Prod | `main` | Supabase prod | GitHub Pages |
 
 **Process:** Push to branch → GitHub Actions runs migrations → builds + deploys.
 

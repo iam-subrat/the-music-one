@@ -12,12 +12,10 @@ tab/device owns its cursor, transport and repeat mode; the room shares a catalog
    The default already exists from the baseline; revision 010 avoids an
    unnecessary ALTER TABLE exclusive lock. SSE releases its setup transaction
    before streaming so open listeners do not retain database read locks.
-2. Deploy web clients, including the hosted /bridge player with protocol 2.
-3. Ship the Capacitor mobile client update. Old mobile clients cannot play Shared
-   Queue and cannot mutate its global playback state.
-4. Validate YouTube cue/play on physical iOS and Android devices, including
+2. Deploy web clients.
+3. Validate YouTube cue/play in desktop and phone browsers, including
    background/foreground transitions, interrupted audio and blocked embeds.
-5. Enable INDEPENDENT_PLAYBACK in feature_flags only after the above checks.
+4. Enable INDEPENDENT_PLAYBACK in feature_flags only after the above checks.
    YOUTUBE_EMBED must also remain enabled. The new flag defaults to false.
 
 ## Operational Checks
@@ -49,7 +47,6 @@ columns/flag and restores the original RPC implementations.
 ## Verification
 
 - Web: npm exec vitest run; npm exec playwright test; npm run build.
-- Mobile: npm ci; npm run build; npm run lint.
 - API: pytest -q, with TEST_DATABASE_URL pointing to a disposable database whose
   name begins musicone_test. Database tests reset public schema; never use a live
   database. PostgreSQL 15 was used for local migration, concurrency and rollback checks.

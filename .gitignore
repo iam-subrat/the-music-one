@@ -14,3 +14,5 @@ SECURITY-FINDINGS.md
 test-results/
 # Never ignore package-lock.json — required by npm ci in CI
 api/.venv
+# Local artifacts left over from the retired native client
+/mobile/
