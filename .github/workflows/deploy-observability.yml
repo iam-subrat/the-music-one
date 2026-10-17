@@ -9,6 +9,9 @@ on:
       - ".github/workflows/deploy-observability.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     name: Deploy → Loki + Promtail + Grafana
