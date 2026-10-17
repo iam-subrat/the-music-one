@@ -9,6 +9,9 @@ on:
       - ".github/workflows/deploy-api-staging.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   migrate:
     name: Migrate → Staging DB
