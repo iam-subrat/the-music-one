@@ -187,4 +187,20 @@ describe("JamPlaybackProvider", () => {
     expect(player.pause).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId("youtube-player")).not.toBeInTheDocument();
   });
+
+  test("exposes isReady based on active player readiness", () => {
+    function ReadyProbe() {
+      const { isReady } = useJamPlayback();
+      return <button type="button" data-testid="check-ready" onClick={(e) => { e.currentTarget.textContent = String(isReady()); }}>check</button>;
+    }
+    const { unmount } = render(<JamPlaybackProvider><Registration descriptor={active} /><ReadyProbe /></JamPlaybackProvider>);
+    const button = screen.getByTestId("check-ready");
+    fireEvent.click(button);
+    expect(button).toHaveTextContent("true");
+    unmount();
+    render(<JamPlaybackProvider><ReadyProbe /></JamPlaybackProvider>);
+    const button2 = screen.getByTestId("check-ready");
+    fireEvent.click(button2);
+    expect(button2).toHaveTextContent("false");
+  });
 });
