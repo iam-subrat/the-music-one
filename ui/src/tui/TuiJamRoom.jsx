@@ -148,7 +148,7 @@ export default function TuiJamRoom() {
   );
   const skipThreshold = Math.floor(participants.length / 2) + 1;
   const { videoId: ytId } = useResolvedYouTubeVideo(nowPlaying, isDJ);
-  const { registerPlayback, requestStart, clearPlayback, play, pause, seek, replay, getTime, getDuration, getState } = useJamPlayback();
+  const { registerPlayback, requestStart, clearPlayback, isReady, play, pause, seek, replay, getTime, getDuration, getState } = useJamPlayback();
 
   function append(...lines) {
     setLog((prev) => [...prev, ...lines]);
@@ -427,7 +427,7 @@ export default function TuiJamRoom() {
           append({ kind: "err", text: "✗ DJ only" });
           break;
         }
-        if (getState() === -1) {
+        if (!nowPlaying || !isReady()) {
           append({ kind: "warn", text: "~ no player active" });
           break;
         }
@@ -475,8 +475,14 @@ export default function TuiJamRoom() {
           } catch (error) { cancelStart(); append({ kind: "err", text: error.message }); }
           break;
         }
-        if (getState() === -1) {
+        if (!nowPlaying) {
           append({ kind: "warn", text: "~ no player active" });
+          break;
+        }
+        if (!isReady()) {
+          requestStart(session.id, nowPlaying.id, session.playback_mode_version ?? 0);
+          play();
+          append({ kind: "ok", text: "▶ starting playback..." });
           break;
         }
         play();
@@ -487,7 +493,7 @@ export default function TuiJamRoom() {
           append({ kind: "err", text: "✗ DJ only" });
           break;
         }
-        if (getState() === -1) {
+        if (!nowPlaying || !isReady()) {
           append({ kind: "warn", text: "~ no player active" });
           break;
         }
@@ -514,7 +520,7 @@ export default function TuiJamRoom() {
           append({ kind: "err", text: "✗ DJ only" });
           break;
         }
-        if (getState() === -1) {
+        if (!nowPlaying || !isReady()) {
           append({ kind: "warn", text: "~ no player active" });
           break;
         }
