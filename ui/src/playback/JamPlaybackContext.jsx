@@ -165,6 +165,7 @@ export function JamPlaybackProvider({ children, PlayerComponent = YouTubeAutoPla
     requestStart,
     clearPlayback,
     playerRef,
+    isReady: () => (playerRef.current?.isReady ? playerRef.current.isReady() : Boolean(playerRef.current)),
     play: () => playerRef.current?.play(),
     pause: () => playerRef.current?.pause(),
     seek: (seconds) => playerRef.current?.seek(seconds),
