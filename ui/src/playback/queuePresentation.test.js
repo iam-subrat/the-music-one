@@ -15,3 +15,11 @@ test('allows restarting a completed repeat queue without previewing failed or sk
   expect(readySong(items, 'queue')?.id).toBe('played');
   expect(readySong(items, 'none')).toBeNull();
 });
+
+test('prioritizes queued tracks over played tracks even when repeat is queue', () => {
+  const items = [
+    { id: 'played-1', position: 1, status: 'played' },
+    { id: 'queued-2', position: 2, status: 'queued' },
+  ];
+  expect(readySong(items, 'queue')?.id).toBe('queued-2');
+});

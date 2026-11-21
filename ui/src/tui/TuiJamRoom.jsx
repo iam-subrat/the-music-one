@@ -365,8 +365,14 @@ export default function TuiJamRoom() {
           const target = queueItems.filter(item => item.status !== 'skipped' && item.position < displayItem.position)
             .sort((a, b) => b.position - a.position)[0];
           if (!target) { append({ kind: "warn", text: "No previous song" }); break; }
-          try { await playSpecificSong(session.id, target.id, session.playback_mode_version ?? 0); refreshQueue(); }
-          catch (error) { append({ kind: "err", text: error.message }); }
+          const cancelStart = requestStart(session.id, target.id, session.playback_mode_version ?? 0);
+          try {
+            await playSpecificSong(session.id, target.id, session.playback_mode_version ?? 0);
+            refreshQueue();
+          } catch (error) {
+            cancelStart();
+            append({ kind: "err", text: error.message });
+          }
           break;
         }
         if (
@@ -381,6 +387,7 @@ export default function TuiJamRoom() {
         try {
           const res = await playPrevious(session.id);
           if (res?.next_item_id) {
+            requestStart(session.id, res.next_item_id, session.playback_mode_version ?? 0);
             append({ kind: "ok", text: "⏮ previous song" });
             refreshQueue();
           } else {
@@ -403,8 +410,14 @@ export default function TuiJamRoom() {
           const target = eligible.find(item => item.position > displayItem.position)
             ?? (session.repeat_mode === 'queue' ? eligible.find(item => item.id !== displayItem.id) : null);
           if (!target) { append({ kind: "warn", text: "No next song" }); break; }
-          try { await playSpecificSong(session.id, target.id, session.playback_mode_version ?? 0); refreshQueue(); }
-          catch (error) { append({ kind: "err", text: error.message }); }
+          const cancelStart = requestStart(session.id, target.id, session.playback_mode_version ?? 0);
+          try {
+            await playSpecificSong(session.id, target.id, session.playback_mode_version ?? 0);
+            refreshQueue();
+          } catch (error) {
+            cancelStart();
+            append({ kind: "err", text: error.message });
+          }
           break;
         }
         if (session.repeat_mode === "song") {
@@ -414,7 +427,10 @@ export default function TuiJamRoom() {
           break;
         }
         try {
-          await playNext(session.id);
+          const res = await playNext(session.id, session.playback_mode_version ?? 0);
+          if (res?.next_item_id) {
+            requestStart(session.id, res.next_item_id, session.playback_mode_version ?? 0);
+          }
           append({ kind: "ok", text: "✓ advanced queue" });
           refreshQueue();
         } catch (e) {
@@ -427,7 +443,7 @@ export default function TuiJamRoom() {
           append({ kind: "err", text: "✗ DJ only" });
           break;
         }
-        if (!nowPlaying || !isReady()) {
+        if (!nowPlaying || !isReady(nowPlaying.id)) {
           append({ kind: "warn", text: "~ no player active" });
           break;
         }
@@ -451,7 +467,7 @@ export default function TuiJamRoom() {
           }
           const target = upcoming[n - 1];
           if (['failed', 'resolving'].includes(target.resolve_status)) { append({ kind: "warn", text: "Song is not ready for playback" }); break; }
-          const cancelStart = !nowPlaying ? requestStart(session.id, target.id, session.playback_mode_version ?? 0) : null;
+          const cancelStart = requestStart(session.id, target.id, session.playback_mode_version ?? 0);
           try {
             await playSpecificSong(session.id, target.id, session.playback_mode_version ?? 0);
             append({ kind: "ok", text: `▶ jumping to #${n}: ${target.title}` });
@@ -479,9 +495,8 @@ export default function TuiJamRoom() {
           append({ kind: "warn", text: "~ no player active" });
           break;
         }
-        if (!isReady()) {
+        if (!isReady(nowPlaying.id)) {
           requestStart(session.id, nowPlaying.id, session.playback_mode_version ?? 0);
-          play();
           append({ kind: "ok", text: "▶ starting playback..." });
           break;
         }
@@ -493,7 +508,7 @@ export default function TuiJamRoom() {
           append({ kind: "err", text: "✗ DJ only" });
           break;
         }
-        if (!nowPlaying || !isReady()) {
+        if (!nowPlaying || !isReady(nowPlaying.id)) {
           append({ kind: "warn", text: "~ no player active" });
           break;
         }
@@ -520,7 +535,7 @@ export default function TuiJamRoom() {
           append({ kind: "err", text: "✗ DJ only" });
           break;
         }
-        if (!nowPlaying || !isReady()) {
+        if (!nowPlaying || !isReady(nowPlaying.id)) {
           append({ kind: "warn", text: "~ no player active" });
           break;
         }

@@ -188,15 +188,20 @@ describe("JamPlaybackProvider", () => {
     expect(screen.queryByTestId("youtube-player")).not.toBeInTheDocument();
   });
 
-  test("exposes isReady based on active player readiness", () => {
-    function ReadyProbe() {
+  test("exposes isReady based on active player readiness and specific queue item", () => {
+    function ReadyProbe({ queueItemId }) {
       const { isReady } = useJamPlayback();
-      return <button type="button" data-testid="check-ready" onClick={(e) => { e.currentTarget.textContent = String(isReady()); }}>check</button>;
+      return <button type="button" data-testid="check-ready" onClick={(e) => { e.currentTarget.textContent = String(isReady(queueItemId)); }}>check</button>;
     }
-    const { unmount } = render(<JamPlaybackProvider><Registration descriptor={active} /><ReadyProbe /></JamPlaybackProvider>);
+    const { unmount, rerender } = render(<JamPlaybackProvider><Registration descriptor={active} /><ReadyProbe queueItemId="item-a" /></JamPlaybackProvider>);
     const button = screen.getByTestId("check-ready");
     fireEvent.click(button);
     expect(button).toHaveTextContent("true");
+
+    rerender(<JamPlaybackProvider><Registration descriptor={active} /><ReadyProbe queueItemId="item-b" /></JamPlaybackProvider>);
+    fireEvent.click(button);
+    expect(button).toHaveTextContent("false");
+
     unmount();
     render(<JamPlaybackProvider><ReadyProbe /></JamPlaybackProvider>);
     const button2 = screen.getByTestId("check-ready");
