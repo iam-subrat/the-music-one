@@ -15,6 +15,20 @@ const mocks = vi.hoisted(() => ({
   getDuration: vi.fn(() => 417),
 }));
 
+const queueMocks = vi.hoisted(() => ({
+  playNext: vi.fn().mockResolvedValue({ next_item_id: "item-2" }),
+  playPrevious: vi.fn().mockResolvedValue({ next_item_id: "item-prev" }),
+  playSpecificSong: vi.fn().mockResolvedValue({}),
+  addToQueue: vi.fn(),
+  searchAndAddToQueue: vi.fn(),
+  forceSkip: vi.fn(),
+  castSkipVote: vi.fn(),
+  removeSkipVote: vi.fn(),
+  patchYouTubeLink: vi.fn(),
+}));
+
+vi.mock("../lib/queue", () => queueMocks);
+
 vi.mock("react-router-dom", async (importOriginal) => {
   const actual = await importOriginal();
   return {
@@ -201,9 +215,66 @@ describe("TuiJamRoom playback commands", () => {
     });
 
     expect(mocks.requestStart).toHaveBeenCalledWith("session-1", "item-1", 0);
-    expect(mocks.play).toHaveBeenCalledTimes(1);
+    expect(mocks.play).not.toHaveBeenCalled();
     expect(screen.getByText("▶ starting playback...")).toBeInTheDocument();
     expect(screen.queryByText("~ no player active")).not.toBeInTheDocument();
+  });
+
+  test("next advances queue and registers pending start for the next track", async () => {
+    render(
+      <MemoryRouter>
+        <TuiJamRoom />
+      </MemoryRouter>,
+    );
+
+    const input = screen.getByPlaceholderText(/type `help` or `add <url>`/);
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "next" } });
+      fireEvent.submit(input.closest("form"));
+    });
+
+    expect(queueMocks.playNext).toHaveBeenCalledWith("session-1", 0);
+    expect(mocks.requestStart).toHaveBeenCalledWith("session-1", "item-2", 0);
+    expect(screen.getByText("✓ advanced queue")).toBeInTheDocument();
+  });
+
+  test("next followed by play does not play previous song before new song is ready", async () => {
+    mocks.isReady.mockImplementation((id) => id === "item-1");
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <TuiJamRoom />
+      </MemoryRouter>,
+    );
+
+    const input = screen.getByPlaceholderText(/type `help` or `add <url>`/);
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "next" } });
+      fireEvent.submit(input.closest("form"));
+    });
+
+    expect(queueMocks.playNext).toHaveBeenCalledWith("session-1", 0);
+    expect(mocks.requestStart).toHaveBeenCalledWith("session-1", "item-2", 0);
+
+    queueItemsState = [
+      { ...mockItem, id: "item-1", status: "played" },
+      { ...mockItem, id: "item-2", title: "Kya Tujhe Ab...", status: "playing", position: 2 },
+    ];
+
+    rerender(
+      <MemoryRouter>
+        <TuiJamRoom />
+      </MemoryRouter>,
+    );
+
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "play" } });
+      fireEvent.submit(input.closest("form"));
+    });
+
+    expect(mocks.requestStart).toHaveBeenCalledWith("session-1", "item-2", 0);
+    expect(mocks.play).not.toHaveBeenCalled();
+    expect(screen.getByText("▶ starting playback...")).toBeInTheDocument();
   });
 
   test("pauses playback when player is active and ready", async () => {
