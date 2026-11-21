@@ -93,6 +93,10 @@ function PersistentPlayer({ descriptor, playerRef, PlayerComponent, playerChrome
 export function JamPlaybackProvider({ children, PlayerComponent = YouTubeAutoPlayer, playerChrome = true }) {
   const playerRef = useRef(null);
   const [descriptor, setDescriptor] = useState(null);
+  const descriptorRef = useRef(descriptor);
+  useLayoutEffect(() => {
+    descriptorRef.current = descriptor;
+  }, [descriptor]);
   const pendingStartRef = useRef(null);
   const requestStart = useCallback((sessionId, queueItemId, modeVersion) => {
     const request = { sessionId, queueItemId, modeVersion };
@@ -165,6 +169,12 @@ export function JamPlaybackProvider({ children, PlayerComponent = YouTubeAutoPla
     requestStart,
     clearPlayback,
     playerRef,
+    isReady: (queueItemId) => {
+      if (!playerRef.current) return false;
+      if (playerRef.current.isReady && !playerRef.current.isReady()) return false;
+      if (queueItemId && (descriptorRef.current?.queueItemId !== queueItemId || !descriptorRef.current?.videoId)) return false;
+      return true;
+    },
     play: () => playerRef.current?.play(),
     pause: () => playerRef.current?.pause(),
     seek: (seconds) => playerRef.current?.seek(seconds),
