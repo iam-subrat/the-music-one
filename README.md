@@ -159,7 +159,6 @@ uv run alembic revision --autogenerate -m "msg"   Create migration
 | **API** | FastAPI + Uvicorn |
 | **Database** | Supabase Postgres + Alembic migrations |
 | **Observability** | Loki + Grafana |
-| **Analytics** | PostHog (optional) |
 
 **Feature flags:** Compile-time via Vite `define` block (`FLAG_*` env vars). Runtime overrides via Supabase `feature_flags` table — toggle without redeploy.
 
@@ -222,14 +221,12 @@ See **[docs/feature-flags.md](docs/feature-flags.md)** (auto-generated).
 | `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | Spotify API |
 | `ODESLI_API_KEY` | Song lookup (optional) |
 | `VITE_API_URL` | Public API base URL |
-| `VITE_POSTHOG_KEY` | Analytics (optional) |
 | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | Staging deploy |
 
 ### GitHub variables
 
 | Variable | Purpose |
 |----------|---------|
-| `VITE_APP_ENV` | `staging` or `production` |
 | `ALLOWED_ORIGINS` | CORS origins (comma-separated) |
 | `FRONTEND_URL` | Frontend base URL |
 | `ROOT_PATH` | API root path prefix |

@@ -104,10 +104,6 @@ vi.mock("../playback/useResolvedYouTubeVideo", () => ({
   useResolvedYouTubeVideo: () => ({ videoId: "yt-video-1", resolvedTitle: "Sirf Tum" }),
 }));
 
-vi.mock("../lib/analytics", () => ({
-  useAnalytics: () => ({ capture: vi.fn() }),
-}));
-
 vi.mock("../lib/flags", () => ({
   FLAGS: { AUTO_PLAY_QUEUE: true, JAM_SESSION: true, YOUTUBE_EMBED: true },
 }));
