@@ -1,4 +1,10 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
@@ -101,11 +107,10 @@ vi.mock("../hooks/useSkipVotes", () => ({
 }));
 
 vi.mock("../playback/useResolvedYouTubeVideo", () => ({
-  useResolvedYouTubeVideo: () => ({ videoId: "yt-video-1", resolvedTitle: "Sirf Tum" }),
-}));
-
-vi.mock("../lib/analytics", () => ({
-  useAnalytics: () => ({ capture: vi.fn() }),
+  useResolvedYouTubeVideo: () => ({
+    videoId: "yt-video-1",
+    resolvedTitle: "Sirf Tum",
+  }),
 }));
 
 vi.mock("../lib/flags", () => ({
@@ -130,7 +135,13 @@ vi.mock("../playback/JamPlaybackContext", () => ({
 
 vi.mock("../playback/IndependentPlaybackContext", () => ({
   useIndependentPlayback: () => ({
-    state: { item: null, started: false, loading: false, error: null, repeat: "none" },
+    state: {
+      item: null,
+      started: false,
+      loading: false,
+      error: null,
+      repeat: "none",
+    },
     select: vi.fn(),
     play: vi.fn(),
     pause: vi.fn(),
@@ -258,7 +269,13 @@ describe("TuiJamRoom playback commands", () => {
 
     queueItemsState = [
       { ...mockItem, id: "item-1", status: "played" },
-      { ...mockItem, id: "item-2", title: "Kya Tujhe Ab...", status: "playing", position: 2 },
+      {
+        ...mockItem,
+        id: "item-2",
+        title: "Kya Tujhe Ab...",
+        status: "playing",
+        position: 2,
+      },
     ];
 
     rerender(

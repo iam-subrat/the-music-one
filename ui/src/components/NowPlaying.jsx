@@ -12,7 +12,6 @@ import {
 import { setRepeatMode, setAutoPilot } from "../lib/session";
 import { useToast } from "./Toast";
 import PlayerLinks from "./PlayerLinks";
-import { useAnalytics } from "../lib/analytics";
 import { useResolvedYouTubeVideo } from "../playback/useResolvedYouTubeVideo";
 import { useJamPlayback } from "../playback/JamPlaybackContext";
 import PlayerSurface from "./PlayerSurface";
@@ -42,9 +41,6 @@ export default function NowPlaying({
     refresh: refreshSkipVotes,
   } = useSkipVotes(nowPlaying?.id, userId, sessionId);
   const skipThreshold = Math.floor(participantCount / 2) + 1;
-  const { capture } = useAnalytics();
-  const prevNowPlayingIdRef = useRef(null);
-  const ytFeatureFiredRef = useRef(false);
 
   const { videoId: ytId, resolvedTitle: ytResolvedTitle } = useResolvedYouTubeVideo(nowPlaying, isDJ);
   const { registerPlayback, requestStart, play, pause, seek, replay, getTime, getDuration, getState } = useJamPlayback();
@@ -69,27 +65,6 @@ export default function NowPlaying({
     if (voteOverride?.hasVoted === hasVoted) setVoteOverride(null);
   }, [hasVoted, voteOverride]);
   const pendingTransportStateRef = useRef(null);
-
-  useEffect(() => {
-    if (!nowPlaying || nowPlaying.id === prevNowPlayingIdRef.current) return;
-    prevNowPlayingIdRef.current = nowPlaying.id;
-    capture("song_played", {
-      platform: nowPlaying.platform_links
-        ? Object.keys(nowPlaying.platform_links)[0]
-        : "unknown",
-      source: isDJ ? "manual" : "auto",
-    });
-  }, [nowPlaying?.id]);
-
-  useEffect(() => {
-    if (!ytId || ytFeatureFiredRef.current) return;
-    if (FLAGS.YOUTUBE_EMBED || FLAGS.AUTO_PLAY_QUEUE) {
-      capture("feature_used", {
-        feature: FLAGS.AUTO_PLAY_QUEUE ? "auto_play_queue" : "youtube_embed",
-      });
-      ytFeatureFiredRef.current = true;
-    }
-  }, [ytId]);
 
   const handleNext = async () => {
     if (!isDJ) return;
@@ -424,10 +399,6 @@ export default function NowPlaying({
         await removeSkipVote(nowPlaying.id, userId);
         refreshSkipVotes?.();
       } else {
-        capture("skip_vote_cast", {
-          votes_so_far: skipVotes + 1,
-          threshold: skipThreshold,
-        });
         const skipped = await castSkipVote(nowPlaying.id, skipThreshold);
         if (skipped) onQueueChange?.();
         else refreshSkipVotes?.();

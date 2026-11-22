@@ -5,7 +5,6 @@ import { api } from "../lib/api";
 import { PLATFORM_META } from "../lib/platform";
 import { FLAGS } from "../lib/flags";
 import { useAuth } from "../hooks/useAuth";
-import { useAnalytics } from "../lib/analytics";
 import s from "./tui.module.css";
 
 const HELP_LINES = [
@@ -34,7 +33,6 @@ export default function TuiHome() {
   const navigate = useNavigate();
   const auth = useAuth();
   const { user } = auth;
-  const { capture } = useAnalytics();
   const inputRef = useRef(null);
   const bottomRef = useRef(null);
 
@@ -58,7 +56,6 @@ export default function TuiHome() {
   }
 
   async function runLookup(url) {
-    capture("lookup_started");
     setBusy(true);
     setSong(null);
     append({ kind: "ok", text: `→ GET /api/song?url=${url}` });
@@ -75,13 +72,9 @@ export default function TuiHome() {
         },
         { kind: "songResult", song: meta },
       );
-      capture("lookup_succeeded", {
-        platform_count: Object.keys(meta.platformLinks ?? {}).length,
-      });
       window.history.replaceState({}, "", `?url=${encodeURIComponent(url)}`);
     } catch (err) {
       append({ kind: "err", text: `✗ ${err.message}` });
-      capture("lookup_failed", { error: err.message });
     } finally {
       setBusy(false);
     }

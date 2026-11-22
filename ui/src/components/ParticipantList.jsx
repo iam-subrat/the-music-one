@@ -2,11 +2,9 @@ import s from '../styles/jam.module.css';
 import { FLAGS } from '../lib/flags';
 import { passDjToken } from '../lib/session';
 import { useToast } from './Toast';
-import { useAnalytics } from '../lib/analytics';
 
 export default function ParticipantList({ participants, session, currentUserId }) {
   const toast = useToast();
-  const { capture } = useAnalytics();
   const isHost = session.host_user_id === currentUserId;
   const isDJ = session.dj_user_id === currentUserId;
   const canPassDJ = session.playback_mode !== 'independent' && (isHost || isDJ);
@@ -29,8 +27,6 @@ export default function ParticipantList({ participants, session, currentUserId }
               style={{ fontSize: '0.72rem', padding: '3px 8px' }}
               onClick={() =>
                 passDjToken(session.id, p.id).then(() => {
-                  capture('dj_token_passed', { session_id: session.id });
-                  capture('feature_used', { feature: 'dj_token' });
                   toast('DJ token passed!');
                 }).catch((error) => toast(error.message || 'Could not pass DJ token.'))
               }

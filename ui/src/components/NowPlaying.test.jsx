@@ -34,7 +34,6 @@ vi.mock("../playback/useResolvedYouTubeVideo", () => ({
   useResolvedYouTubeVideo: (_item, isDJ) => ({ videoId: isDJ ? "video-123" : null, resolvedTitle: "Resolved song" }),
 }));
 vi.mock("../hooks/useSkipVotes", () => ({ useSkipVotes: () => ({ count: 0, hasVoted: false }) }));
-vi.mock("../lib/analytics", () => ({ useAnalytics: () => ({ capture: vi.fn() }) }));
 vi.mock("../lib/queue", () => ({ castSkipVote: mocks.castSkipVote, removeSkipVote: mocks.removeSkipVote, playNext: vi.fn(), playPrevious: vi.fn(), playSpecificSong: mocks.playSpecificSong }));
 vi.mock("../lib/session", () => ({ setRepeatMode: mocks.setRepeatMode }));
 vi.mock("./Toast", () => ({ useToast: () => vi.fn() }));
