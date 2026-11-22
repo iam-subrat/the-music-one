@@ -35,7 +35,6 @@ import {
   addPlaylistBatch,
 } from "../lib/playlist";
 import { API_BASE } from "../lib/api";
-import { useAnalytics } from "../lib/analytics";
 import { FLAGS } from "../lib/flags";
 import { getUpcoming } from "../components/QueueList";
 import { useResolvedYouTubeVideo } from "../playback/useResolvedYouTubeVideo";
@@ -104,7 +103,6 @@ export default function TuiJamRoom() {
   const { participants, refresh: refreshParticipants } = useParticipants(
     session?.id,
   );
-  const { capture } = useAnalytics();
 
   const [log, setLog] = useState(() => [
     { kind: "info", text: "connecting to jam session…" },
@@ -174,10 +172,6 @@ export default function TuiJamRoom() {
           },
           { kind: "dim", text: "  type `help` to see commands" },
         );
-        capture("jam_session_joined", {
-          session_code: code,
-          participant_count: participants.length + 1,
-        });
       })
       .catch((err) =>
         append({ kind: "err", text: `✗ join failed: ${err.message}` }),
@@ -708,7 +702,6 @@ export default function TuiJamRoom() {
           action: async () => {
             try {
               await endSession(session.id);
-              capture("jam_session_ended", { session_code: code });
               navigate("/");
             } catch (e) {
               append({ kind: "err", text: `✗ ${e.message}` });

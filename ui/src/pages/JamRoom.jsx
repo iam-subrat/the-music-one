@@ -12,7 +12,6 @@ import { useSession } from "../hooks/useSession";
 import { useQueue } from "../hooks/useQueue";
 import { useParticipants } from "../hooks/useParticipants";
 import { joinSession, endSession } from "../lib/session";
-import { useAnalytics } from "../lib/analytics";
 import { API_BASE } from "../lib/api";
 import { ToastProvider } from "../components/Toast";
 import { useTui } from "../tui/TuiContext";
@@ -43,15 +42,9 @@ export default function JamRoom() {
   const { participants, refresh: refreshParticipants } = useParticipants(
     session?.id,
   );
-  const { capture } = useAnalytics();
   const independent = session?.playback_mode === 'independent';
   const local = useIndependentPlayback(session, queueItems, user?.id,
     queueReady && !authLoading && !sessionLoading && (!independent || participants.some(p => p.id === user?.id)));
-  const joinedAtRef = useRef(null);
-  const activeSecondsRef = useRef(0);
-  const lastVisibleAtRef = useRef(null);
-  const songsHeardRef = useRef(0);
-  const peakParticipantsRef = useRef(0);
   const didFireJoinRef = useRef(false);
 
   useEffect(() => {
@@ -61,20 +54,10 @@ export default function JamRoom() {
   useEffect(() => {
     if (!session?.id || session.status !== 'active' || !user?.id || didFireJoinRef.current) return;
     didFireJoinRef.current = true;
-    joinedAtRef.current = Date.now();
-    lastVisibleAtRef.current =
-      document.visibilityState === "visible" ? Date.now() : null;
 
     joinSession(session.id).then((data) => {
       if (data.expires_at) setSession(prev => prev?.id === session.id ? { ...prev, expires_at: data.expires_at } : prev);
       refreshParticipants();
-      capture("jam_session_joined", {
-        session_code: code,
-        participant_count: participants.length + 1,
-      });
-      if (session.host_user_id === user.id) {
-        capture("jam_session_created", { session_code: code });
-      }
     }).catch(() => { didFireJoinRef.current = false; refreshSession(); });
   }, [session?.id, session?.status, user?.id]);
 
@@ -103,52 +86,8 @@ export default function JamRoom() {
 
     return () => {
       window.removeEventListener("pagehide", handlePageHide);
-      if (sessionIdRef.current && joinedAtRef.current) {
-        const now = Date.now();
-        const duration = Math.round((now - joinedAtRef.current) / 1000);
-        const extraActive =
-          lastVisibleAtRef.current !== null
-            ? (now - lastVisibleAtRef.current) / 1000
-            : 0;
-        const active = Math.round(activeSecondsRef.current + extraActive);
-        capture("jam_session_left", {
-          session_code: code,
-          duration_seconds: duration,
-          active_seconds: active,
-          songs_heard: songsHeardRef.current,
-          peak_participants: peakParticipantsRef.current,
-        });
-      }
     };
   }, []);
-
-  useEffect(() => {
-    if (!session?.id) return;
-
-    function handleVisibility() {
-      if (document.visibilityState === "hidden") {
-        if (lastVisibleAtRef.current !== null) {
-          activeSecondsRef.current +=
-            (Date.now() - lastVisibleAtRef.current) / 1000;
-          lastVisibleAtRef.current = null;
-        }
-        capture("jam_tab_hidden", { session_code: code });
-      } else {
-        lastVisibleAtRef.current = Date.now();
-        capture("jam_tab_visible", { session_code: code });
-      }
-    }
-
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibility);
-  }, [session?.id]);
-
-  useEffect(() => {
-    if (participants.length > peakParticipantsRef.current) {
-      peakParticipantsRef.current = participants.length;
-    }
-  }, [participants.length]);
 
   if (authLoading || sessionLoading) {
     return (
@@ -260,19 +199,6 @@ export default function JamRoom() {
                   style={{ fontSize: "0.82rem", padding: "8px 14px" }}
                   onClick={async () => {
                     if (window.confirm("End this jam for everyone?")) {
-                      const played = queueItems.filter((i) =>
-                        ["played", "playing", "skipped"].includes(i.status),
-                      );
-                      capture("jam_session_ended", {
-                        session_code: code,
-                        total_songs: played.length,
-                        peak_participants: peakParticipantsRef.current,
-                        duration_seconds: joinedAtRef.current
-                          ? Math.round(
-                              (Date.now() - joinedAtRef.current) / 1000,
-                            )
-                          : 0,
-                      });
                       await endSession(session.id);
                       navigate("/");
                     }

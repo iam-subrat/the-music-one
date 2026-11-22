@@ -8,7 +8,6 @@ import { useToast, ToastProvider } from "../components/Toast";
 import { PLATFORM_META } from "../lib/platform";
 import s from "./home.module.css";
 import jamStyles from "../styles/jam.module.css";
-import { useAnalytics } from "../lib/analytics";
 import { useTui } from "../tui/TuiContext";
 
 export default function Home() {
@@ -28,7 +27,6 @@ function HomeContent() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
-  const { capture } = useAnalytics();
   const { guiTheme, setGuiTheme } = useTui();
 
   // Pre-fill from ?url= query param
@@ -42,7 +40,6 @@ function HomeContent() {
   }, []);
 
   async function runSearch(url) {
-    capture("lookup_started");
     setStatus("loading");
     setSong(null);
     try {
@@ -51,14 +48,10 @@ function HomeContent() {
       const meta = await res.json();
       setSong(meta);
       setStatus("done");
-      capture("lookup_succeeded", {
-        platform_count: Object.keys(meta.platformLinks ?? {}).length,
-      });
       history.replaceState({}, "", `?url=${encodeURIComponent(url)}`);
     } catch (err) {
       setErrorMsg(err.message || "Failed to fetch song info.");
       setStatus("error");
-      capture("lookup_failed", { error: err.message });
     }
   }
 
@@ -66,11 +59,6 @@ function HomeContent() {
     e.preventDefault();
     if (!inputUrl.trim()) return;
     const trimmed = inputUrl.trim();
-    try {
-      capture("url_pasted", { url_domain: new URL(trimmed).hostname });
-    } catch {
-      /* non-URL input — skip domain capture */
-    }
     runSearch(trimmed);
   }
 
@@ -222,12 +210,6 @@ function HomeContent() {
                     animationDelay: `${i * 40}ms`,
                   }}
                   title={isDirect ? `Open on ${p.name}` : `Search on ${p.name}`}
-                  onClick={() =>
-                    capture("platform_link_clicked", {
-                      platform: key,
-                      song_title: song?.title,
-                    })
-                  }
                 >
                   <div className={s.platformIconWrap}>
                     {iconSrc ? (
